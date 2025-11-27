@@ -123,6 +123,59 @@
     .embed-section.visible {
       display: block;
     }
+    
+    /* Палитра цветов */
+    .color-palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+      gap: 8px;
+      margin-top: 10px;
+      padding: 10px;
+      background: var(--background-dark);
+      border-radius: 8px;
+    }
+    
+    .color-swatch {
+      width: 35px;
+      height: 35px;
+      border-radius: 6px;
+      border: 2px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    
+    .color-swatch:hover {
+      transform: scale(1.15);
+      border-color: white;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    .color-swatch:active {
+      transform: scale(0.95);
+    }
+    
+    /* Загрузка изображений */
+    .image-upload-group {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    
+    .btn-upload {
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      display: inline-block;
+      text-align: center;
+      width: fit-content;
+    }
+    
+    .file-name {
+      font-size: 12px;
+      color: var(--secondary-color);
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -193,24 +246,76 @@
               <input type="color" id="embedColor" value="#5865F2">
               <span id="colorHex">#5865F2</span>
             </div>
-            <div class="color-presets">
-              <button class="color-btn" style="background: #5865F2" onclick="setColor('#5865F2')">Discord</button>
-              <button class="color-btn" style="background: #57F287" onclick="setColor('#57F287')">Зелёный</button>
-              <button class="color-btn" style="background: #ED4245" onclick="setColor('#ED4245')">Красный</button>
-              <button class="color-btn" style="background: #FEE75C" onclick="setColor('#FEE75C')">Жёлтый</button>
-              <button class="color-btn" style="background: #EB459E" onclick="setColor('#EB459E')">Розовый</button>
-              <button class="color-btn" style="background: #9B59B6" onclick="setColor('#9B59B6')">Фиолетовый</button>
+            <div class="color-palette">
+              <!-- Discord colors -->
+              <button class="color-swatch" style="background: #5865F2" onclick="setColor('#5865F2')" title="Discord Blurple"></button>
+              <button class="color-swatch" style="background: #57F287" onclick="setColor('#57F287')" title="Зелёный"></button>
+              <button class="color-swatch" style="background: #ED4245" onclick="setColor('#ED4245')" title="Красный"></button>
+              <button class="color-swatch" style="background: #FEE75C" onclick="setColor('#FEE75C')" title="Жёлтый"></button>
+              <button class="color-swatch" style="background: #EB459E" onclick="setColor('#EB459E')" title="Розовый"></button>
+              
+              <!-- Синие оттенки -->
+              <button class="color-swatch" style="background: #1E88E5" onclick="setColor('#1E88E5')" title="Синий"></button>
+              <button class="color-swatch" style="background: #42A5F5" onclick="setColor('#42A5F5')" title="Светло-синий"></button>
+              <button class="color-swatch" style="background: #0D47A1" onclick="setColor('#0D47A1')" title="Тёмно-синий"></button>
+              <button class="color-swatch" style="background: #00BCD4" onclick="setColor('#00BCD4')" title="Голубой"></button>
+              <button class="color-swatch" style="background: #80DEEA" onclick="setColor('#80DEEA')" title="Светло-голубой"></button>
+              
+              <!-- Зелёные оттенки -->
+              <button class="color-swatch" style="background: #4CAF50" onclick="setColor('#4CAF50')" title="Зелёный"></button>
+              <button class="color-swatch" style="background: #8BC34A" onclick="setColor('#8BC34A')" title="Светло-зелёный"></button>
+              <button class="color-swatch" style="background: #2E7D32" onclick="setColor('#2E7D32')" title="Тёмно-зелёный"></button>
+              <button class="color-swatch" style="background: #00E676" onclick="setColor('#00E676')" title="Неон зелёный"></button>
+              <button class="color-swatch" style="background: #69F0AE" onclick="setColor('#69F0AE')" title="Мятный"></button>
+              
+              <!-- Жёлтые/Оранжевые оттенки -->
+              <button class="color-swatch" style="background: #FFEB3B" onclick="setColor('#FFEB3B')" title="Жёлтый"></button>
+              <button class="color-swatch" style="background: #FFC107" onclick="setColor('#FFC107')" title="Янтарный"></button>
+              <button class="color-swatch" style="background: #FF9800" onclick="setColor('#FF9800')" title="Оранжевый"></button>
+              <button class="color-swatch" style="background: #FF5722" onclick="setColor('#FF5722')" title="Тёмно-оранжевый"></button>
+              <button class="color-swatch" style="background: #FFD54F" onclick="setColor('#FFD54F')" title="Золотой"></button>
+              
+              <!-- Красные/Розовые оттенки -->
+              <button class="color-swatch" style="background: #F44336" onclick="setColor('#F44336')" title="Красный"></button>
+              <button class="color-swatch" style="background: #E91E63" onclick="setColor('#E91E63')" title="Розовый"></button>
+              <button class="color-swatch" style="background: #C2185B" onclick="setColor('#C2185B')" title="Тёмно-розовый"></button>
+              <button class="color-swatch" style="background: #FF1744" onclick="setColor('#FF1744')" title="Неон красный"></button>
+              <button class="color-swatch" style="background: #F48FB1" onclick="setColor('#F48FB1')" title="Светло-розовый"></button>
+              
+              <!-- Фиолетовые оттенки -->
+              <button class="color-swatch" style="background: #9C27B0" onclick="setColor('#9C27B0')" title="Фиолетовый"></button>
+              <button class="color-swatch" style="background: #673AB7" onclick="setColor('#673AB7')" title="Тёмно-фиолетовый"></button>
+              <button class="color-swatch" style="background: #BA68C8" onclick="setColor('#BA68C8')" title="Светло-фиолетовый"></button>
+              <button class="color-swatch" style="background: #E040FB" onclick="setColor('#E040FB')" title="Неон фиолетовый"></button>
+              <button class="color-swatch" style="background: #7C4DFF" onclick="setColor('#7C4DFF')" title="Индиго"></button>
+              
+              <!-- Серые/Чёрные оттенки -->
+              <button class="color-swatch" style="background: #9E9E9E" onclick="setColor('#9E9E9E')" title="Серый"></button>
+              <button class="color-swatch" style="background: #607D8B" onclick="setColor('#607D8B')" title="Сине-серый"></button>
+              <button class="color-swatch" style="background: #424242" onclick="setColor('#424242')" title="Тёмно-серый"></button>
+              <button class="color-swatch" style="background: #000000" onclick="setColor('#000000')" title="Чёрный"></button>
+              <button class="color-swatch" style="background: #FFFFFF; border: 1px solid #ddd" onclick="setColor('#FFFFFF')" title="Белый"></button>
             </div>
           </div>
           
           <div class="editor-section">
-            <label>🖼️ Изображение (URL)</label>
-            <input type="url" id="embedImage" class="input-field" placeholder="https://example.com/image.png">
+            <label>🖼️ Изображение</label>
+            <div class="image-upload-group">
+              <input type="url" id="embedImage" class="input-field" placeholder="https://example.com/image.png или загрузите файл">
+              <label for="embedImageFile" class="btn btn-secondary btn-upload">📁 Выбрать файл</label>
+              <input type="file" id="embedImageFile" accept="image/*" style="display: none;">
+              <span id="imageFileName" class="file-name"></span>
+            </div>
           </div>
           
           <div class="editor-section">
-            <label>🖼️ Миниатюра (URL)</label>
-            <input type="url" id="embedThumbnail" class="input-field" placeholder="https://example.com/thumbnail.png">
+            <label>🖼️ Миниатюра</label>
+            <div class="image-upload-group">
+              <input type="url" id="embedThumbnail" class="input-field" placeholder="https://example.com/thumbnail.png или загрузите файл">
+              <label for="embedThumbnailFile" class="btn btn-secondary btn-upload">📁 Выбрать файл</label>
+              <input type="file" id="embedThumbnailFile" accept="image/*" style="display: none;">
+              <span id="thumbnailFileName" class="file-name"></span>
+            </div>
           </div>
           
           <div class="editor-section">
@@ -358,6 +463,77 @@
       } catch (error) {
         console.error('Error:', error);
         showMessage('error', '❌ Не удалось отправить сообщение');
+      }
+    }
+    
+    // Обработчик загрузки изображения
+    document.getElementById('embedImageFile')?.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      // Проверка размера (максимум 8 МБ для Discord)
+      if (file.size > 8 * 1024 * 1024) {
+        showMessage('error', '❌ Размер файла не должен превышать 8 МБ');
+        return;
+      }
+      
+      document.getElementById('imageFileName').textContent = `⏳ Загрузка ${file.name}...`;
+      
+      try {
+        const url = await uploadImageToImgbb(file);
+        document.getElementById('embedImage').value = url;
+        document.getElementById('imageFileName').textContent = `✅ ${file.name}`;
+        updatePreview();
+      } catch (error) {
+        console.error('Upload error:', error);
+        showMessage('error', '❌ Ошибка загрузки изображения');
+        document.getElementById('imageFileName').textContent = '';
+      }
+    });
+    
+    // Обработчик загрузки миниатюры
+    document.getElementById('embedThumbnailFile')?.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (file.size > 8 * 1024 * 1024) {
+        showMessage('error', '❌ Размер файла не должен превышать 8 МБ');
+        return;
+      }
+      
+      document.getElementById('thumbnailFileName').textContent = `⏳ Загрузка ${file.name}...`;
+      
+      try {
+        const url = await uploadImageToImgbb(file);
+        document.getElementById('embedThumbnail').value = url;
+        document.getElementById('thumbnailFileName').textContent = `✅ ${file.name}`;
+        updatePreview();
+      } catch (error) {
+        console.error('Upload error:', error);
+        showMessage('error', '❌ Ошибка загрузки изображения');
+        document.getElementById('thumbnailFileName').textContent = '';
+      }
+    });
+    
+    // Загрузка изображения на imgbb (бесплатный хостинг)
+    async function uploadImageToImgbb(file) {
+      const formData = new FormData();
+      formData.append('image', file);
+      
+      // Используем публичный API ключ imgbb (ограничен 100 запросами в день на IP)
+      const apiKey = 'd0273a95513372ecd2d6eca4d37cf87f';
+      
+      const response = await fetch(`https://api.imgbb.com/1/upload?key=${apiKey}`, {
+        method: 'POST',
+        body: formData
+      });
+      
+      const data = await response.json();
+      
+      if (data.success) {
+        return data.data.url;
+      } else {
+        throw new Error(data.error.message || 'Upload failed');
       }
     }
   </script>
