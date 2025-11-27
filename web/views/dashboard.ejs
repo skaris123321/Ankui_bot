@@ -909,14 +909,17 @@
         }
         
         if (block.rules && block.rules.length > 0) {
-          block.rules.forEach(rule => {
-            const ruleNumber = rule.number ? `**${rule.number}.** ` : '';
+          block.rules.forEach((rule, index) => {
+            const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
             const ruleDescription = rule.description || '';
-            const punishmentText = rule.punishment ? `\nНаказание: **${rule.punishment}**` : '';
+            const punishmentText = rule.punishment ? ` | Наказание: **${rule.punishment}**` : '';
             const durationText = rule.duration ? ` (Длительность: ${rule.duration})` : '';
             
             if (ruleDescription) {
-              rulesText += `${ruleNumber}${ruleDescription}${punishmentText}${durationText}\n\n`;
+              rulesText += `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
+              if (index < block.rules.length - 1) {
+                rulesText += '\n\n';
+              }
             }
           });
         }

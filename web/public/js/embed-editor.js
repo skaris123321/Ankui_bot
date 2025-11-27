@@ -290,6 +290,120 @@ async function sendEmbed() {
     return;
   }
   
+  // Проверяем, есть ли блоки правил
+  const hasRulesBlocks = typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0;
+  
+  if (hasRulesBlocks) {
+    // Отправляем каждый блок правил как отдельный embed
+    const baseEmbedData = getEmbedData();
+    const colorEl = document.getElementById('embedColor');
+    const baseColor = colorEl ? parseInt(colorEl.value.replace('#', ''), 16) : 0x5865F2;
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (let i = 0; i < rulesBlocks.length; i++) {
+      const block = rulesBlocks[i];
+      
+      // Формируем описание из правил блока (формат как в Roshan)
+      let descriptionText = '';
+      if (block.rules && block.rules.length > 0) {
+        block.rules.forEach((rule, index) => {
+          const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
+          const ruleDescription = rule.description || '';
+          const punishmentText = rule.punishment ? ` | Наказание: **${rule.punishment}**` : '';
+          const durationText = rule.duration ? ` (Длительность: ${rule.duration})` : '';
+          
+          if (ruleDescription) {
+            // Формат: **Правило - 2.1:** Описание | Наказание: **Варн / Мут**
+            descriptionText += `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
+            
+            // Добавляем пустую строку между правилами, кроме последнего
+            if (index < block.rules.length - 1) {
+              descriptionText += '\n\n';
+            }
+          }
+        });
+      }
+      
+      // Создаём embed для блока
+      const blockEmbed = {
+        title: block.title || baseEmbedData.title || 'Правила сервера',
+        description: descriptionText.trim() || baseEmbedData.description || '',
+        color: baseColor,
+        timestamp: baseEmbedData.timestamp
+      };
+      
+      // Если нет описания, но есть картинка или заголовок, всё равно отправляем
+      if (!blockEmbed.description && !block.image && !block.title) {
+        // Пропускаем пустые блоки
+        continue;
+      }
+      
+      // Добавляем картинку (сверху embed)
+      if (block.image) {
+        blockEmbed.image = { url: block.image };
+      } else if (baseEmbedData.image) {
+        blockEmbed.image = baseEmbedData.image;
+      }
+      
+      // Добавляем иконку (thumbnail)
+      if (block.icon) {
+        blockEmbed.thumbnail = { url: block.icon };
+      } else if (baseEmbedData.thumbnail) {
+        blockEmbed.thumbnail = baseEmbedData.thumbnail;
+      }
+      
+      // Добавляем автора и футер из базового embed
+      if (baseEmbedData.author) {
+        blockEmbed.author = baseEmbedData.author;
+      }
+      if (baseEmbedData.footer) {
+        blockEmbed.footer = baseEmbedData.footer;
+      }
+      
+      try {
+        const response = await fetch('/api/send-embed', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            channelId: channelId,
+            embed: blockEmbed
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          successCount++;
+        } else {
+          errorCount++;
+          console.error(`Ошибка отправки блока ${i + 1}:`, result.message);
+        }
+      } catch (error) {
+        errorCount++;
+        console.error(`Ошибка отправки блока ${i + 1}:`, error);
+      }
+      
+      // Задержка между отправками, чтобы не перегружать Discord API (rate limiting)
+      if (i < rulesBlocks.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
+    
+    if (successCount > 0) {
+      showMessage('success', `✅ Отправлено ${successCount} из ${rulesBlocks.length} блоков правил!`);
+    }
+    if (errorCount > 0) {
+      showMessage('error', `❌ Ошибка при отправке ${errorCount} блоков.`);
+    }
+    
+    return;
+  }
+  
+  // Обычная отправка embed (без блоков правил)
   const embedData = getEmbedData();
   
   if (!embedData.title && !embedData.description) {
