@@ -16,21 +16,79 @@ module.exports = {
     
     // Получаем настройки из базы данных
     const settings = client.db.getGuildSettings(guildId) || {};
-    const rulesText = settings.rules_text || this.getDefaultRules();
+    const blocksData = settings.rules_data || [];
     
     try {
-      const embed = new EmbedBuilder()
-        .setColor('#5865F2')
-        .setTitle(`📜 Правила сервера ${interaction.guild.name}`)
-        .setDescription(rulesText)
-        .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
-        .setTimestamp()
-        .setFooter({ 
-          text: `Обновлено ${interaction.user.username}`,
-          iconURL: interaction.user.displayAvatarURL()
-        });
-      
-      await targetChannel.send({ embeds: [embed] });
+      // Если есть блоки правил
+      if (blocksData && blocksData.length > 0) {
+        // Отправляем каждый блок как отдельный embed
+        for (const block of blocksData) {
+          const embed = new EmbedBuilder()
+            .setColor('#5865F2')
+            .setTitle(block.title || `📜 Правила сервера ${interaction.guild.name}`)
+            .setTimestamp()
+            .setFooter({ 
+              text: `Обновлено ${interaction.user.username}`,
+              iconURL: interaction.user.displayAvatarURL()
+            });
+          
+          // Устанавливаем иконку, если указана
+          if (block.icon) {
+            embed.setThumbnail(block.icon);
+          } else {
+            embed.setThumbnail(interaction.guild.iconURL({ dynamic: true }));
+          }
+          
+          // Добавляем изображение, если указано
+          if (block.image) {
+            embed.setImage(block.image);
+          }
+          
+          // Добавляем правила из блока
+          if (block.rules && block.rules.length > 0) {
+            block.rules.forEach((rule) => {
+              const ruleNumber = rule.number || '';
+              const description = rule.description || 'Описание не указано';
+              
+              let fieldValue = `**${description}**`;
+              
+              // Добавляем наказание и длительность, если они указаны
+              if (rule.punishment || rule.duration) {
+                fieldValue += '\n';
+                if (rule.punishment) {
+                  fieldValue += `\n⚖️ **Наказание:** ${rule.punishment}`;
+                }
+                if (rule.duration) {
+                  fieldValue += `\n⏱️ **Длительность:** ${rule.duration}`;
+                }
+              }
+              
+              embed.addFields({
+                name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
+                value: fieldValue,
+                inline: false
+              });
+            });
+          }
+          
+          await targetChannel.send({ embeds: [embed] });
+        }
+      } else {
+        // Если блоков нет, используем старый формат
+        const rulesText = settings.rules_text || this.getDefaultRules();
+        const embed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle(`📜 Правила сервера ${interaction.guild.name}`)
+          .setDescription(rulesText)
+          .setThumbnail(interaction.guild.iconURL({ dynamic: true }))
+          .setTimestamp()
+          .setFooter({ 
+            text: `Обновлено ${interaction.user.username}`,
+            iconURL: interaction.user.displayAvatarURL()
+          });
+        
+        await targetChannel.send({ embeds: [embed] });
+      }
       
       await interaction.reply({ 
         content: `✅ Правила отправлены в ${targetChannel}!`, 
