@@ -436,11 +436,25 @@
     // Загрузка серверов
     async function loadServers() {
       const serverList = document.getElementById('serverList');
+      if (!serverList) {
+        console.error('Элемент serverList не найден');
+        return;
+      }
+      
       serverList.innerHTML = '<p>Загрузка серверов...</p>';
       
       try {
         const response = await fetch('/api/guilds');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const guilds = await response.json();
+        
+        if (!Array.isArray(guilds)) {
+          throw new Error('Неверный формат ответа от сервера');
+        }
         
         if (guilds.length === 0) {
           serverList.innerHTML = '<p>⚠️ Бот не подключен ни к одному серверу.</p>';
@@ -458,28 +472,38 @@
             <div class="server-name">${guild.name}</div>
             <div class="server-members">👥 ${guild.memberCount || 0} участников</div>
           `;
-          card.onclick = () => selectServer(guild.id, guild.name);
+          card.onclick = (e) => selectServer(guild.id, guild.name, card);
           serverList.appendChild(card);
         });
       } catch (error) {
         console.error('Ошибка загрузки серверов:', error);
-        serverList.innerHTML = '<p>❌ Ошибка загрузки серверов</p>';
+        serverList.innerHTML = '<p>❌ Ошибка загрузки серверов: ' + error.message + '</p>';
       }
     }
     
     // Выбор сервера
-    async function selectServer(guildId, guildName) {
+    async function selectServer(guildId, guildName, cardElement) {
       selectedGuildId = guildId;
       
       // Обновляем выделение
       document.querySelectorAll('.server-card').forEach(card => {
         card.classList.remove('selected');
       });
-      event.target.closest('.server-card').classList.add('selected');
+      
+      if (cardElement) {
+        cardElement.classList.add('selected');
+      }
       
       // Показываем редактор
-      document.getElementById('rulesEditorSection').style.display = 'block';
-      document.getElementById('serverSelector').scrollIntoView({ behavior: 'smooth' });
+      const rulesEditorSection = document.getElementById('rulesEditorSection');
+      if (rulesEditorSection) {
+        rulesEditorSection.style.display = 'block';
+      }
+      
+      const serverSelector = document.getElementById('serverSelector');
+      if (serverSelector) {
+        serverSelector.scrollIntoView({ behavior: 'smooth' });
+      }
       
       // Загружаем существующие правила
       await loadRules(guildId);
@@ -489,9 +513,30 @@
     async function loadRules(guildId) {
       try {
         const response = await fetch(`/api/guild/${guildId}/settings`);
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const settings = await response.json();
         
-        const blocksData = settings.rules_data || [];
+        let blocksData = settings.rules_data || [];
+        
+        // Если rules_data - строка JSON, парсим её
+        if (typeof blocksData === 'string') {
+          try {
+            blocksData = JSON.parse(blocksData);
+          } catch (e) {
+            console.error('Ошибка парсинга rules_data:', e);
+            blocksData = [];
+          }
+        }
+        
+        // Убеждаемся, что это массив
+        if (!Array.isArray(blocksData)) {
+          blocksData = [];
+        }
+        
         if (blocksData && blocksData.length > 0) {
           blocks = blocksData;
           blockCounter = Math.max(...blocks.map(b => b.id || 0), 0) + 1;
@@ -507,6 +552,8 @@
       } catch (error) {
         console.error('Ошибка загрузки правил:', error);
         blocks = [];
+        blockCounter = 1;
+        ruleCounter = 1;
         renderBlocks();
       }
     }

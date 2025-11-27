@@ -235,11 +235,33 @@ function getEmbedData() {
     timestamp: (timestampEl && timestampEl.checked) ? new Date().toISOString() : null
   };
   
+  // Используем картинку из основного поля или из блоков правил
   const image = imageEl ? imageEl.value : '';
-  if (image) embedData.image = { url: image };
+  if (image) {
+    embedData.image = { url: image };
+  } else {
+    // Проверяем блоки правил на наличие картинки
+    if (typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0) {
+      const blockWithImage = rulesBlocks.find(b => b.image);
+      if (blockWithImage && blockWithImage.image) {
+        embedData.image = { url: blockWithImage.image };
+      }
+    }
+  }
   
+  // Используем иконку из основного поля или из блоков правил
   const thumbnail = thumbnailEl ? thumbnailEl.value : '';
-  if (thumbnail) embedData.thumbnail = { url: thumbnail };
+  if (thumbnail) {
+    embedData.thumbnail = { url: thumbnail };
+  } else {
+    // Проверяем блоки правил на наличие иконки
+    if (typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0) {
+      const blockWithIcon = rulesBlocks.find(b => b.icon);
+      if (blockWithIcon && blockWithIcon.icon) {
+        embedData.thumbnail = { url: blockWithIcon.icon };
+      }
+    }
+  }
   
   const author = authorEl ? authorEl.value : '';
   const authorIcon = authorIconEl ? authorIconEl.value : '';
