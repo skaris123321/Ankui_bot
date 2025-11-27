@@ -9,9 +9,173 @@
   <link rel="stylesheet" href="/css/embed-editor.css">
   <style>
     .dashboard-container {
-      max-width: 1400px;
-      margin: 0 auto;
+      display: flex;
+      height: calc(100vh - 80px);
+      overflow: hidden;
+    }
+    
+    /* Боковая панель навигации (как в Probot) */
+    .sidebar {
+      width: 280px;
+      background: var(--background-dark);
+      border-right: 1px solid var(--background-light);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+    
+    .sidebar-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid var(--background-light);
+    }
+    
+    .sidebar-header h2 {
+      margin: 0;
+      font-size: 1.2rem;
+      color: var(--text-primary);
+    }
+    
+    .sidebar-content {
+      flex: 1;
+      padding: 1rem;
+    }
+    
+    .server-list-item {
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      background: var(--background-light);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .server-list-item:hover {
+      background: rgba(88, 101, 242, 0.1);
+      border-color: var(--primary-color);
+    }
+    
+    .server-list-item.active {
+      background: rgba(88, 101, 242, 0.2);
+      border-left: 3px solid var(--primary-color);
+    }
+    
+    .server-list-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: white;
+      flex-shrink: 0;
+    }
+    
+    .server-list-icon img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .server-list-info {
+      flex: 1;
+      min-width: 0;
+    }
+    
+    .server-list-name {
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .server-list-members {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    
+    .channel-selector-sidebar {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--background-light);
+    }
+    
+    .channel-selector-sidebar label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    
+    .channel-selector-sidebar select {
+      width: 100%;
+      padding: 0.5rem;
+      background: var(--background-light);
+      border: 1px solid var(--background-light);
+      border-radius: 5px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+    
+    /* Основная область редактора */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    
+    .editor-toolbar {
+      padding: 1rem 1.5rem;
+      background: var(--background-light);
+      border-bottom: 1px solid var(--background-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .editor-toolbar h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      color: var(--text-primary);
+    }
+    
+    .editor-toolbar-actions {
+      display: flex;
+      gap: 0.75rem;
+    }
+    
+    .editor-workspace {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    
+    .editor-panel-main {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+    
+    .editor-form {
+      flex: 1;
       padding: 2rem;
+      overflow-y: auto;
+      background: var(--background);
+    }
+    
+    .preview-panel-fixed {
+      width: 400px;
+      background: var(--background-dark);
+      border-left: 1px solid var(--background-light);
+      padding: 1.5rem;
+      overflow-y: auto;
     }
     
     .server-selector {
@@ -379,54 +543,63 @@
   <%- include('partials/header') %>
   
   <main class="dashboard-container">
-    <h1>🎨 Редактор сообщений и правил</h1>
-    <p class="info-message" style="margin-bottom: 2rem;">Создавайте красиво оформленные embed сообщения с блоками правил для вашего Discord сервера</p>
-    
-    <!-- Выбор сервера -->
-    <div class="server-selector">
-      <h2>1️⃣ Выберите сервер</h2>
-      <% if (guilds.length > 0) { %>
-        <div class="server-grid">
-          <% guilds.forEach(guild => { %>
-            <div class="server-card" data-guild-id="<%= guild.id %>" onclick="selectGuild('<%= guild.id %>', '<%= guild.name %>')">
-              <div class="server-icon">
-                <% if (guild.icon) { %>
-                  <img src="<%= guild.icon %>" alt="<%= guild.name %>">
-                <% } else { %>
-                  <%= guild.name.charAt(0).toUpperCase() %>
-                <% } %>
+    <!-- Боковая панель навигации (как в Probot) -->
+    <div class="sidebar">
+      <div class="sidebar-header">
+        <h2>📋 Серверы</h2>
+      </div>
+      <div class="sidebar-content">
+        <% if (guilds.length > 0) { %>
+          <div id="serverListSidebar">
+            <% guilds.forEach(guild => { %>
+              <div class="server-list-item" data-guild-id="<%= guild.id %>" onclick="selectGuild('<%= guild.id %>', '<%= guild.name %>')">
+                <div class="server-list-icon">
+                  <% if (guild.icon) { %>
+                    <img src="<%= guild.icon %>" alt="<%= guild.name %>">
+                  <% } else { %>
+                    <%= guild.name.charAt(0).toUpperCase() %>
+                  <% } %>
+                </div>
+                <div class="server-list-info">
+                  <div class="server-list-name"><%= guild.name %></div>
+                  <div class="server-list-members"><%= guild.memberCount || 0 %> участников</div>
+                </div>
               </div>
-              <div class="server-name"><%= guild.name %></div>
-              <div class="server-members">👥 <%= guild.memberCount %> участников</div>
-            </div>
-          <% }); %>
-        </div>
-      <% } else { %>
-        <div class="info-box">
-          <p>⚠️ Бот не подключен ни к одному серверу.</p>
-          <p>Пригласите бота на сервер по ссылке:</p>
-          <a href="https://discord.com/api/oauth2/authorize?client_id=1443654730239709206&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">Пригласить бота</a>
-        </div>
-      <% } %>
-    </div>
-    
-    <!-- Выбор канала -->
-    <div class="channel-selector" id="channelSelector">
-      <h2>2️⃣ Выберите канал</h2>
-      <p>Сервер: <strong id="selectedGuildName">-</strong></p>
-      <div class="channel-list" id="channelList">
-        <p>Загрузка каналов...</p>
+            <% }); %>
+          </div>
+          
+          <div class="channel-selector-sidebar" id="channelSelectorSidebar" style="display: none;">
+            <label>Канал для отправки:</label>
+            <select id="targetChannelSidebar">
+              <option value="">Выберите канал...</option>
+            </select>
+          </div>
+        <% } else { %>
+          <div class="info-box">
+            <p>⚠️ Бот не подключен ни к одному серверу.</p>
+            <a href="https://discord.com/api/oauth2/authorize?client_id=1443654730239709206&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">Пригласить бота</a>
+          </div>
+        <% } %>
       </div>
     </div>
     
-    <!-- Редактор сообщений -->
-    <div class="embed-section" id="embedSection">
-      <h2>3️⃣ Создайте сообщение</h2>
+    <!-- Основная область редактора -->
+    <div class="main-content">
+      <div class="editor-toolbar">
+        <h1>🎨 Редактор Embed сообщений</h1>
+        <div class="editor-toolbar-actions">
+          <button type="button" class="btn btn-secondary" onclick="resetEmbed()">🔄 Сбросить</button>
+          <button type="button" class="btn btn-primary" onclick="sendEmbed()">📤 Отправить</button>
+        </div>
+      </div>
       
-      <div class="editor-layout">
-        <!-- Левая панель - редактор -->
-        <div class="editor-panel">
-          <h3>✏️ Редактор</h3>
+      <div class="editor-workspace">
+        <!-- Основной редактор -->
+        <div class="editor-panel-main">
+          <div class="editor-form" id="embedSection">
+      
+          <!-- Редактор полей -->
+          <div class="editor-panel-content">
           
           <div class="editor-section">
             <label>📝 Заголовок</label>
@@ -544,10 +717,11 @@
           </div>
           
           <button class="btn btn-primary btn-large" onclick="sendEmbed()">🚀 Отправить в Discord</button>
+          </div>
         </div>
         
-        <!-- Правая панель - предпросмотр -->
-        <div class="preview-panel">
+        <!-- Панель предпросмотра (справа) -->
+        <div class="preview-panel-fixed">
           <h3>👁️ Предпросмотр</h3>
           <div class="discord-preview">
             <div class="discord-message">
@@ -585,16 +759,20 @@
       selectedGuildId = guildId;
       selectedChannelId = null;
       
-      // Обновляем выделение серверов
-      document.querySelectorAll('.server-card').forEach(card => {
-        card.classList.remove('selected');
+      // Обновляем выделение серверов в боковой панели
+      document.querySelectorAll('.server-list-item').forEach(item => {
+        item.classList.remove('active');
       });
-      event.target.closest('.server-card').classList.add('selected');
+      const clickedItem = document.querySelector(`[data-guild-id="${guildId}"]`);
+      if (clickedItem) {
+        clickedItem.classList.add('active');
+      }
       
-      // Показываем выбор канала
-      document.getElementById('selectedGuildName').textContent = guildName;
-      document.getElementById('channelSelector').classList.add('visible');
-      document.getElementById('embedSection').classList.remove('visible');
+      // Показываем выбор канала в боковой панели
+      const channelSelector = document.getElementById('channelSelectorSidebar');
+      if (channelSelector) {
+        channelSelector.style.display = 'block';
+      }
       
       // Загружаем каналы
       try {
@@ -602,15 +780,34 @@
         const data = await response.json();
         
         if (data.success) {
-          const channelList = document.getElementById('channelList');
-          channelList.innerHTML = '';
+          const channelSelect = document.getElementById('targetChannelSidebar');
+          if (channelSelect) {
+            channelSelect.innerHTML = '<option value="">Выберите канал...</option>';
+            
+            data.channels.forEach(channel => {
+              const option = document.createElement('option');
+              option.value = channel.id;
+              option.textContent = '# ' + channel.name;
+              channelSelect.appendChild(option);
+            });
+            
+            channelSelect.onchange = function() {
+              if (this.value) {
+                selectChannel(this.value, this.options[this.selectedIndex].textContent.replace('# ', ''));
+              }
+            };
+          }
           
-          data.channels.forEach(channel => {
-            const channelItem = document.createElement('div');
-            channelItem.className = 'channel-item';
-            channelItem.dataset.channelId = channel.id;
-            channelItem.textContent = '# ' + channel.name;
-            channelItem.onclick = () => selectChannel(channel.id, channel.name);
+          // Также обновляем старое поле для обратной совместимости
+          const oldChannelList = document.getElementById('channelList');
+          if (oldChannelList) {
+            oldChannelList.innerHTML = '';
+            data.channels.forEach(channel => {
+              const channelItem = document.createElement('div');
+              channelItem.className = 'channel-item';
+              channelItem.dataset.channelId = channel.id;
+              channelItem.textContent = '# ' + channel.name;
+              channelItem.onclick = () => selectChannel(channel.id, channel.name);
             channelList.appendChild(channelItem);
           });
         } else {
@@ -626,22 +823,78 @@
     function selectChannel(channelId, channelName) {
       selectedChannelId = channelId;
       
-      // Обновляем выделение каналов
+      // Обновляем выделение каналов (для старого интерфейса)
       document.querySelectorAll('.channel-item').forEach(item => {
         item.classList.remove('selected');
       });
-      event.target.classList.add('selected');
+      const clickedItem = document.querySelector(`[data-channel-id="${channelId}"]`);
+      if (clickedItem) {
+        clickedItem.classList.add('selected');
+      }
       
-      // Показываем редактор
-      document.getElementById('embedSection').classList.add('visible');
+      // Обновляем select в боковой панели
+      const channelSelect = document.getElementById('targetChannelSidebar');
+      if (channelSelect) {
+        channelSelect.value = channelId;
+      }
       
-      // Прокрутка к редактору
-      document.getElementById('embedSection').scrollIntoView({ behavior: 'smooth' });
+      // Показываем редактор (если он скрыт)
+      const embedSection = document.getElementById('embedSection');
+      if (embedSection) {
+        embedSection.style.display = 'block';
+      }
+    }
+    
+    // Функция сброса embed
+    function resetEmbed() {
+      if (confirm('Вы уверены, что хотите сбросить все изменения?')) {
+        // Сбрасываем все поля
+        const titleEl = document.getElementById('embedTitle');
+        const descEl = document.getElementById('embedDescription');
+        const colorEl = document.getElementById('embedColor');
+        const imageEl = document.getElementById('embedImage');
+        const thumbEl = document.getElementById('embedThumbnail');
+        const authorEl = document.getElementById('embedAuthor');
+        const authorIconEl = document.getElementById('embedAuthorIcon');
+        const footerEl = document.getElementById('embedFooter');
+        const footerIconEl = document.getElementById('embedFooterIcon');
+        const timestampEl = document.getElementById('embedTimestamp');
+        
+        if (titleEl) titleEl.value = '';
+        if (descEl) descEl.value = '';
+        if (colorEl) colorEl.value = '#5865F2';
+        if (imageEl) imageEl.value = '';
+        if (thumbEl) thumbEl.value = '';
+        if (authorEl) authorEl.value = '';
+        if (authorIconEl) authorIconEl.value = '';
+        if (footerEl) footerEl.value = '';
+        if (footerIconEl) footerIconEl.value = '';
+        if (timestampEl) timestampEl.checked = false;
+        
+        // Сбрасываем блоки правил
+        if (typeof rulesBlocks !== 'undefined') {
+          rulesBlocks = [];
+          rulesBlockCounter = 1;
+          rulesRuleCounter = 1;
+          renderRulesBlocks();
+        }
+        
+        // Обновляем предпросмотр
+        if (typeof updatePreview === 'function') {
+          updatePreview();
+        }
+        
+        showMessage('success', '✅ Embed сброшен');
+      }
     }
     
     // Отправка embed - переопределяем функцию из embed-editor.js
     async function sendEmbed() {
-      if (!selectedChannelId) {
+      // Используем канал из боковой панели или старого интерфейса
+      const channelSelect = document.getElementById('targetChannelSidebar');
+      const channelId = channelSelect ? channelSelect.value : selectedChannelId;
+      
+      if (!channelId) {
         showMessage('error', '❌ Выберите канал для отправки!');
         return;
       }
@@ -700,10 +953,16 @@
       document.getElementById('imageFileName').textContent = `⏳ Обработка ${file.name}...`;
       
       try {
-        const url = await convertFileToDataURL(file);
-        document.getElementById('embedImage').value = url;
-        document.getElementById('imageFileName').textContent = `✅ ${file.name} (${(file.size / 1024).toFixed(1)} КБ)`;
-        updatePreview();
+        try {
+          document.getElementById('imageFileName').textContent = `⏳ Загрузка ${file.name}...`;
+          const url = await uploadFile(file);
+          document.getElementById('embedImage').value = url;
+          document.getElementById('imageFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+          updatePreview();
+        } catch (error) {
+          document.getElementById('imageFileName').textContent = `❌ Ошибка: ${error.message}`;
+          showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
+        }
         showMessage('success', '✅ Изображение загружено!');
       } catch (error) {
         console.error('Upload error:', error);
@@ -733,10 +992,16 @@
       document.getElementById('thumbnailFileName').textContent = `⏳ Обработка ${file.name}...`;
       
       try {
-        const url = await convertFileToDataURL(file);
-        document.getElementById('embedThumbnail').value = url;
-        document.getElementById('thumbnailFileName').textContent = `✅ ${file.name} (${(file.size / 1024).toFixed(1)} КБ)`;
-        updatePreview();
+        try {
+          document.getElementById('thumbnailFileName').textContent = `⏳ Загрузка ${file.name}...`;
+          const url = await uploadFile(file);
+          document.getElementById('embedThumbnail').value = url;
+          document.getElementById('thumbnailFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+          updatePreview();
+        } catch (error) {
+          document.getElementById('thumbnailFileName').textContent = `❌ Ошибка: ${error.message}`;
+          showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
+        }
         showMessage('success', '✅ Миниатюра загружена!');
       } catch (error) {
         console.error('Upload error:', error);
@@ -747,61 +1012,50 @@
     });
     
     // Конвертация файла в base64 и загрузка на сервер
-    async function convertFileToDataURL(file) {
+    // Загрузка файла на сервер
+    async function uploadFile(file) {
       return new Promise((resolve, reject) => {
-        const reader = new FileReader();
+        // Проверяем размер файла (максимум 10 МБ)
+        if (file.size > 10 * 1024 * 1024) {
+          reject(new Error('Размер файла не должен превышать 10 МБ'));
+          return;
+        }
         
-        reader.onload = async function(e) {
-          const dataURL = e.target.result;
-          
-          // Проверяем размер (если больше 2 МБ, используем data URL напрямую)
-          const base64Data = dataURL.split(',')[1];
-          const sizeInBytes = (base64Data.length * 3) / 4;
-          
-          if (sizeInBytes > 2 * 1024 * 1024) {
-            // Для больших файлов используем data URL напрямую
-            // Discord может не принять, но попробуем
-            console.warn('File too large for server upload, using data URL directly');
-            resolve(dataURL);
-            return;
+        // Проверяем тип файла
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+          reject(new Error('Разрешены только изображения (JPEG, PNG, GIF, WEBP)'));
+          return;
+        }
+        
+        // Создаём FormData для отправки файла
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // Отправляем файл на сервер
+        fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
           }
-          
-          try {
-            // Отправляем на сервер для обработки
-            const response = await fetch('/api/upload-image', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              body: JSON.stringify({ imageData: dataURL })
-            });
-            
-            // Проверяем, что ответ JSON
-            const contentType = response.headers.get('content-type');
-            if (!contentType || !contentType.includes('application/json')) {
-              throw new Error('Server returned non-JSON response');
-            }
-            
-            const result = await response.json();
-            
-            if (result.success) {
-              resolve(result.url);
-            } else {
-              reject(new Error(result.message || 'Ошибка загрузки'));
-            }
-          } catch (error) {
-            // Если сервер недоступен или ошибка, используем data URL напрямую
-            console.warn('Server upload failed, using data URL directly:', error.message);
-            // Discord может не принять data URL, но попробуем
-            resolve(dataURL);
+          return response.json();
+        })
+        .then(result => {
+          if (result.success) {
+            // Возвращаем полный URL (с доменом для Discord)
+            const fullUrl = window.location.origin + result.url;
+            resolve(fullUrl);
+          } else {
+            reject(new Error(result.message || 'Ошибка загрузки'));
           }
-        };
-        
-        reader.onerror = function() {
-          reject(new Error('Ошибка чтения файла'));
-        };
-        
-        reader.readAsDataURL(file);
+        })
+        .catch(error => {
+          console.error('Ошибка загрузки файла:', error);
+          reject(error);
+        });
       });
     }
     
@@ -1012,22 +1266,92 @@
           
           <div class="rule-block-media">
             <div class="rule-block-media-field">
-              <label>🖼️ Картинка (URL):</label>
+              <label>🖼️ Картинка:</label>
               <input type="url" 
+                     id="block-image-${block.id}"
                      value="${escapeHtml(block.image || '')}" 
-                     placeholder="https://example.com/image.png"
+                     placeholder="URL или загрузите файл"
                      onchange="updateBlockField(${block.id}, 'image', this.value)">
+              <input type="file" 
+                     id="block-image-file-${block.id}"
+                     accept="image/*" 
+                     style="display: none;"
+                     onchange="handleBlockImageUpload(${block.id}, this.files[0])">
+              <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-image-file-${block.id}').click()" style="margin-top: 0.5rem;">📁 Загрузить файл</button>
+              <span id="block-image-name-${block.id}" class="file-name-display"></span>
             </div>
             <div class="rule-block-media-field">
-              <label>🎨 Иконка (URL):</label>
+              <label>🎨 Иконка:</label>
               <input type="url" 
+                     id="block-icon-${block.id}"
                      value="${escapeHtml(block.icon || '')}" 
-                     placeholder="https://example.com/icon.png"
+                     placeholder="URL или загрузите файл"
                      onchange="updateBlockField(${block.id}, 'icon', this.value)">
+              <input type="file" 
+                     id="block-icon-file-${block.id}"
+                     accept="image/*" 
+                     style="display: none;"
+                     onchange="handleBlockIconUpload(${block.id}, this.files[0])">
+              <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-icon-file-${block.id}').click()" style="margin-top: 0.5rem;">📁 Загрузить файл</button>
+              <span id="block-icon-name-${block.id}" class="file-name-display"></span>
             </div>
           </div>
         </div>
       `).join('');
+    }
+    
+    // Обработка загрузки картинки для блока правил
+    async function handleBlockImageUpload(blockId, file) {
+      if (!file) return;
+      
+      const nameSpan = document.getElementById(`block-image-name-${blockId}`);
+      if (nameSpan) {
+        nameSpan.textContent = `⏳ Загрузка ${file.name}...`;
+      }
+      
+      try {
+        const url = await uploadFile(file);
+        const imageInput = document.getElementById(`block-image-${blockId}`);
+        if (imageInput) {
+          imageInput.value = url;
+          updateBlockField(blockId, 'image', url);
+        }
+        if (nameSpan) {
+          nameSpan.textContent = `✅ ${file.name} загружено`;
+        }
+      } catch (error) {
+        if (nameSpan) {
+          nameSpan.textContent = `❌ Ошибка: ${error.message}`;
+        }
+        showMessage('error', `❌ Ошибка загрузки картинки: ${error.message}`);
+      }
+    }
+    
+    // Обработка загрузки иконки для блока правил
+    async function handleBlockIconUpload(blockId, file) {
+      if (!file) return;
+      
+      const nameSpan = document.getElementById(`block-icon-name-${blockId}`);
+      if (nameSpan) {
+        nameSpan.textContent = `⏳ Загрузка ${file.name}...`;
+      }
+      
+      try {
+        const url = await uploadFile(file);
+        const iconInput = document.getElementById(`block-icon-${blockId}`);
+        if (iconInput) {
+          iconInput.value = url;
+          updateBlockField(blockId, 'icon', url);
+        }
+        if (nameSpan) {
+          nameSpan.textContent = `✅ ${file.name} загружено`;
+        }
+      } catch (error) {
+        if (nameSpan) {
+          nameSpan.textContent = `❌ Ошибка: ${error.message}`;
+        }
+        showMessage('error', `❌ Ошибка загрузки иконки: ${error.message}`);
+      }
     }
     
     function escapeHtml(text) {

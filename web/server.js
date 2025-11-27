@@ -3,6 +3,7 @@ const session = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
 const fs = require('fs');
+const multer = require('multer');
 const Database = require('../database/database');
 
 const app = express();
@@ -10,6 +11,40 @@ const PORT = process.env.PORT || 3000;
 
 // Инициализация базы данных
 const db = new Database();
+
+// Настройка папки для загрузок
+const uploadsDir = path.join(__dirname, 'public', 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+// Настройка Multer для сохранения файлов
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, uploadsDir);
+  },
+  filename: function (req, file, cb) {
+    // Генерируем уникальное имя файла: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const name = path.basename(file.originalname, ext);
+    cb(null, `${name}-${uniqueSuffix}${ext}`);
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  fileFilter: function (req, file, cb) {
+    // Разрешаем только изображения
+    const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+    if (allowedMimes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Разрешены только изображения (JPEG, PNG, GIF, WEBP)'));
+    }
+  }
+});
 
 // Middleware
 app.set('view engine', 'ejs');
@@ -197,8 +232,36 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
   }
 });
 
-// API для загрузки изображений
-app.post('/api/upload-image', (req, res) => {
+// API для загрузки изображений (через файл)
+app.post('/api/upload-image', upload.single('image'), (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Файл не был загружен' 
+      });
+    }
+    
+    // Возвращаем URL для доступа к файлу
+    const fileUrl = `/uploads/${req.file.filename}`;
+    
+    res.json({ 
+      success: true, 
+      url: fileUrl,
+      filename: req.file.filename,
+      message: 'Изображение успешно загружено и сохранено на сервере.' 
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки изображения:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка при загрузке изображения' 
+    });
+  }
+});
+
+// API для загрузки изображений из base64 (для обратной совместимости)
+app.post('/api/upload-image-base64', (req, res) => {
   try {
     const { imageData } = req.body; // base64 data URL
     
@@ -209,27 +272,48 @@ app.post('/api/upload-image', (req, res) => {
       });
     }
     
-    // Проверка размера (максимум 2 МБ)
-    const base64Data = imageData.split(',')[1];
-    const sizeInBytes = (base64Data.length * 3) / 4;
-    if (sizeInBytes > 2 * 1024 * 1024) {
+    // Извлекаем данные из base64
+    const matches = imageData.match(/^data:image\/(\w+);base64,(.+)$/);
+    if (!matches) {
       return res.status(400).json({ 
         success: false, 
-        message: 'Размер файла не должен превышать 2 МБ' 
+        message: 'Неверный формат base64' 
       });
     }
     
-    // Возвращаем data URL (Discord API может не принимать, но попробуем)
-    // В будущем можно добавить загрузку на imgur или другой сервис
+    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const base64Data = matches[2];
+    
+    // Проверка размера (максимум 10 МБ)
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    if (sizeInBytes > 10 * 1024 * 1024) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Размер файла не должен превышать 10 МБ' 
+      });
+    }
+    
+    // Сохраняем файл
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const filename = `upload-${uniqueSuffix}.${ext}`;
+    const filepath = path.join(uploadsDir, filename);
+    
+    fs.writeFileSync(filepath, base64Data, 'base64');
+    
+    // Возвращаем URL для доступа к файлу
+    const fileUrl = `/uploads/${filename}`;
+    
     res.json({ 
       success: true, 
-      url: imageData 
+      url: fileUrl,
+      filename: filename,
+      message: 'Изображение успешно загружено и сохранено на сервере.' 
     });
   } catch (error) {
-    console.error('Upload error:', error);
+    console.error('Ошибка загрузки изображения из base64:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Ошибка загрузки изображения' 
+      message: 'Ошибка при загрузке изображения' 
     });
   }
 });

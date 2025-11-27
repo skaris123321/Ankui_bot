@@ -236,13 +236,14 @@ function getEmbedData() {
   };
   
   // Используем картинку из основного поля или из блоков правил
+  // Discord не принимает data URL (base64), только обычные URL
   const image = imageEl ? imageEl.value : '';
-  if (image) {
+  if (image && !image.startsWith('data:')) {
     embedData.image = { url: image };
-  } else {
+  } else if (!image) {
     // Проверяем блоки правил на наличие картинки
     if (typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0) {
-      const blockWithImage = rulesBlocks.find(b => b.image);
+      const blockWithImage = rulesBlocks.find(b => b.image && !b.image.startsWith('data:'));
       if (blockWithImage && blockWithImage.image) {
         embedData.image = { url: blockWithImage.image };
       }
@@ -250,13 +251,14 @@ function getEmbedData() {
   }
   
   // Используем иконку из основного поля или из блоков правил
+  // Discord не принимает data URL (base64), только обычные URL
   const thumbnail = thumbnailEl ? thumbnailEl.value : '';
-  if (thumbnail) {
+  if (thumbnail && !thumbnail.startsWith('data:')) {
     embedData.thumbnail = { url: thumbnail };
-  } else {
+  } else if (!thumbnail) {
     // Проверяем блоки правил на наличие иконки
     if (typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0) {
-      const blockWithIcon = rulesBlocks.find(b => b.icon);
+      const blockWithIcon = rulesBlocks.find(b => b.icon && !b.icon.startsWith('data:'));
       if (blockWithIcon && blockWithIcon.icon) {
         embedData.thumbnail = { url: blockWithIcon.icon };
       }
@@ -282,8 +284,10 @@ function getEmbedData() {
 
 // Отправка embed в Discord
 async function sendEmbed() {
+  // Проверяем оба селектора канала (старый и новый из боковой панели)
   const channelEl = document.getElementById('targetChannel');
-  const channelId = channelEl ? channelEl.value.trim() : '';
+  const channelSidebarEl = document.getElementById('targetChannelSidebar');
+  const channelId = channelSidebarEl ? channelSidebarEl.value : (channelEl ? channelEl.value.trim() : '');
   
   if (!channelId) {
     showMessage('error', '❌ Укажите ID канала!');
@@ -301,6 +305,32 @@ async function sendEmbed() {
     
     let successCount = 0;
     let errorCount = 0;
+    const warnings = [];
+    
+    // Функция для проверки валидности URL
+    function isValidUrl(url) {
+      if (!url || typeof url !== 'string') return false;
+      try {
+        const urlObj = new URL(url);
+        return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+    
+    // Функция для преобразования относительных URL в абсолютные
+    function getAbsoluteUrl(url) {
+      if (!url) return url;
+      // Если уже абсолютный URL, возвращаем как есть
+      if (url.startsWith('http://') || url.startsWith('https://')) {
+        return url;
+      }
+      // Если относительный URL (начинается с /), преобразуем в абсолютный
+      if (url.startsWith('/')) {
+        return window.location.origin + url;
+      }
+      return url;
+    }
     
     for (let i = 0; i < rulesBlocks.length; i++) {
       const block = rulesBlocks[i];
@@ -341,17 +371,49 @@ async function sendEmbed() {
       }
       
       // Добавляем картинку (сверху embed)
+      // Discord не принимает data URL (base64), только обычные URL (http/https)
       if (block.image) {
-        blockEmbed.image = { url: block.image };
-      } else if (baseEmbedData.image) {
-        blockEmbed.image = baseEmbedData.image;
+        if (block.image.startsWith('data:')) {
+          warnings.push(`Блок ${i + 1}: Картинка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
+        } else {
+          // Преобразуем относительные URL в абсолютные
+          const absoluteUrl = getAbsoluteUrl(block.image);
+          if (isValidUrl(absoluteUrl)) {
+            blockEmbed.image = { url: absoluteUrl };
+          } else {
+            warnings.push(`Блок ${i + 1}: Неверный URL картинки`);
+          }
+        }
+      } else if (baseEmbedData.image && baseEmbedData.image.url) {
+        if (!baseEmbedData.image.url.startsWith('data:')) {
+          const absoluteUrl = getAbsoluteUrl(baseEmbedData.image.url);
+          if (isValidUrl(absoluteUrl)) {
+            blockEmbed.image = { url: absoluteUrl };
+          }
+        }
       }
       
       // Добавляем иконку (thumbnail)
+      // Discord не принимает data URL (base64), только обычные URL (http/https)
       if (block.icon) {
-        blockEmbed.thumbnail = { url: block.icon };
-      } else if (baseEmbedData.thumbnail) {
-        blockEmbed.thumbnail = baseEmbedData.thumbnail;
+        if (block.icon.startsWith('data:')) {
+          warnings.push(`Блок ${i + 1}: Иконка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
+        } else {
+          // Преобразуем относительные URL в абсолютные
+          const absoluteUrl = getAbsoluteUrl(block.icon);
+          if (isValidUrl(absoluteUrl)) {
+            blockEmbed.thumbnail = { url: absoluteUrl };
+          } else {
+            warnings.push(`Блок ${i + 1}: Неверный URL иконки`);
+          }
+        }
+      } else if (baseEmbedData.thumbnail && baseEmbedData.thumbnail.url) {
+        if (!baseEmbedData.thumbnail.url.startsWith('data:')) {
+          const absoluteUrl = getAbsoluteUrl(baseEmbedData.thumbnail.url);
+          if (isValidUrl(absoluteUrl)) {
+            blockEmbed.thumbnail = { url: absoluteUrl };
+          }
+        }
       }
       
       // Добавляем автора и футер из базового embed
@@ -399,6 +461,10 @@ async function sendEmbed() {
     if (errorCount > 0) {
       showMessage('error', `❌ Ошибка при отправке ${errorCount} блоков.`);
     }
+    if (warnings.length > 0) {
+      const warningsText = warnings.join('\n');
+      showMessage('warning', `⚠️ Предупреждения:\n${warningsText}`);
+    }
     
     return;
   }
@@ -409,6 +475,56 @@ async function sendEmbed() {
   if (!embedData.title && !embedData.description) {
     showMessage('error', '❌ Заполните хотя бы заголовок или описание!');
     return;
+  }
+  
+  // Проверяем URL изображений на валидность
+  function isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+  
+  // Функция для преобразования относительных URL в абсолютные
+  function getAbsoluteUrl(url) {
+    if (!url) return url;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    if (url.startsWith('/')) {
+      return window.location.origin + url;
+    }
+    return url;
+  }
+  
+  // Проверяем и предупреждаем о data URL, преобразуем относительные URL
+  if (embedData.image && embedData.image.url) {
+    if (embedData.image.url.startsWith('data:')) {
+      showMessage('error', '❌ Discord не поддерживает data URL для изображений. Используйте загрузку файла');
+      return;
+    }
+    const absoluteUrl = getAbsoluteUrl(embedData.image.url);
+    embedData.image.url = absoluteUrl;
+    if (!isValidUrl(absoluteUrl)) {
+      showMessage('error', '❌ Неверный URL изображения. Должен начинаться с http:// или https://');
+      return;
+    }
+  }
+  
+  if (embedData.thumbnail && embedData.thumbnail.url) {
+    if (embedData.thumbnail.url.startsWith('data:')) {
+      showMessage('error', '❌ Discord не поддерживает data URL для иконок. Используйте загрузку файла');
+      return;
+    }
+    const absoluteUrl = getAbsoluteUrl(embedData.thumbnail.url);
+    embedData.thumbnail.url = absoluteUrl;
+    if (!isValidUrl(absoluteUrl)) {
+      showMessage('error', '❌ Неверный URL иконки. Должен начинаться с http:// или https://');
+      return;
+    }
   }
   
   try {
@@ -455,16 +571,28 @@ function showMessage(type, text) {
   if (!messageBox) {
     messageBox = document.createElement('div');
     messageBox.className = 'message-box';
-    document.querySelector('.action-buttons').appendChild(messageBox);
+    const actionButtons = document.querySelector('.action-buttons');
+    if (actionButtons) {
+      actionButtons.appendChild(messageBox);
+    } else {
+      // Если нет action-buttons, добавляем в конец embed-section
+      const embedSection = document.getElementById('embedSection');
+      if (embedSection) {
+        embedSection.appendChild(messageBox);
+      }
+    }
   }
   
   messageBox.className = `message-box ${type}`;
-  messageBox.textContent = text;
+  // Используем innerHTML для поддержки многострочных сообщений
+  messageBox.innerHTML = text.replace(/\n/g, '<br>');
   messageBox.style.display = 'block';
   
+  // Для предупреждений показываем дольше
+  const timeout = type === 'warning' ? 8000 : 5000;
   setTimeout(() => {
     messageBox.style.display = 'none';
-  }, 5000);
+  }, timeout);
 }
 
 // Обработчики событий для всех полей (только если элементы существуют)

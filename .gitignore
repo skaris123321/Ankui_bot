@@ -24,3 +24,7 @@ Thumbs.db
 *.swp
 *.swo
 
+# Uploads (но сохраняем структуру папок)
+web/public/uploads/*
+!web/public/uploads/.gitkeep
+
