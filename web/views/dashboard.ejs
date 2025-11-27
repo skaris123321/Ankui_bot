@@ -684,22 +684,22 @@
           <div class="editor-section">
             <label>🖼️ Изображение</label>
             <div class="image-upload-group">
-              <input type="url" id="embedImage" class="input-field" placeholder="https://example.com/image.png или загрузите файл (до 2 МБ)">
+              <input type="hidden" id="embedImage" value="">
               <label for="embedImageFile" class="btn btn-secondary btn-upload">📁 Выбрать файл</label>
               <input type="file" id="embedImageFile" accept="image/*" style="display: none;">
               <span id="imageFileName" class="file-name"></span>
-              <small style="color: var(--text-secondary); font-size: 12px;">💡 Для файлов больше 2 МБ используйте URL (например, imgur.com). Discord может не принять data URL для больших файлов.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">💡 Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
           </div>
           
           <div class="editor-section">
             <label>🖼️ Миниатюра</label>
             <div class="image-upload-group">
-              <input type="url" id="embedThumbnail" class="input-field" placeholder="https://example.com/thumbnail.png или загрузите файл (до 2 МБ)">
+              <input type="hidden" id="embedThumbnail" value="">
               <label for="embedThumbnailFile" class="btn btn-secondary btn-upload">📁 Выбрать файл</label>
               <input type="file" id="embedThumbnailFile" accept="image/*" style="display: none;">
               <span id="thumbnailFileName" class="file-name"></span>
-              <small style="color: var(--text-secondary); font-size: 12px;">💡 Для файлов больше 2 МБ используйте URL (например, imgur.com). Discord может не принять data URL для больших файлов.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">💡 Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
           </div>
           
@@ -808,10 +808,14 @@
               channelItem.dataset.channelId = channel.id;
               channelItem.textContent = '# ' + channel.name;
               channelItem.onclick = () => selectChannel(channel.id, channel.name);
-            channelList.appendChild(channelItem);
-          });
+              oldChannelList.appendChild(channelItem);
+            });
+          }
         } else {
-          document.getElementById('channelList').innerHTML = '<p>❌ Не удалось загрузить каналы</p>';
+          const oldChannelList = document.getElementById('channelList');
+          if (oldChannelList) {
+            oldChannelList.innerHTML = '<p>❌ Не удалось загрузить каналы</p>';
+          }
         }
       } catch (error) {
         console.error('Ошибка загрузки каналов:', error);
@@ -1267,11 +1271,9 @@
           <div class="rule-block-media">
             <div class="rule-block-media-field">
               <label>🖼️ Картинка:</label>
-              <input type="url" 
+              <input type="hidden" 
                      id="block-image-${block.id}"
-                     value="${escapeHtml(block.image || '')}" 
-                     placeholder="URL или загрузите файл"
-                     onchange="updateBlockField(${block.id}, 'image', this.value)">
+                     value="${escapeHtml(block.image || '')}">
               <input type="file" 
                      id="block-image-file-${block.id}"
                      accept="image/*" 
@@ -1279,14 +1281,13 @@
                      onchange="handleBlockImageUpload(${block.id}, this.files[0])">
               <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-image-file-${block.id}').click()" style="margin-top: 0.5rem;">📁 Загрузить файл</button>
               <span id="block-image-name-${block.id}" class="file-name-display"></span>
+              <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">💡 Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
             <div class="rule-block-media-field">
               <label>🎨 Иконка:</label>
-              <input type="url" 
+              <input type="hidden" 
                      id="block-icon-${block.id}"
-                     value="${escapeHtml(block.icon || '')}" 
-                     placeholder="URL или загрузите файл"
-                     onchange="updateBlockField(${block.id}, 'icon', this.value)">
+                     value="${escapeHtml(block.icon || '')}">
               <input type="file" 
                      id="block-icon-file-${block.id}"
                      accept="image/*" 
@@ -1294,6 +1295,7 @@
                      onchange="handleBlockIconUpload(${block.id}, this.files[0])">
               <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-icon-file-${block.id}').click()" style="margin-top: 0.5rem;">📁 Загрузить файл</button>
               <span id="block-icon-name-${block.id}" class="file-name-display"></span>
+              <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">💡 Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
           </div>
         </div>

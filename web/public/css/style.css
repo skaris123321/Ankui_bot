@@ -43,6 +43,12 @@ body {
   align-items: center;
 }
 
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+}
+
 .logo a {
   font-size: 1.5rem;
   font-weight: bold;
@@ -54,6 +60,8 @@ body {
   display: flex;
   list-style: none;
   gap: 2rem;
+  margin: 0;
+  padding: 0;
 }
 
 .nav-menu a {
