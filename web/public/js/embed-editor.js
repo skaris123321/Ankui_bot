@@ -298,18 +298,37 @@ function showMessage(type, text) {
   }, 5000);
 }
 
-// Обработчики событий для всех полей
-document.getElementById('embedTitle').addEventListener('input', updatePreview);
-document.getElementById('embedDescription').addEventListener('input', updatePreview);
-document.getElementById('embedColor').addEventListener('input', updatePreview);
-document.getElementById('embedImage').addEventListener('input', updatePreview);
-document.getElementById('embedThumbnail').addEventListener('input', updatePreview);
-document.getElementById('embedAuthor').addEventListener('input', updatePreview);
-document.getElementById('embedAuthorIcon').addEventListener('input', updatePreview);
-document.getElementById('embedFooter').addEventListener('input', updatePreview);
-document.getElementById('embedFooterIcon').addEventListener('input', updatePreview);
-document.getElementById('embedTimestamp').addEventListener('change', updatePreview);
+// Обработчики событий для всех полей (только если элементы существуют)
+const embedTitle = document.getElementById('embedTitle');
+const embedDescription = document.getElementById('embedDescription');
+const embedColor = document.getElementById('embedColor');
+const embedImage = document.getElementById('embedImage');
+const embedThumbnail = document.getElementById('embedThumbnail');
+const embedAuthor = document.getElementById('embedAuthor');
+const embedAuthorIcon = document.getElementById('embedAuthorIcon');
+const embedFooter = document.getElementById('embedFooter');
+const embedFooterIcon = document.getElementById('embedFooterIcon');
+const embedTimestamp = document.getElementById('embedTimestamp');
 
-// Начальный предпросмотр
-updatePreview();
+if (embedTitle) embedTitle.addEventListener('input', updatePreview);
+if (embedDescription) embedDescription.addEventListener('input', updatePreview);
+if (embedColor) {
+  embedColor.addEventListener('input', function() {
+    const colorHex = document.getElementById('colorHex');
+    if (colorHex) colorHex.textContent = this.value;
+    updatePreview();
+  });
+}
+if (embedImage) embedImage.addEventListener('input', updatePreview);
+if (embedThumbnail) embedThumbnail.addEventListener('input', updatePreview);
+if (embedAuthor) embedAuthor.addEventListener('input', updatePreview);
+if (embedAuthorIcon) embedAuthorIcon.addEventListener('input', updatePreview);
+if (embedFooter) embedFooter.addEventListener('input', updatePreview);
+if (embedFooterIcon) embedFooterIcon.addEventListener('input', updatePreview);
+if (embedTimestamp) embedTimestamp.addEventListener('change', updatePreview);
+
+// Начальный предпросмотр (только если preview существует)
+if (document.getElementById('embedPreview')) {
+  updatePreview();
+}
 
