@@ -258,28 +258,56 @@ function getEmbedData() {
     }
   }
   
+  // Функция для кодирования URL (заменяет пробелы и другие недопустимые символы)
+  function encodeUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    
+    try {
+      // Разбиваем URL на части
+      const urlObj = new URL(url);
+      // Кодируем путь (pathname) - это часть после домена
+      urlObj.pathname = encodeURI(urlObj.pathname);
+      return urlObj.toString();
+    } catch {
+      // Если не удалось распарсить как URL, кодируем вручную
+      // Кодируем только путь, оставляя протокол и домен как есть
+      const parts = url.split('/');
+      if (parts.length >= 4) {
+        const protocol = parts[0];
+        const domain = parts[2];
+        const path = parts.slice(3).join('/');
+        return `${protocol}//${domain}/${encodeURI(path)}`;
+      }
+      return encodeURI(url);
+    }
+  }
+  
   // Функция для преобразования URL в абсолютный
   function getAbsoluteUrl(url) {
     if (!url || typeof url !== 'string' || url.trim() === '') return null;
     
+    let absoluteUrl;
+    
     // Если уже абсолютный URL (http:// или https://), возвращаем как есть
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
+      absoluteUrl = url;
     }
-    
     // Если относительный URL (начинается с /), преобразуем в абсолютный
-    if (url.startsWith('/')) {
-      return window.location.origin + url;
+    else if (url.startsWith('/')) {
+      absoluteUrl = window.location.origin + url;
+    }
+    // Если не начинается с /, пытаемся добавить origin
+    else {
+      try {
+        new URL(url); // Проверяем, валидный ли URL
+        absoluteUrl = url;
+      } catch {
+        absoluteUrl = window.location.origin + '/' + url;
+      }
     }
     
-    // Если не начинается с /, но может быть относительным
-    try {
-      new URL(url); // Проверяем, валидный ли URL
-      return url;
-    } catch {
-      // Если не валидный, пытаемся добавить origin
-      return window.location.origin + '/' + url;
-    }
+    // Кодируем URL перед возвратом (заменяет пробелы на %20 и т.д.)
+    return encodeUrl(absoluteUrl);
   }
   
   // Используем картинку из основного поля или из блоков правил
@@ -389,14 +417,27 @@ async function sendEmbed() {
       }
     }
     
-    // Функция для очистки и нормализации URL
-    function cleanUrl(url) {
-      if (!url || typeof url !== 'string') return null;
-      // Убираем пробелы в начале и конце
-      url = url.trim();
-      // Убираем все пробелы из URL (они недопустимы)
-      url = url.replace(/\s/g, '');
-      return url;
+    // Функция для кодирования URL (заменяет пробелы на %20 и т.д.)
+    function encodeUrl(url) {
+      if (!url || typeof url !== 'string') return url;
+      
+      try {
+        // Разбиваем URL на части
+        const urlObj = new URL(url);
+        // Кодируем путь (pathname) - это часть после домена
+        urlObj.pathname = encodeURI(urlObj.pathname);
+        return urlObj.toString();
+      } catch {
+        // Если не удалось распарсить как URL, кодируем вручную
+        const parts = url.split('/');
+        if (parts.length >= 4) {
+          const protocol = parts[0];
+          const domain = parts[2];
+          const path = parts.slice(3).join('/');
+          return `${protocol}//${domain}/${encodeURI(path)}`;
+        }
+        return encodeURI(url);
+      }
     }
     
     // Функция для проверки валидности URL
@@ -412,26 +453,30 @@ async function sendEmbed() {
     
     // Функция для преобразования относительных URL в абсолютные
     function getAbsoluteUrl(url) {
-      url = cleanUrl(url);
-      if (!url) return null;
+      if (!url || typeof url !== 'string' || url.trim() === '') return null;
+      
+      let absoluteUrl;
       
       // Если уже абсолютный URL (http:// или https://), возвращаем как есть
       if (url.startsWith('http://') || url.startsWith('https://')) {
-        return url;
+        absoluteUrl = url;
       }
-      
       // Если относительный URL (начинается с /), преобразуем в абсолютный
-      if (url.startsWith('/')) {
-        return window.location.origin + url;
+      else if (url.startsWith('/')) {
+        absoluteUrl = window.location.origin + url;
+      }
+      // Если не начинается с /, пытаемся добавить origin
+      else {
+        try {
+          new URL(url);
+          absoluteUrl = url;
+        } catch {
+          absoluteUrl = window.location.origin + '/' + url;
+        }
       }
       
-      // Если не начинается с /, пытаемся добавить origin
-      try {
-        new URL(url);
-        return url;
-      } catch {
-        return window.location.origin + '/' + url;
-      }
+      // Кодируем URL перед возвратом (заменяет пробелы на %20 и т.д.)
+      return encodeUrl(absoluteUrl);
     }
     
     for (let i = 0; i < rulesBlocks.length; i++) {
@@ -603,38 +648,55 @@ async function sendEmbed() {
     }
   }
   
-  // Функция для очистки и нормализации URL
-  function cleanUrl(url) {
-    if (!url || typeof url !== 'string') return null;
-    // Убираем пробелы в начале и конце
-    url = url.trim();
-    // Убираем все пробелы из URL (они недопустимы)
-    url = url.replace(/\s/g, '');
-    return url;
+  // Функция для кодирования URL (заменяет пробелы на %20 и т.д.)
+  function encodeUrl(url) {
+    if (!url || typeof url !== 'string') return url;
+    
+    try {
+      // Разбиваем URL на части
+      const urlObj = new URL(url);
+      // Кодируем путь (pathname) - это часть после домена
+      urlObj.pathname = encodeURI(urlObj.pathname);
+      return urlObj.toString();
+    } catch {
+      // Если не удалось распарсить как URL, кодируем вручную
+      const parts = url.split('/');
+      if (parts.length >= 4) {
+        const protocol = parts[0];
+        const domain = parts[2];
+        const path = parts.slice(3).join('/');
+        return `${protocol}//${domain}/${encodeURI(path)}`;
+      }
+      return encodeURI(url);
+    }
   }
   
   // Функция для преобразования относительных URL в абсолютные
   function getAbsoluteUrl(url) {
-    url = cleanUrl(url);
-    if (!url) return null;
+    if (!url || typeof url !== 'string' || url.trim() === '') return null;
+    
+    let absoluteUrl;
     
     // Если уже абсолютный URL (http:// или https://), возвращаем как есть
     if (url.startsWith('http://') || url.startsWith('https://')) {
-      return url;
+      absoluteUrl = url;
     }
-    
     // Если относительный URL (начинается с /), преобразуем в абсолютный
-    if (url.startsWith('/')) {
-      return window.location.origin + url;
+    else if (url.startsWith('/')) {
+      absoluteUrl = window.location.origin + url;
+    }
+    // Если не начинается с /, пытаемся добавить origin
+    else {
+      try {
+        new URL(url);
+        absoluteUrl = url;
+      } catch {
+        absoluteUrl = window.location.origin + '/' + url;
+      }
     }
     
-    // Если не начинается с /, пытаемся добавить origin
-    try {
-      new URL(url); // Проверяем, валидный ли URL
-      return url;
-    } catch {
-      return window.location.origin + '/' + url;
-    }
+    // Кодируем URL перед возвратом (заменяет пробелы на %20 и т.д.)
+    return encodeUrl(absoluteUrl);
   }
   
   // Проверяем и преобразуем URL изображений

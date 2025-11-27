@@ -27,7 +27,14 @@ const storage = multer.diskStorage({
     // Генерируем уникальное имя файла: timestamp-random-originalname
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    const name = path.basename(file.originalname, ext);
+    let name = path.basename(file.originalname, ext);
+    
+    // Убираем пробелы и недопустимые символы из имени файла
+    // Заменяем пробелы на подчеркивания, удаляем специальные символы
+    name = name.replace(/\s+/g, '_')  // Пробелы -> подчеркивания
+               .replace(/[^a-zA-Z0-9_-]/g, '')  // Удаляем все кроме букв, цифр, дефисов и подчеркиваний
+               .substring(0, 50);  // Ограничиваем длину
+    
     cb(null, `${name}-${uniqueSuffix}${ext}`);
   }
 });
@@ -350,12 +357,12 @@ app.post('/api/send-embed', async (req, res) => {
       });
     }
     
-    // Функция для валидации и очистки URL
+    // Функция для валидации и кодирования URL
     function validateAndCleanUrl(url) {
       if (!url || typeof url !== 'string') return null;
       
-      // Убираем пробелы
-      url = url.trim().replace(/\s/g, '');
+      // Убираем пробелы только в начале и конце
+      url = url.trim();
       
       // Проверяем, что это валидный URL
       try {
@@ -364,10 +371,18 @@ app.post('/api/send-embed', async (req, res) => {
           console.warn('Невалидный протокол URL:', url);
           return null;
         }
-        return url;
+        // Кодируем путь (pathname) - заменяет пробелы на %20
+        urlObj.pathname = encodeURI(urlObj.pathname);
+        return urlObj.toString();
       } catch (error) {
-        console.warn('Невалидный URL:', url, error.message);
-        return null;
+        // Если не удалось распарсить, пытаемся кодировать вручную
+        try {
+          // Пробуем кодировать весь URL
+          return encodeURI(url);
+        } catch {
+          console.warn('Невалидный URL:', url, error.message);
+          return null;
+        }
       }
     }
     
