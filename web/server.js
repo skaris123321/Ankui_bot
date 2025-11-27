@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
 const path = require('path');
+const fs = require('fs');
 const Database = require('../database/database');
 
 const app = express();
@@ -167,6 +168,43 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: error.message 
+    });
+  }
+});
+
+// API для загрузки изображений
+app.post('/api/upload-image', (req, res) => {
+  try {
+    const { imageData } = req.body; // base64 data URL
+    
+    if (!imageData || !imageData.startsWith('data:image/')) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Неверный формат изображения' 
+      });
+    }
+    
+    // Проверка размера (максимум 2 МБ)
+    const base64Data = imageData.split(',')[1];
+    const sizeInBytes = (base64Data.length * 3) / 4;
+    if (sizeInBytes > 2 * 1024 * 1024) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Размер файла не должен превышать 2 МБ' 
+      });
+    }
+    
+    // Возвращаем data URL (Discord API может не принимать, но попробуем)
+    // В будущем можно добавить загрузку на imgur или другой сервис
+    res.json({ 
+      success: true, 
+      url: imageData 
+    });
+  } catch (error) {
+    console.error('Upload error:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ошибка загрузки изображения' 
     });
   }
 });
