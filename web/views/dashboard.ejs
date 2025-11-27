@@ -1050,7 +1050,13 @@
         .then(result => {
           if (result.success) {
             // Возвращаем полный URL (с доменом для Discord)
-            const fullUrl = window.location.origin + result.url;
+            let url = result.url;
+            // Убеждаемся, что URL начинается с /
+            if (!url.startsWith('/')) {
+              url = '/' + url;
+            }
+            const fullUrl = window.location.origin + url;
+            console.log('Файл загружен, URL:', fullUrl);
             resolve(fullUrl);
           } else {
             reject(new Error(result.message || 'Ошибка загрузки'));

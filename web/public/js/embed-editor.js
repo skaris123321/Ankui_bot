@@ -223,6 +223,18 @@ function getEmbedData() {
   const footerIconEl = document.getElementById('embedFooterIcon');
   const timestampEl = document.getElementById('embedTimestamp');
   
+  // Вспомогательная функция для проверки валидности URL
+  function isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+  
+  // Создаём объект embedData сначала
   const embedData = {
     title: titleEl ? titleEl.value : '',
     description: descriptionEl ? descriptionEl.value : '',
@@ -235,32 +247,79 @@ function getEmbedData() {
     timestamp: (timestampEl && timestampEl.checked) ? new Date().toISOString() : null
   };
   
+  // Вспомогательная функция для проверки валидности URL
+  function isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+  
+  // Функция для преобразования URL в абсолютный
+  function getAbsoluteUrl(url) {
+    if (!url || typeof url !== 'string' || url.trim() === '') return null;
+    
+    // Если уже абсолютный URL (http:// или https://), возвращаем как есть
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      return url;
+    }
+    
+    // Если относительный URL (начинается с /), преобразуем в абсолютный
+    if (url.startsWith('/')) {
+      return window.location.origin + url;
+    }
+    
+    // Если не начинается с /, но может быть относительным
+    try {
+      new URL(url); // Проверяем, валидный ли URL
+      return url;
+    } catch {
+      // Если не валидный, пытаемся добавить origin
+      return window.location.origin + '/' + url;
+    }
+  }
+  
   // Используем картинку из основного поля или из блоков правил
   // Discord не принимает data URL (base64), только обычные URL
-  const image = imageEl ? imageEl.value : '';
+  const image = imageEl ? imageEl.value.trim() : '';
   if (image && !image.startsWith('data:')) {
-    embedData.image = { url: image };
+    const absoluteUrl = getAbsoluteUrl(image);
+    if (absoluteUrl && isValidUrl(absoluteUrl)) {
+      embedData.image = { url: absoluteUrl };
+    }
   } else if (!image) {
     // Проверяем блоки правил на наличие картинки
     if (typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0) {
       const blockWithImage = rulesBlocks.find(b => b.image && !b.image.startsWith('data:'));
       if (blockWithImage && blockWithImage.image) {
-        embedData.image = { url: blockWithImage.image };
+        const absoluteUrl = getAbsoluteUrl(blockWithImage.image);
+        if (absoluteUrl && isValidUrl(absoluteUrl)) {
+          embedData.image = { url: absoluteUrl };
+        }
       }
     }
   }
   
   // Используем иконку из основного поля или из блоков правил
   // Discord не принимает data URL (base64), только обычные URL
-  const thumbnail = thumbnailEl ? thumbnailEl.value : '';
+  const thumbnail = thumbnailEl ? thumbnailEl.value.trim() : '';
   if (thumbnail && !thumbnail.startsWith('data:')) {
-    embedData.thumbnail = { url: thumbnail };
+    const absoluteUrl = getAbsoluteUrl(thumbnail);
+    if (absoluteUrl && isValidUrl(absoluteUrl)) {
+      embedData.thumbnail = { url: absoluteUrl };
+    }
   } else if (!thumbnail) {
     // Проверяем блоки правил на наличие иконки
     if (typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0) {
       const blockWithIcon = rulesBlocks.find(b => b.icon && !b.icon.startsWith('data:'));
       if (blockWithIcon && blockWithIcon.icon) {
-        embedData.thumbnail = { url: blockWithIcon.icon };
+        const absoluteUrl = getAbsoluteUrl(blockWithIcon.icon);
+        if (absoluteUrl && isValidUrl(absoluteUrl)) {
+          embedData.thumbnail = { url: absoluteUrl };
+        }
       }
     }
   }
@@ -318,18 +377,38 @@ async function sendEmbed() {
       }
     }
     
+    // Функция для проверки валидности URL
+    function isValidUrl(url) {
+      if (!url || typeof url !== 'string') return false;
+      try {
+        const urlObj = new URL(url);
+        return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+      } catch {
+        return false;
+      }
+    }
+    
     // Функция для преобразования относительных URL в абсолютные
     function getAbsoluteUrl(url) {
-      if (!url) return url;
-      // Если уже абсолютный URL, возвращаем как есть
+      if (!url || typeof url !== 'string' || url.trim() === '') return null;
+      
+      // Если уже абсолютный URL (http:// или https://), возвращаем как есть
       if (url.startsWith('http://') || url.startsWith('https://')) {
         return url;
       }
+      
       // Если относительный URL (начинается с /), преобразуем в абсолютный
       if (url.startsWith('/')) {
         return window.location.origin + url;
       }
-      return url;
+      
+      // Если не начинается с /, пытаемся добавить origin
+      try {
+        new URL(url);
+        return url;
+      } catch {
+        return window.location.origin + '/' + url;
+      }
     }
     
     for (let i = 0; i < rulesBlocks.length; i++) {
@@ -500,32 +579,40 @@ async function sendEmbed() {
     return url;
   }
   
-  // Проверяем и предупреждаем о data URL, преобразуем относительные URL
+  // Проверяем и преобразуем URL изображений
   if (embedData.image && embedData.image.url) {
     if (embedData.image.url.startsWith('data:')) {
-      showMessage('error', '❌ Discord не поддерживает data URL для изображений. Используйте загрузку файла');
-      return;
-    }
-    const absoluteUrl = getAbsoluteUrl(embedData.image.url);
-    embedData.image.url = absoluteUrl;
-    if (!isValidUrl(absoluteUrl)) {
-      showMessage('error', '❌ Неверный URL изображения. Должен начинаться с http:// или https://');
-      return;
+      console.warn('Data URL обнаружен для изображения, пропускаем');
+      delete embedData.image;
+    } else {
+      const absoluteUrl = getAbsoluteUrl(embedData.image.url);
+      if (absoluteUrl && isValidUrl(absoluteUrl)) {
+        embedData.image.url = absoluteUrl;
+        console.log('URL изображения:', absoluteUrl);
+      } else {
+        console.warn('Невалидный URL изображения, пропускаем:', embedData.image.url);
+        delete embedData.image;
+      }
     }
   }
   
   if (embedData.thumbnail && embedData.thumbnail.url) {
     if (embedData.thumbnail.url.startsWith('data:')) {
-      showMessage('error', '❌ Discord не поддерживает data URL для иконок. Используйте загрузку файла');
-      return;
-    }
-    const absoluteUrl = getAbsoluteUrl(embedData.thumbnail.url);
-    embedData.thumbnail.url = absoluteUrl;
-    if (!isValidUrl(absoluteUrl)) {
-      showMessage('error', '❌ Неверный URL иконки. Должен начинаться с http:// или https://');
-      return;
+      console.warn('Data URL обнаружен для иконки, пропускаем');
+      delete embedData.thumbnail;
+    } else {
+      const absoluteUrl = getAbsoluteUrl(embedData.thumbnail.url);
+      if (absoluteUrl && isValidUrl(absoluteUrl)) {
+        embedData.thumbnail.url = absoluteUrl;
+        console.log('URL иконки:', absoluteUrl);
+      } else {
+        console.warn('Невалидный URL иконки, пропускаем:', embedData.thumbnail.url);
+        delete embedData.thumbnail;
+      }
     }
   }
+  
+  console.log('Отправка embed:', JSON.stringify(embedData, null, 2));
   
   try {
     const response = await fetch('/api/send-embed', {
