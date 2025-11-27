@@ -62,6 +62,31 @@ app.get('/dashboard', async (req, res) => {
   }
 });
 
+app.get('/rules-editor', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    
+    let guilds = [];
+    if (client && client.isReady()) {
+      guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+        memberCount: guild.memberCount
+      }));
+    }
+    
+    res.render('rules-editor', {
+      user: req.session.user || { username: 'Гость', id: '0' },
+      page: 'rules-editor',
+      guilds: guilds
+    });
+  } catch (error) {
+    console.error('Ошибка при загрузке редактора правил:', error);
+    res.status(500).render('error', { message: 'Не удалось загрузить редактор правил.' });
+  }
+});
+
 app.get('/guild/:guildId', (req, res) => {
   const guildId = req.params.guildId;
   const settings = db.getGuildSettings(guildId) || {};
