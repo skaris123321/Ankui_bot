@@ -1,0 +1,20 @@
+{
+  "guilds": {
+    "1093844056620146740": {
+      "guild_id": "1093844056620146740",
+      "welcome_enabled": 0,
+      "welcome_channel_id": "1094112374639829063",
+      "welcome_message": "Добро подаловвать, {user}!",
+      "goodbye_enabled": 0,
+      "goodbye_channel_id": "",
+      "goodbye_message": "",
+      "auto_role_id": "1094159052281491457",
+      "prefix": "!",
+      "language": "ru",
+      "levels_enabled": 0
+    }
+  },
+  "warnings": [],
+  "modLogs": [],
+  "userLevels": {}
+}

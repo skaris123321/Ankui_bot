@@ -1,0 +1,315 @@
+let fields = [];
+
+// Обновление предпросмотра
+function updatePreview() {
+  const preview = document.getElementById('embedPreview');
+  
+  const title = document.getElementById('embedTitle').value;
+  const description = document.getElementById('embedDescription').value;
+  const color = document.getElementById('embedColor').value;
+  const image = document.getElementById('embedImage').value;
+  const thumbnail = document.getElementById('embedThumbnail').value;
+  const author = document.getElementById('embedAuthor').value;
+  const authorIcon = document.getElementById('embedAuthorIcon').value;
+  const footer = document.getElementById('embedFooter').value;
+  const footerIcon = document.getElementById('embedFooterIcon').value;
+  const timestamp = document.getElementById('embedTimestamp').checked;
+  
+  // Если пусто, показываем сообщение
+  if (!title && !description && fields.length === 0) {
+    preview.innerHTML = '<div class="empty">Начните вводить данные для предпросмотра...</div>';
+    preview.classList.add('empty');
+    return;
+  }
+  
+  preview.classList.remove('empty');
+  preview.style.borderLeftColor = color;
+  
+  let html = '';
+  
+  // Автор
+  if (author) {
+    html += '<div class="embed-author">';
+    if (authorIcon) {
+      html += `<img src="${authorIcon}" class="embed-author-icon" onerror="this.style.display='none'">`;
+    }
+    html += `<span class="embed-author-name">${escapeHtml(author)}</span>`;
+    html += '</div>';
+  }
+  
+  // Заголовок
+  if (title) {
+    html += `<div class="embed-title">${formatMarkdown(escapeHtml(title))}</div>`;
+  }
+  
+  // Описание
+  if (description) {
+    html += `<div class="embed-description">${formatMarkdown(escapeHtml(description))}</div>`;
+  }
+  
+  // Поля
+  if (fields.length > 0) {
+    html += '<div class="embed-fields">';
+    fields.forEach(field => {
+      const inlineClass = field.inline ? 'inline' : 'full';
+      html += `<div class="embed-field ${inlineClass}">`;
+      html += `<div class="embed-field-name">${formatMarkdown(escapeHtml(field.name))}</div>`;
+      html += `<div class="embed-field-value">${formatMarkdown(escapeHtml(field.value))}</div>`;
+      html += '</div>';
+    });
+    html += '</div>';
+  }
+  
+  // Изображение
+  if (image) {
+    html += `<img src="${image}" class="embed-image" onerror="this.style.display='none'">`;
+  }
+  
+  // Миниатюра
+  if (thumbnail) {
+    preview.style.position = 'relative';
+    html += `<img src="${thumbnail}" class="embed-thumbnail" onerror="this.style.display='none'">`;
+  }
+  
+  // Футер
+  if (footer || timestamp) {
+    html += '<div class="embed-footer">';
+    if (footerIcon) {
+      html += `<img src="${footerIcon}" class="embed-footer-icon" onerror="this.style.display='none'">`;
+    }
+    html += '<span class="embed-footer-text">';
+    if (footer) {
+      html += escapeHtml(footer);
+    }
+    if (footer && timestamp) {
+      html += ' • ';
+    }
+    if (timestamp) {
+      const now = new Date();
+      html += now.toLocaleString('ru-RU', { 
+        day: '2-digit', 
+        month: '2-digit', 
+        year: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit' 
+      });
+    }
+    html += '</span></div>';
+  }
+  
+  preview.innerHTML = html;
+}
+
+// Форматирование Markdown
+function formatMarkdown(text) {
+  return text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/~~(.*?)~~/g, '<del>$1</del>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+// Экранирование HTML
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+// Установка цвета
+function setColor(hex) {
+  document.getElementById('embedColor').value = hex;
+  document.getElementById('colorHex').textContent = hex;
+  updatePreview();
+}
+
+// Обновление отображения цвета
+document.getElementById('embedColor').addEventListener('input', function() {
+  document.getElementById('colorHex').textContent = this.value;
+  updatePreview();
+});
+
+// Добавление поля
+function addField() {
+  const fieldId = Date.now();
+  const fieldHtml = `
+    <div class="field-item" id="field-${fieldId}">
+      <div class="field-header">
+        <h4>Поле ${fields.length + 1}</h4>
+        <button class="field-remove-btn" onclick="removeField(${fieldId})">✕ Удалить</button>
+      </div>
+      <label>Название поля</label>
+      <input type="text" class="input-field field-name" data-id="${fieldId}" placeholder="Название" maxlength="256">
+      <label>Значение поля</label>
+      <textarea class="textarea-field field-value" data-id="${fieldId}" rows="3" placeholder="Значение" maxlength="1024"></textarea>
+      <label class="checkbox-label field-inline-label">
+        <input type="checkbox" class="field-inline" data-id="${fieldId}">
+        <span>В одной строке (inline)</span>
+      </label>
+    </div>
+  `;
+  
+  document.getElementById('fieldsContainer').insertAdjacentHTML('beforeend', fieldHtml);
+  
+  fields.push({
+    id: fieldId,
+    name: '',
+    value: '',
+    inline: false
+  });
+  
+  // Добавляем обработчики событий
+  document.querySelector(`.field-name[data-id="${fieldId}"]`).addEventListener('input', updateFieldData);
+  document.querySelector(`.field-value[data-id="${fieldId}"]`).addEventListener('input', updateFieldData);
+  document.querySelector(`.field-inline[data-id="${fieldId}"]`).addEventListener('change', updateFieldData);
+}
+
+// Обновление данных поля
+function updateFieldData(e) {
+  const fieldId = parseInt(e.target.dataset.id);
+  const field = fields.find(f => f.id === fieldId);
+  
+  if (field) {
+    if (e.target.classList.contains('field-name')) {
+      field.name = e.target.value;
+    } else if (e.target.classList.contains('field-value')) {
+      field.value = e.target.value;
+    } else if (e.target.classList.contains('field-inline')) {
+      field.inline = e.target.checked;
+    }
+    updatePreview();
+  }
+}
+
+// Удаление поля
+function removeField(fieldId) {
+  document.getElementById(`field-${fieldId}`).remove();
+  fields = fields.filter(f => f.id !== fieldId);
+  updatePreview();
+}
+
+// Получение данных embed
+function getEmbedData() {
+  const embedData = {
+    title: document.getElementById('embedTitle').value,
+    description: document.getElementById('embedDescription').value,
+    color: parseInt(document.getElementById('embedColor').value.replace('#', ''), 16),
+    fields: fields.filter(f => f.name && f.value).map(f => ({
+      name: f.name,
+      value: f.value,
+      inline: f.inline
+    })),
+    timestamp: document.getElementById('embedTimestamp').checked ? new Date().toISOString() : null
+  };
+  
+  const image = document.getElementById('embedImage').value;
+  if (image) embedData.image = { url: image };
+  
+  const thumbnail = document.getElementById('embedThumbnail').value;
+  if (thumbnail) embedData.thumbnail = { url: thumbnail };
+  
+  const author = document.getElementById('embedAuthor').value;
+  const authorIcon = document.getElementById('embedAuthorIcon').value;
+  if (author) {
+    embedData.author = { name: author };
+    if (authorIcon) embedData.author.icon_url = authorIcon;
+  }
+  
+  const footer = document.getElementById('embedFooter').value;
+  const footerIcon = document.getElementById('embedFooterIcon').value;
+  if (footer) {
+    embedData.footer = { text: footer };
+    if (footerIcon) embedData.footer.icon_url = footerIcon;
+  }
+  
+  return embedData;
+}
+
+// Отправка embed в Discord
+async function sendEmbed() {
+  const channelId = document.getElementById('targetChannel').value.trim();
+  
+  if (!channelId) {
+    showMessage('error', '❌ Укажите ID канала!');
+    return;
+  }
+  
+  const embedData = getEmbedData();
+  
+  if (!embedData.title && !embedData.description) {
+    showMessage('error', '❌ Заполните хотя бы заголовок или описание!');
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/send-embed', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channelId: channelId,
+        embed: embedData
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      showMessage('success', '✅ Сообщение отправлено в Discord!');
+    } else {
+      showMessage('error', `❌ Ошибка: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    showMessage('error', '❌ Не удалось отправить сообщение');
+  }
+}
+
+// Копирование JSON
+function copyJSON() {
+  const embedData = getEmbedData();
+  const json = JSON.stringify(embedData, null, 2);
+  
+  navigator.clipboard.writeText(json).then(() => {
+    showMessage('success', '✅ JSON скопирован в буфер обмена!');
+  }).catch(() => {
+    showMessage('error', '❌ Не удалось скопировать');
+  });
+}
+
+// Показать сообщение
+function showMessage(type, text) {
+  let messageBox = document.querySelector('.message-box');
+  
+  if (!messageBox) {
+    messageBox = document.createElement('div');
+    messageBox.className = 'message-box';
+    document.querySelector('.action-buttons').appendChild(messageBox);
+  }
+  
+  messageBox.className = `message-box ${type}`;
+  messageBox.textContent = text;
+  messageBox.style.display = 'block';
+  
+  setTimeout(() => {
+    messageBox.style.display = 'none';
+  }, 5000);
+}
+
+// Обработчики событий для всех полей
+document.getElementById('embedTitle').addEventListener('input', updatePreview);
+document.getElementById('embedDescription').addEventListener('input', updatePreview);
+document.getElementById('embedColor').addEventListener('input', updatePreview);
+document.getElementById('embedImage').addEventListener('input', updatePreview);
+document.getElementById('embedThumbnail').addEventListener('input', updatePreview);
+document.getElementById('embedAuthor').addEventListener('input', updatePreview);
+document.getElementById('embedAuthorIcon').addEventListener('input', updatePreview);
+document.getElementById('embedFooter').addEventListener('input', updatePreview);
+document.getElementById('embedFooterIcon').addEventListener('input', updatePreview);
+document.getElementById('embedTimestamp').addEventListener('change', updatePreview);
+
+// Начальный предпросмотр
+updatePreview();
+

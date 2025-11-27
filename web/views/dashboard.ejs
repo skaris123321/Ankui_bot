@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Панель управления</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/embed-editor.css">
+  <style>
+    .dashboard-container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .server-selector {
+      background: var(--background-light);
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+    }
+    
+    .server-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .server-card {
+      background: var(--background-dark);
+      border: 2px solid transparent;
+      border-radius: 10px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-align: center;
+    }
+    
+    .server-card:hover {
+      border-color: var(--primary-color);
+      transform: translateY(-2px);
+    }
+    
+    .server-card.selected {
+      border-color: var(--secondary-color);
+      background: rgba(87, 242, 135, 0.1);
+    }
+    
+    .server-icon {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      margin: 0 auto 0.5rem;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2rem;
+      font-weight: bold;
+      color: white;
+    }
+    
+    .server-icon img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .server-name {
+      font-weight: bold;
+      margin-bottom: 0.25rem;
+      color: var(--text-primary);
+    }
+    
+    .server-members {
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    
+    .channel-selector {
+      background: var(--background-light);
+      padding: 1.5rem;
+      border-radius: 10px;
+      margin-bottom: 2rem;
+      display: none;
+    }
+    
+    .channel-selector.visible {
+      display: block;
+    }
+    
+    .channel-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-top: 1rem;
+    }
+    
+    .channel-item {
+      background: var(--background-dark);
+      border: 2px solid transparent;
+      border-radius: 5px;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .channel-item:hover {
+      border-color: var(--primary-color);
+    }
+    
+    .channel-item.selected {
+      border-color: var(--secondary-color);
+      background: rgba(87, 242, 135, 0.1);
+    }
+    
+    .embed-section {
+      display: none;
+    }
+    
+    .embed-section.visible {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="dashboard-container">
+    <h1>🎨 Панель управления - Редактор сообщений</h1>
+    
+    <!-- Выбор сервера -->
+    <div class="server-selector">
+      <h2>1️⃣ Выберите сервер</h2>
+      <% if (guilds.length > 0) { %>
+        <div class="server-grid">
+          <% guilds.forEach(guild => { %>
+            <div class="server-card" data-guild-id="<%= guild.id %>" onclick="selectGuild('<%= guild.id %>', '<%= guild.name %>')">
+              <div class="server-icon">
+                <% if (guild.icon) { %>
+                  <img src="<%= guild.icon %>" alt="<%= guild.name %>">
+                <% } else { %>
+                  <%= guild.name.charAt(0).toUpperCase() %>
+                <% } %>
+              </div>
+              <div class="server-name"><%= guild.name %></div>
+              <div class="server-members">👥 <%= guild.memberCount %> участников</div>
+            </div>
+          <% }); %>
+        </div>
+      <% } else { %>
+        <div class="info-box">
+          <p>⚠️ Бот не подключен ни к одному серверу.</p>
+          <p>Пригласите бота на сервер по ссылке:</p>
+          <a href="https://discord.com/api/oauth2/authorize?client_id=1443654730239709206&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">Пригласить бота</a>
+        </div>
+      <% } %>
+    </div>
+    
+    <!-- Выбор канала -->
+    <div class="channel-selector" id="channelSelector">
+      <h2>2️⃣ Выберите канал</h2>
+      <p>Сервер: <strong id="selectedGuildName">-</strong></p>
+      <div class="channel-list" id="channelList">
+        <p>Загрузка каналов...</p>
+      </div>
+    </div>
+    
+    <!-- Редактор сообщений -->
+    <div class="embed-section" id="embedSection">
+      <h2>3️⃣ Создайте сообщение</h2>
+      
+      <div class="editor-layout">
+        <!-- Левая панель - редактор -->
+        <div class="editor-panel">
+          <h3>✏️ Редактор</h3>
+          
+          <div class="editor-section">
+            <label>📝 Заголовок</label>
+            <input type="text" id="embedTitle" class="input-field" placeholder="Введите заголовок..." maxlength="256">
+          </div>
+          
+          <div class="editor-section">
+            <label>📄 Описание</label>
+            <textarea id="embedDescription" class="textarea-field" rows="6" placeholder="Введите основной текст..." maxlength="4096"></textarea>
+          </div>
+          
+          <div class="editor-section">
+            <label>🎨 Цвет</label>
+            <div class="color-picker">
+              <input type="color" id="embedColor" value="#5865F2">
+              <span id="colorHex">#5865F2</span>
+            </div>
+            <div class="color-presets">
+              <button class="color-btn" style="background: #5865F2" onclick="setColor('#5865F2')">Discord</button>
+              <button class="color-btn" style="background: #57F287" onclick="setColor('#57F287')">Зелёный</button>
+              <button class="color-btn" style="background: #ED4245" onclick="setColor('#ED4245')">Красный</button>
+              <button class="color-btn" style="background: #FEE75C" onclick="setColor('#FEE75C')">Жёлтый</button>
+              <button class="color-btn" style="background: #EB459E" onclick="setColor('#EB459E')">Розовый</button>
+              <button class="color-btn" style="background: #9B59B6" onclick="setColor('#9B59B6')">Фиолетовый</button>
+            </div>
+          </div>
+          
+          <div class="editor-section">
+            <label>🖼️ Изображение (URL)</label>
+            <input type="url" id="embedImage" class="input-field" placeholder="https://example.com/image.png">
+          </div>
+          
+          <div class="editor-section">
+            <label>🖼️ Миниатюра (URL)</label>
+            <input type="url" id="embedThumbnail" class="input-field" placeholder="https://example.com/thumbnail.png">
+          </div>
+          
+          <div class="editor-section">
+            <label>📋 Футер</label>
+            <input type="text" id="embedFooter" class="input-field" placeholder="Текст внизу сообщения" maxlength="2048">
+          </div>
+          
+          <div class="editor-section">
+            <label>⏰ Временная метка</label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="embedTimestamp" checked>
+              <span>Показать текущее время</span>
+            </label>
+          </div>
+          
+          <button class="btn btn-primary btn-large" onclick="sendEmbed()">🚀 Отправить в Discord</button>
+        </div>
+        
+        <!-- Правая панель - предпросмотр -->
+        <div class="preview-panel">
+          <h3>👁️ Предпросмотр</h3>
+          <div class="discord-preview">
+            <div class="discord-message">
+              <div class="message-avatar">
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
+              </div>
+              <div class="message-content">
+                <div class="message-header">
+                  <span class="message-username">Ваш Бот</span>
+                  <span class="message-badge">БОТ</span>
+                  <span class="message-timestamp">Сегодня в <%= new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) %></span>
+                </div>
+                <div id="embedPreview" class="embed-preview empty">
+                  Начните вводить данные для предпросмотра...
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div id="messageBox" class="message-box"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('partials/footer') %>
+  
+  <script src="/js/embed-editor.js"></script>
+  <script>
+    let selectedGuildId = null;
+    let selectedChannelId = null;
+    
+    // Выбор сервера
+    async function selectGuild(guildId, guildName) {
+      selectedGuildId = guildId;
+      selectedChannelId = null;
+      
+      // Обновляем выделение серверов
+      document.querySelectorAll('.server-card').forEach(card => {
+        card.classList.remove('selected');
+      });
+      event.target.closest('.server-card').classList.add('selected');
+      
+      // Показываем выбор канала
+      document.getElementById('selectedGuildName').textContent = guildName;
+      document.getElementById('channelSelector').classList.add('visible');
+      document.getElementById('embedSection').classList.remove('visible');
+      
+      // Загружаем каналы
+      try {
+        const response = await fetch(`/api/guild/${guildId}/channels`);
+        const data = await response.json();
+        
+        if (data.success) {
+          const channelList = document.getElementById('channelList');
+          channelList.innerHTML = '';
+          
+          data.channels.forEach(channel => {
+            const channelItem = document.createElement('div');
+            channelItem.className = 'channel-item';
+            channelItem.dataset.channelId = channel.id;
+            channelItem.textContent = '# ' + channel.name;
+            channelItem.onclick = () => selectChannel(channel.id, channel.name);
+            channelList.appendChild(channelItem);
+          });
+        } else {
+          document.getElementById('channelList').innerHTML = '<p>❌ Не удалось загрузить каналы</p>';
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки каналов:', error);
+        document.getElementById('channelList').innerHTML = '<p>❌ Ошибка загрузки каналов</p>';
+      }
+    }
+    
+    // Выбор канала
+    function selectChannel(channelId, channelName) {
+      selectedChannelId = channelId;
+      
+      // Обновляем выделение каналов
+      document.querySelectorAll('.channel-item').forEach(item => {
+        item.classList.remove('selected');
+      });
+      event.target.classList.add('selected');
+      
+      // Показываем редактор
+      document.getElementById('embedSection').classList.add('visible');
+      
+      // Прокрутка к редактору
+      document.getElementById('embedSection').scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    // Отправка embed - переопределяем функцию из embed-editor.js
+    async function sendEmbed() {
+      if (!selectedChannelId) {
+        showMessage('error', '❌ Выберите канал для отправки!');
+        return;
+      }
+      
+      const embedData = getEmbedData();
+      
+      if (!embedData.title && !embedData.description) {
+        showMessage('error', '❌ Заполните хотя бы заголовок или описание!');
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/send-embed', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            channelId: selectedChannelId,
+            embed: embedData
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showMessage('success', '✅ Сообщение отправлено в Discord!');
+        } else {
+          showMessage('error', `❌ Ошибка: ${result.message}`);
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        showMessage('error', '❌ Не удалось отправить сообщение');
+      }
+    }
+  </script>
+</body>
+</html>

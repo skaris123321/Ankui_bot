@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Редактор сообщений</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="/css/embed-editor.css">
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="embed-editor-page">
+    <div class="container">
+      <h1>🎨 Визуальный редактор сообщений</h1>
+      <p class="subtitle">Создавайте красивые оформленные сообщения с живым предпросмотром</p>
+      
+      <div class="editor-layout">
+        <!-- Левая панель - редактор -->
+        <div class="editor-panel">
+          <h2>✏️ Редактор</h2>
+          
+          <div class="editor-section">
+            <label>📝 Заголовок</label>
+            <input type="text" id="embedTitle" class="input-field" placeholder="Введите заголовок..." maxlength="256">
+          </div>
+          
+          <div class="editor-section">
+            <label>📄 Описание</label>
+            <textarea id="embedDescription" class="textarea-field" rows="6" placeholder="Введите основной текст..." maxlength="4096"></textarea>
+          </div>
+          
+          <div class="editor-section">
+            <label>🎨 Цвет</label>
+            <div class="color-picker">
+              <input type="color" id="embedColor" value="#5865F2">
+              <span id="colorHex">#5865F2</span>
+            </div>
+            <div class="color-presets">
+              <button class="color-btn" style="background: #5865F2" onclick="setColor('#5865F2')">Discord</button>
+              <button class="color-btn" style="background: #57F287" onclick="setColor('#57F287')">Зелёный</button>
+              <button class="color-btn" style="background: #ED4245" onclick="setColor('#ED4245')">Красный</button>
+              <button class="color-btn" style="background: #FEE75C" onclick="setColor('#FEE75C')">Жёлтый</button>
+              <button class="color-btn" style="background: #EB459E" onclick="setColor('#EB459E')">Розовый</button>
+              <button class="color-btn" style="background: #9B59B6" onclick="setColor('#9B59B6')">Фиолетовый</button>
+            </div>
+          </div>
+          
+          <div class="editor-section">
+            <label>🖼️ Изображение (URL)</label>
+            <input type="url" id="embedImage" class="input-field" placeholder="https://example.com/image.png">
+          </div>
+          
+          <div class="editor-section">
+            <label>🖼️ Миниатюра (URL)</label>
+            <input type="url" id="embedThumbnail" class="input-field" placeholder="https://example.com/thumbnail.png">
+          </div>
+          
+          <div class="editor-section">
+            <label>👤 Автор</label>
+            <input type="text" id="embedAuthor" class="input-field" placeholder="Имя автора" maxlength="256">
+            <input type="url" id="embedAuthorIcon" class="input-field" placeholder="https://example.com/icon.png (иконка)">
+          </div>
+          
+          <div class="editor-section">
+            <label>📋 Футер</label>
+            <input type="text" id="embedFooter" class="input-field" placeholder="Текст внизу сообщения" maxlength="2048">
+            <input type="url" id="embedFooterIcon" class="input-field" placeholder="https://example.com/icon.png (иконка)">
+          </div>
+          
+          <div class="editor-section">
+            <h3>➕ Поля (Fields)</h3>
+            <div id="fieldsContainer"></div>
+            <button class="btn btn-secondary" onclick="addField()">+ Добавить поле</button>
+          </div>
+          
+          <div class="editor-section">
+            <label>⏰ Временная метка</label>
+            <label class="checkbox-label">
+              <input type="checkbox" id="embedTimestamp" checked>
+              <span>Показать текущее время</span>
+            </label>
+          </div>
+        </div>
+        
+        <!-- Правая панель - предпросмотр -->
+        <div class="preview-panel">
+          <h2>👁️ Предпросмотр</h2>
+          <div class="discord-preview">
+            <div class="discord-message">
+              <div class="message-avatar">
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
+              </div>
+              <div class="message-content">
+                <div class="message-header">
+                  <span class="message-username">Ваш Бот</span>
+                  <span class="message-badge">БОТ</span>
+                  <span class="message-timestamp">Сегодня в ${new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+                </div>
+                <div id="embedPreview" class="embed-preview">
+                  <!-- Embed будет отображаться здесь -->
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="action-buttons">
+            <h3>📤 Отправка в Discord</h3>
+            <div class="send-options">
+              <label>Канал (ID)</label>
+              <input type="text" id="targetChannel" class="input-field" placeholder="123456789012345678">
+              <small>Скопируйте ID канала из Discord (ПКМ → Копировать ID)</small>
+            </div>
+            <button class="btn btn-primary btn-large" onclick="sendEmbed()">🚀 Отправить в Discord</button>
+            <button class="btn btn-secondary btn-large" onclick="copyJSON()">📋 Копировать JSON</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('partials/footer') %>
+  
+  <script src="/js/embed-editor.js"></script>
+</body>
+</html>
+
