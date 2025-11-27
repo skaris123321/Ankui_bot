@@ -3,17 +3,29 @@ let fields = [];
 // Обновление предпросмотра
 function updatePreview() {
   const preview = document.getElementById('embedPreview');
+  if (!preview) return; // Если preview не существует, выходим
   
-  const title = document.getElementById('embedTitle').value;
-  const description = document.getElementById('embedDescription').value;
-  const color = document.getElementById('embedColor').value;
-  const image = document.getElementById('embedImage').value;
-  const thumbnail = document.getElementById('embedThumbnail').value;
-  const author = document.getElementById('embedAuthor').value;
-  const authorIcon = document.getElementById('embedAuthorIcon').value;
-  const footer = document.getElementById('embedFooter').value;
-  const footerIcon = document.getElementById('embedFooterIcon').value;
-  const timestamp = document.getElementById('embedTimestamp').checked;
+  const titleEl = document.getElementById('embedTitle');
+  const descriptionEl = document.getElementById('embedDescription');
+  const colorEl = document.getElementById('embedColor');
+  const imageEl = document.getElementById('embedImage');
+  const thumbnailEl = document.getElementById('embedThumbnail');
+  const authorEl = document.getElementById('embedAuthor');
+  const authorIconEl = document.getElementById('embedAuthorIcon');
+  const footerEl = document.getElementById('embedFooter');
+  const footerIconEl = document.getElementById('embedFooterIcon');
+  const timestampEl = document.getElementById('embedTimestamp');
+  
+  const title = titleEl ? titleEl.value : '';
+  const description = descriptionEl ? descriptionEl.value : '';
+  const color = colorEl ? colorEl.value : '#0099ff';
+  const image = imageEl ? imageEl.value : '';
+  const thumbnail = thumbnailEl ? thumbnailEl.value : '';
+  const author = authorEl ? authorEl.value : '';
+  const authorIcon = authorIconEl ? authorIconEl.value : '';
+  const footer = footerEl ? footerEl.value : '';
+  const footerIcon = footerIconEl ? footerIconEl.value : '';
+  const timestamp = timestampEl ? timestampEl.checked : false;
   
   // Если пусто, показываем сообщение
   if (!title && !description && fields.length === 0) {
@@ -119,8 +131,10 @@ function escapeHtml(text) {
 
 // Установка цвета
 function setColor(hex) {
-  document.getElementById('embedColor').value = hex;
-  document.getElementById('colorHex').textContent = hex;
+  const colorEl = document.getElementById('embedColor');
+  const colorHexEl = document.getElementById('colorHex');
+  if (colorEl) colorEl.value = hex;
+  if (colorHexEl) colorHexEl.textContent = hex;
   updatePreview();
 }
 
@@ -132,6 +146,9 @@ document.getElementById('embedColor').addEventListener('input', function() {
 
 // Добавление поля
 function addField() {
+  const container = document.getElementById('fieldsContainer');
+  if (!container) return; // Если контейнер не существует, выходим
+  
   const fieldId = Date.now();
   const fieldHtml = `
     <div class="field-item" id="field-${fieldId}">
@@ -150,7 +167,7 @@ function addField() {
     </div>
   `;
   
-  document.getElementById('fieldsContainer').insertAdjacentHTML('beforeend', fieldHtml);
+  container.insertAdjacentHTML('beforeend', fieldHtml);
   
   fields.push({
     id: fieldId,
@@ -160,9 +177,13 @@ function addField() {
   });
   
   // Добавляем обработчики событий
-  document.querySelector(`.field-name[data-id="${fieldId}"]`).addEventListener('input', updateFieldData);
-  document.querySelector(`.field-value[data-id="${fieldId}"]`).addEventListener('input', updateFieldData);
-  document.querySelector(`.field-inline[data-id="${fieldId}"]`).addEventListener('change', updateFieldData);
+  const nameEl = document.querySelector(`.field-name[data-id="${fieldId}"]`);
+  const valueEl = document.querySelector(`.field-value[data-id="${fieldId}"]`);
+  const inlineEl = document.querySelector(`.field-inline[data-id="${fieldId}"]`);
+  
+  if (nameEl) nameEl.addEventListener('input', updateFieldData);
+  if (valueEl) valueEl.addEventListener('input', updateFieldData);
+  if (inlineEl) inlineEl.addEventListener('change', updateFieldData);
 }
 
 // Обновление данных поля
@@ -191,33 +212,44 @@ function removeField(fieldId) {
 
 // Получение данных embed
 function getEmbedData() {
+  const titleEl = document.getElementById('embedTitle');
+  const descriptionEl = document.getElementById('embedDescription');
+  const colorEl = document.getElementById('embedColor');
+  const imageEl = document.getElementById('embedImage');
+  const thumbnailEl = document.getElementById('embedThumbnail');
+  const authorEl = document.getElementById('embedAuthor');
+  const authorIconEl = document.getElementById('embedAuthorIcon');
+  const footerEl = document.getElementById('embedFooter');
+  const footerIconEl = document.getElementById('embedFooterIcon');
+  const timestampEl = document.getElementById('embedTimestamp');
+  
   const embedData = {
-    title: document.getElementById('embedTitle').value,
-    description: document.getElementById('embedDescription').value,
-    color: parseInt(document.getElementById('embedColor').value.replace('#', ''), 16),
+    title: titleEl ? titleEl.value : '',
+    description: descriptionEl ? descriptionEl.value : '',
+    color: colorEl ? parseInt(colorEl.value.replace('#', ''), 16) : 0x0099ff,
     fields: fields.filter(f => f.name && f.value).map(f => ({
       name: f.name,
       value: f.value,
       inline: f.inline
     })),
-    timestamp: document.getElementById('embedTimestamp').checked ? new Date().toISOString() : null
+    timestamp: (timestampEl && timestampEl.checked) ? new Date().toISOString() : null
   };
   
-  const image = document.getElementById('embedImage').value;
+  const image = imageEl ? imageEl.value : '';
   if (image) embedData.image = { url: image };
   
-  const thumbnail = document.getElementById('embedThumbnail').value;
+  const thumbnail = thumbnailEl ? thumbnailEl.value : '';
   if (thumbnail) embedData.thumbnail = { url: thumbnail };
   
-  const author = document.getElementById('embedAuthor').value;
-  const authorIcon = document.getElementById('embedAuthorIcon').value;
+  const author = authorEl ? authorEl.value : '';
+  const authorIcon = authorIconEl ? authorIconEl.value : '';
   if (author) {
     embedData.author = { name: author };
     if (authorIcon) embedData.author.icon_url = authorIcon;
   }
   
-  const footer = document.getElementById('embedFooter').value;
-  const footerIcon = document.getElementById('embedFooterIcon').value;
+  const footer = footerEl ? footerEl.value : '';
+  const footerIcon = footerIconEl ? footerIconEl.value : '';
   if (footer) {
     embedData.footer = { text: footer };
     if (footerIcon) embedData.footer.icon_url = footerIcon;
@@ -228,7 +260,8 @@ function getEmbedData() {
 
 // Отправка embed в Discord
 async function sendEmbed() {
-  const channelId = document.getElementById('targetChannel').value.trim();
+  const channelEl = document.getElementById('targetChannel');
+  const channelId = channelEl ? channelEl.value.trim() : '';
   
   if (!channelId) {
     showMessage('error', '❌ Укажите ID канала!');
