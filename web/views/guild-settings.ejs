@@ -203,17 +203,25 @@
       background: var(--primary-color);
       color: white;
       border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 5px;
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 0.9rem;
-      margin-top: 0.5rem;
+      font-size: 1rem;
+      font-weight: 500;
+      margin: 1rem 0;
+      width: 100%;
       transition: all 0.2s;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
     .add-rule-to-block-btn:hover {
       background: #4752C4;
-      transform: translateY(-1px);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    }
+    
+    .add-rule-to-block-btn:active {
+      transform: translateY(0);
     }
     
     .empty-rules {
@@ -442,7 +450,14 @@
             <button type="button" class="block-remove-btn" onclick="removeBlock(${block.id})">🗑️ Удалить блок</button>
           </div>
           
+          <button type="button" class="add-rule-to-block-btn" onclick="addRuleToBlock(${block.id})" style="margin-bottom: 1rem;">➕ Добавить правило в этот блок</button>
+          
           <div class="block-rules-list">
+            ${(block.rules && block.rules.length > 0) ? '' : `
+              <div style="text-align: center; padding: 1rem; color: var(--text-secondary); font-style: italic;">
+                Правила в этом блоке пока не добавлены
+              </div>
+            `}
             ${(block.rules || []).map(rule => `
               <div class="block-rule-item">
                 <div class="block-rule-header">
@@ -482,8 +497,6 @@
               </div>
             `).join('')}
           </div>
-          
-          <button type="button" class="add-rule-to-block-btn" onclick="addRuleToBlock(${block.id})">➕ Добавить правило в этот блок</button>
           
           <div class="block-media">
             <div class="block-media-field">
