@@ -377,6 +377,16 @@ async function sendEmbed() {
       }
     }
     
+    // Функция для очистки и нормализации URL
+    function cleanUrl(url) {
+      if (!url || typeof url !== 'string') return null;
+      // Убираем пробелы в начале и конце
+      url = url.trim();
+      // Убираем все пробелы из URL (они недопустимы)
+      url = url.replace(/\s/g, '');
+      return url;
+    }
+    
     // Функция для проверки валидности URL
     function isValidUrl(url) {
       if (!url || typeof url !== 'string') return false;
@@ -390,7 +400,8 @@ async function sendEmbed() {
     
     // Функция для преобразования относительных URL в абсолютные
     function getAbsoluteUrl(url) {
-      if (!url || typeof url !== 'string' || url.trim() === '') return null;
+      url = cleanUrl(url);
+      if (!url) return null;
       
       // Если уже абсолютный URL (http:// или https://), возвращаем как есть
       if (url.startsWith('http://') || url.startsWith('https://')) {
@@ -452,21 +463,26 @@ async function sendEmbed() {
       // Добавляем картинку (сверху embed)
       // Discord не принимает data URL (base64), только обычные URL (http/https)
       if (block.image) {
-        if (block.image.startsWith('data:')) {
+        const originalImageUrl = block.image;
+        if (originalImageUrl.startsWith('data:')) {
           warnings.push(`Блок ${i + 1}: Картинка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
         } else {
           // Преобразуем относительные URL в абсолютные
-          const absoluteUrl = getAbsoluteUrl(block.image);
-          if (isValidUrl(absoluteUrl)) {
+          const absoluteUrl = getAbsoluteUrl(originalImageUrl);
+          console.log(`Блок ${i + 1} - Оригинальный URL картинки:`, originalImageUrl);
+          console.log(`Блок ${i + 1} - Преобразованный URL:`, absoluteUrl);
+          if (absoluteUrl && isValidUrl(absoluteUrl)) {
             blockEmbed.image = { url: absoluteUrl };
+            console.log(`✅ Блок ${i + 1} - URL картинки валиден:`, absoluteUrl);
           } else {
+            console.error(`❌ Блок ${i + 1} - Невалидный URL картинки:`, originalImageUrl, '->', absoluteUrl);
             warnings.push(`Блок ${i + 1}: Неверный URL картинки`);
           }
         }
       } else if (baseEmbedData.image && baseEmbedData.image.url) {
         if (!baseEmbedData.image.url.startsWith('data:')) {
           const absoluteUrl = getAbsoluteUrl(baseEmbedData.image.url);
-          if (isValidUrl(absoluteUrl)) {
+          if (absoluteUrl && isValidUrl(absoluteUrl)) {
             blockEmbed.image = { url: absoluteUrl };
           }
         }
@@ -475,21 +491,26 @@ async function sendEmbed() {
       // Добавляем иконку (thumbnail)
       // Discord не принимает data URL (base64), только обычные URL (http/https)
       if (block.icon) {
-        if (block.icon.startsWith('data:')) {
+        const originalIconUrl = block.icon;
+        if (originalIconUrl.startsWith('data:')) {
           warnings.push(`Блок ${i + 1}: Иконка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
         } else {
           // Преобразуем относительные URL в абсолютные
-          const absoluteUrl = getAbsoluteUrl(block.icon);
-          if (isValidUrl(absoluteUrl)) {
+          const absoluteUrl = getAbsoluteUrl(originalIconUrl);
+          console.log(`Блок ${i + 1} - Оригинальный URL иконки:`, originalIconUrl);
+          console.log(`Блок ${i + 1} - Преобразованный URL:`, absoluteUrl);
+          if (absoluteUrl && isValidUrl(absoluteUrl)) {
             blockEmbed.thumbnail = { url: absoluteUrl };
+            console.log(`✅ Блок ${i + 1} - URL иконки валиден:`, absoluteUrl);
           } else {
+            console.error(`❌ Блок ${i + 1} - Невалидный URL иконки:`, originalIconUrl, '->', absoluteUrl);
             warnings.push(`Блок ${i + 1}: Неверный URL иконки`);
           }
         }
       } else if (baseEmbedData.thumbnail && baseEmbedData.thumbnail.url) {
         if (!baseEmbedData.thumbnail.url.startsWith('data:')) {
           const absoluteUrl = getAbsoluteUrl(baseEmbedData.thumbnail.url);
-          if (isValidUrl(absoluteUrl)) {
+          if (absoluteUrl && isValidUrl(absoluteUrl)) {
             blockEmbed.thumbnail = { url: absoluteUrl };
           }
         }
@@ -502,6 +523,9 @@ async function sendEmbed() {
       if (baseEmbedData.footer) {
         blockEmbed.footer = baseEmbedData.footer;
       }
+      
+      // Логируем embed перед отправкой
+      console.log(`📤 Отправка блока ${i + 1}:`, JSON.stringify(blockEmbed, null, 2));
       
       try {
         const response = await fetch('/api/send-embed', {
@@ -567,46 +591,74 @@ async function sendEmbed() {
     }
   }
   
+  // Функция для очистки и нормализации URL
+  function cleanUrl(url) {
+    if (!url || typeof url !== 'string') return null;
+    // Убираем пробелы в начале и конце
+    url = url.trim();
+    // Убираем все пробелы из URL (они недопустимы)
+    url = url.replace(/\s/g, '');
+    return url;
+  }
+  
   // Функция для преобразования относительных URL в абсолютные
   function getAbsoluteUrl(url) {
-    if (!url) return url;
+    url = cleanUrl(url);
+    if (!url) return null;
+    
+    // Если уже абсолютный URL (http:// или https://), возвращаем как есть
     if (url.startsWith('http://') || url.startsWith('https://')) {
       return url;
     }
+    
+    // Если относительный URL (начинается с /), преобразуем в абсолютный
     if (url.startsWith('/')) {
       return window.location.origin + url;
     }
-    return url;
+    
+    // Если не начинается с /, пытаемся добавить origin
+    try {
+      new URL(url); // Проверяем, валидный ли URL
+      return url;
+    } catch {
+      return window.location.origin + '/' + url;
+    }
   }
   
   // Проверяем и преобразуем URL изображений
   if (embedData.image && embedData.image.url) {
-    if (embedData.image.url.startsWith('data:')) {
+    const originalUrl = embedData.image.url;
+    if (originalUrl.startsWith('data:')) {
       console.warn('Data URL обнаружен для изображения, пропускаем');
       delete embedData.image;
     } else {
-      const absoluteUrl = getAbsoluteUrl(embedData.image.url);
+      const absoluteUrl = getAbsoluteUrl(originalUrl);
+      console.log('Оригинальный URL изображения:', originalUrl);
+      console.log('Преобразованный URL:', absoluteUrl);
       if (absoluteUrl && isValidUrl(absoluteUrl)) {
         embedData.image.url = absoluteUrl;
-        console.log('URL изображения:', absoluteUrl);
+        console.log('✅ URL изображения валиден:', absoluteUrl);
       } else {
-        console.warn('Невалидный URL изображения, пропускаем:', embedData.image.url);
+        console.error('❌ Невалидный URL изображения:', originalUrl, '->', absoluteUrl);
         delete embedData.image;
       }
     }
   }
   
   if (embedData.thumbnail && embedData.thumbnail.url) {
-    if (embedData.thumbnail.url.startsWith('data:')) {
+    const originalUrl = embedData.thumbnail.url;
+    if (originalUrl.startsWith('data:')) {
       console.warn('Data URL обнаружен для иконки, пропускаем');
       delete embedData.thumbnail;
     } else {
-      const absoluteUrl = getAbsoluteUrl(embedData.thumbnail.url);
+      const absoluteUrl = getAbsoluteUrl(originalUrl);
+      console.log('Оригинальный URL иконки:', originalUrl);
+      console.log('Преобразованный URL:', absoluteUrl);
       if (absoluteUrl && isValidUrl(absoluteUrl)) {
         embedData.thumbnail.url = absoluteUrl;
-        console.log('URL иконки:', absoluteUrl);
+        console.log('✅ URL иконки валиден:', absoluteUrl);
       } else {
-        console.warn('Невалидный URL иконки, пропускаем:', embedData.thumbnail.url);
+        console.error('❌ Невалидный URL иконки:', originalUrl, '->', absoluteUrl);
         delete embedData.thumbnail;
       }
     }

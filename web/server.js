@@ -350,6 +350,72 @@ app.post('/api/send-embed', async (req, res) => {
       });
     }
     
+    // Функция для валидации и очистки URL
+    function validateAndCleanUrl(url) {
+      if (!url || typeof url !== 'string') return null;
+      
+      // Убираем пробелы
+      url = url.trim().replace(/\s/g, '');
+      
+      // Проверяем, что это валидный URL
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+          console.warn('Невалидный протокол URL:', url);
+          return null;
+        }
+        return url;
+      } catch (error) {
+        console.warn('Невалидный URL:', url, error.message);
+        return null;
+      }
+    }
+    
+    // Валидируем и очищаем URL изображений перед отправкой
+    if (embed.image && embed.image.url) {
+      const cleanedUrl = validateAndCleanUrl(embed.image.url);
+      if (cleanedUrl) {
+        embed.image.url = cleanedUrl;
+        console.log('✅ URL изображения валиден:', cleanedUrl);
+      } else {
+        console.warn('❌ Удаляем невалидный URL изображения:', embed.image.url);
+        delete embed.image;
+      }
+    }
+    
+    if (embed.thumbnail && embed.thumbnail.url) {
+      const cleanedUrl = validateAndCleanUrl(embed.thumbnail.url);
+      if (cleanedUrl) {
+        embed.thumbnail.url = cleanedUrl;
+        console.log('✅ URL иконки валиден:', cleanedUrl);
+      } else {
+        console.warn('❌ Удаляем невалидный URL иконки:', embed.thumbnail.url);
+        delete embed.thumbnail;
+      }
+    }
+    
+    if (embed.author && embed.author.icon_url) {
+      const cleanedUrl = validateAndCleanUrl(embed.author.icon_url);
+      if (cleanedUrl) {
+        embed.author.icon_url = cleanedUrl;
+      } else {
+        console.warn('❌ Удаляем невалидный URL иконки автора:', embed.author.icon_url);
+        delete embed.author.icon_url;
+      }
+    }
+    
+    if (embed.footer && embed.footer.icon_url) {
+      const cleanedUrl = validateAndCleanUrl(embed.footer.icon_url);
+      if (cleanedUrl) {
+        embed.footer.icon_url = cleanedUrl;
+      } else {
+        console.warn('❌ Удаляем невалидный URL иконки футера:', embed.footer.icon_url);
+        delete embed.footer.icon_url;
+      }
+    }
+    
+    console.log('📤 Отправка embed в Discord:', JSON.stringify(embed, null, 2));
+    
     // Отправляем embed
     await channel.send({ embeds: [embed] });
     
