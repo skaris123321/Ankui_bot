@@ -947,31 +947,33 @@
         return;
       }
       
-      // Проверка размера (максимум 2 МБ для data URL)
-      if (file.size > 2 * 1024 * 1024) {
-        showMessage('error', '❌ Файл слишком большой (макс. 2 МБ). Используйте URL для больших файлов или загрузите на imgur.com');
-        e.target.value = '';
-        return;
-      }
-      
-      document.getElementById('imageFileName').textContent = `⏳ Обработка ${file.name}...`;
+      document.getElementById('imageFileName').textContent = `⏳ Загрузка ${file.name}...`;
       
       try {
-        try {
-          document.getElementById('imageFileName').textContent = `⏳ Загрузка ${file.name}...`;
-          const url = await uploadFile(file);
-          document.getElementById('embedImage').value = url;
-          document.getElementById('imageFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
-          updatePreview();
-        } catch (error) {
-          document.getElementById('imageFileName').textContent = `❌ Ошибка: ${error.message}`;
-          showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
+        const url = await uploadFile(file);
+        console.log('✅ Файл загружен, URL получен:', url);
+        
+        // Обновляем скрытое поле
+        const imageInput = document.getElementById('embedImage');
+        if (imageInput) {
+          imageInput.value = url;
+          console.log('✅ Скрытое поле embedImage обновлено:', imageInput.value);
+        } else {
+          console.error('❌ Не найдено поле embedImage!');
         }
+        
+        document.getElementById('imageFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+        
+        // Обновляем предпросмотр
+        if (typeof updatePreview === 'function') {
+          updatePreview();
+        }
+        
         showMessage('success', '✅ Изображение загружено!');
       } catch (error) {
-        console.error('Upload error:', error);
-        showMessage('error', '❌ Ошибка обработки изображения: ' + error.message);
-        document.getElementById('imageFileName').textContent = '';
+        console.error('❌ Ошибка загрузки файла:', error);
+        document.getElementById('imageFileName').textContent = `❌ Ошибка: ${error.message}`;
+        showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
         e.target.value = '';
       }
     });
@@ -987,30 +989,33 @@
         return;
       }
       
-      if (file.size > 2 * 1024 * 1024) {
-        showMessage('error', '❌ Файл слишком большой (макс. 2 МБ). Используйте URL для больших файлов или загрузите на imgur.com');
-        e.target.value = '';
-        return;
-      }
-      
-      document.getElementById('thumbnailFileName').textContent = `⏳ Обработка ${file.name}...`;
+      document.getElementById('thumbnailFileName').textContent = `⏳ Загрузка ${file.name}...`;
       
       try {
-        try {
-          document.getElementById('thumbnailFileName').textContent = `⏳ Загрузка ${file.name}...`;
-          const url = await uploadFile(file);
-          document.getElementById('embedThumbnail').value = url;
-          document.getElementById('thumbnailFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
-          updatePreview();
-        } catch (error) {
-          document.getElementById('thumbnailFileName').textContent = `❌ Ошибка: ${error.message}`;
-          showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
+        const url = await uploadFile(file);
+        console.log('✅ Файл загружен, URL получен:', url);
+        
+        // Обновляем скрытое поле
+        const thumbnailInput = document.getElementById('embedThumbnail');
+        if (thumbnailInput) {
+          thumbnailInput.value = url;
+          console.log('✅ Скрытое поле embedThumbnail обновлено:', thumbnailInput.value);
+        } else {
+          console.error('❌ Не найдено поле embedThumbnail!');
         }
+        
+        document.getElementById('thumbnailFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+        
+        // Обновляем предпросмотр
+        if (typeof updatePreview === 'function') {
+          updatePreview();
+        }
+        
         showMessage('success', '✅ Миниатюра загружена!');
       } catch (error) {
-        console.error('Upload error:', error);
-        showMessage('error', '❌ Ошибка обработки изображения: ' + error.message);
-        document.getElementById('thumbnailFileName').textContent = '';
+        console.error('❌ Ошибка загрузки файла:', error);
+        document.getElementById('thumbnailFileName').textContent = `❌ Ошибка: ${error.message}`;
+        showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
         e.target.value = '';
       }
     });

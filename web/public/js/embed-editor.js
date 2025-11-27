@@ -285,10 +285,16 @@ function getEmbedData() {
   // Используем картинку из основного поля или из блоков правил
   // Discord не принимает data URL (base64), только обычные URL
   const image = imageEl ? imageEl.value.trim() : '';
+  console.log('🔍 Чтение значения из поля embedImage:', image);
+  
   if (image && !image.startsWith('data:')) {
     const absoluteUrl = getAbsoluteUrl(image);
+    console.log('🔍 Преобразованный URL изображения:', absoluteUrl);
     if (absoluteUrl && isValidUrl(absoluteUrl)) {
       embedData.image = { url: absoluteUrl };
+      console.log('✅ URL изображения добавлен в embed:', absoluteUrl);
+    } else {
+      console.warn('❌ Невалидный URL изображения, пропускаем:', image);
     }
   } else if (!image) {
     // Проверяем блоки правил на наличие картинки
@@ -306,10 +312,16 @@ function getEmbedData() {
   // Используем иконку из основного поля или из блоков правил
   // Discord не принимает data URL (base64), только обычные URL
   const thumbnail = thumbnailEl ? thumbnailEl.value.trim() : '';
+  console.log('🔍 Чтение значения из поля embedThumbnail:', thumbnail);
+  
   if (thumbnail && !thumbnail.startsWith('data:')) {
     const absoluteUrl = getAbsoluteUrl(thumbnail);
+    console.log('🔍 Преобразованный URL иконки:', absoluteUrl);
     if (absoluteUrl && isValidUrl(absoluteUrl)) {
       embedData.thumbnail = { url: absoluteUrl };
+      console.log('✅ URL иконки добавлен в embed:', absoluteUrl);
+    } else {
+      console.warn('❌ Невалидный URL иконки, пропускаем:', thumbnail);
     }
   } else if (!thumbnail) {
     // Проверяем блоки правил на наличие иконки
