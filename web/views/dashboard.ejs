@@ -135,6 +135,17 @@
       justify-content: center;
       font-size: 1rem;
       flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+    
+    .sidebar-nav-item-icon svg {
+      width: 100%;
+      height: 100%;
+      stroke: currentColor;
+    }
+    
+    .sidebar-nav-item.active .sidebar-nav-item-icon {
+      color: var(--text-primary);
     }
     
     .sidebar-nav-item-text {
@@ -402,6 +413,8 @@
       position: sticky;
       top: 2rem;
       max-height: calc(100vh - 200px);
+      display: flex;
+      flex-direction: column;
     }
     
     .preview-panel-fixed::-webkit-scrollbar {
@@ -1172,7 +1185,7 @@
           <% } %>
         </div>
         <div class="sidebar-user-name">
-          <%= user ? user.username : 'Гость' %>
+          <%= user ? user.username : 'Бот' %>
         </div>
       </div>
       
@@ -1181,7 +1194,15 @@
         <div class="sidebar-nav-category">
           <div class="sidebar-nav-category-title">ОБЩЕЕ</div>
           <div class="sidebar-nav-item active">
-            <div class="sidebar-nav-item-icon">📄</div>
+            <div class="sidebar-nav-item-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
             <div class="sidebar-nav-item-text">Embed-сообщения</div>
           </div>
         </div>
@@ -1192,7 +1213,7 @@
     <!-- Основная область редактора -->
     <div class="main-content">
       <div class="editor-toolbar">
-        <h1>🎨 Редактор Embed сообщений</h1>
+        <h1>Редактор Embed сообщений</h1>
         <div class="editor-toolbar-server-selector">
           <% if (guilds.length > 0) { %>
             <select id="serverSelectToolbar" onchange="handleServerSelect(this.value)">
@@ -1209,8 +1230,8 @@
           <% } %>
         </div>
         <div class="editor-toolbar-actions">
-          <button type="button" class="btn btn-secondary" onclick="resetEmbed()">🔄 Сбросить</button>
-          <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="sendEmbed()">📤 Отправить</button>
+          <button type="button" class="btn btn-secondary" onclick="resetEmbed()">Сбросить</button>
+          <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="sendEmbed()">Отправить</button>
         </div>
       </div>
       
@@ -1223,29 +1244,29 @@
           <div class="editor-panel-content">
           
           <div class="editor-section">
-            <label>📝 Заголовок</label>
+            <label>Заголовок</label>
             <input type="text" id="embedTitle" class="input-field" placeholder="Введите заголовок..." maxlength="256">
           </div>
           
           <div class="editor-section">
-            <label>📄 Описание</label>
+            <label>Описание</label>
             <textarea id="embedDescription" class="textarea-field" rows="6" placeholder="Введите основной текст..." maxlength="4096"></textarea>
           </div>
           
           <!-- Блоки правил -->
           <div class="editor-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <label style="margin: 0;">📜 Блоки правил (опционально)</label>
-              <button type="button" class="btn btn-secondary" onclick="toggleRulesBlocks()" id="toggleRulesBtn">➕ Добавить блоки правил</button>
+              <label style="margin: 0;">Блоки правил (опционально)</label>
+              <button type="button" class="btn btn-secondary" onclick="toggleRulesBlocks()" id="toggleRulesBtn">Добавить блоки правил</button>
             </div>
             <div id="rulesBlocksContainer" style="display: none; margin-top: 1rem;">
               <div id="rulesBlocksList" class="rules-blocks-list"></div>
-              <button type="button" class="btn btn-success" onclick="addRulesBlock()" style="margin-top: 1rem; width: 100%;">➕ Добавить блок правил</button>
+              <button type="button" class="btn btn-success" onclick="addRulesBlock()" style="margin-top: 1rem; width: 100%;">Добавить блок правил</button>
             </div>
           </div>
           
           <div class="editor-section">
-            <label>🎨 Цвет</label>
+            <label>Цвет</label>
             <div class="color-picker">
               <input type="color" id="embedColor" value="#5865F2">
               <span id="colorHex">#5865F2</span>
@@ -1325,12 +1346,12 @@
           </div>
           
           <div class="editor-section">
-            <label>📋 Футер</label>
+            <label>Футер</label>
             <input type="text" id="embedFooter" class="input-field" placeholder="Текст внизу сообщения" maxlength="2048">
           </div>
           
           <div class="editor-section">
-            <label>⏰ Временная метка</label>
+            <label>Временная метка</label>
             <label class="checkbox-label">
               <input type="checkbox" id="embedTimestamp" checked>
               <span>Показать текущее время</span>
@@ -1342,7 +1363,7 @@
         
         <!-- Панель предпросмотра (справа) -->
         <div class="preview-panel-fixed">
-          <h3>👁️ Предпросмотр</h3>
+          <h3>Предпросмотр</h3>
           <div class="discord-preview">
             <div class="discord-message">
               <div class="message-avatar">
@@ -1723,7 +1744,7 @@
         renderRulesBlocks();
       } else {
         container.style.display = 'none';
-        btn.textContent = '➕ Добавить блоки правил';
+        btn.textContent = 'Добавить блоки правил';
       }
     }
     
@@ -1867,7 +1888,7 @@
             <button type="button" class="rule-block-remove-btn" onclick="removeRulesBlock(${block.id})">🗑️ Удалить блок</button>
           </div>
           
-          <button type="button" class="add-rule-to-block-btn" onclick="addRuleToBlock(${block.id})">➕ Добавить правило в этот блок</button>
+          <button type="button" class="add-rule-to-block-btn" onclick="addRuleToBlock(${block.id})">Добавить правило в этот блок</button>
           
           <div class="rule-block-rules">
             ${(block.rules && block.rules.length > 0) ? '' : `
@@ -1929,7 +1950,7 @@
               <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">💡 Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
             <div class="rule-block-media-field">
-              <label>🎨 Иконка:</label>
+              <label>Иконка:</label>
               <input type="hidden" 
                      id="block-icon-${block.id}"
                      value="${escapeHtml(block.icon || '')}">

@@ -6,16 +6,14 @@
           <a href="/">🤖 Discord Bot</a>
         </div>
         <ul class="nav-menu">
-          <li><a href="/" class="<%= page === 'home' ? 'active' : '' %>">Главная</a></li>
-          <li><a href="/dashboard" class="<%= page === 'dashboard' ? 'active' : '' %>">🎨 Панель управления</a></li>
-          <li><a href="/docs" class="<%= page === 'docs' ? 'active' : '' %>">Документация</a></li>
+          <li><a href="/dashboard" class="<%= page === 'dashboard' ? 'active' : '' %>">Панель управления</a></li>
         </ul>
       </div>
       <div class="user-info">
         <% if (user) { %>
           <span>👤 <%= user.username %></span>
         <% } else { %>
-          <span>👤 Гость</span>
+          <span>🤖 Бот</span>
         <% } %>
       </div>
     </nav>

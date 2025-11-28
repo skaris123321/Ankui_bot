@@ -209,6 +209,12 @@
   padding: 2rem;
   text-align: center;
   color: #72767D;
+  font-size: 0.875rem;
+  border-left: 4px solid rgba(255, 255, 255, 0.1);
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .embed-author {
