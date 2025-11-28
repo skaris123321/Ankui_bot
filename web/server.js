@@ -571,6 +571,67 @@ app.post('/api/edit-message', async (req, res) => {
   }
 });
 
+// API для удаления сообщения
+app.post('/api/delete-message', async (req, res) => {
+  const { channelId, messageId } = req.body;
+  
+  if (!channelId || !messageId) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Не указан канал или ID сообщения' 
+    });
+  }
+  
+  try {
+    // Получаем клиента бота
+    const client = require('../bot/client');
+    
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Бот не подключен к Discord' 
+      });
+    }
+    
+    // Получаем канал
+    const channel = await client.channels.fetch(channelId);
+    
+    if (!channel || !channel.isTextBased()) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Канал не найден или не является текстовым' 
+      });
+    }
+    
+    // Получаем сообщение
+    const message = await channel.messages.fetch(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Сообщение не найдено' 
+      });
+    }
+    
+    console.log('🗑️ Удаление сообщения в Discord:', messageId);
+    
+    // Удаляем сообщение
+    await message.delete();
+    
+    res.json({ 
+      success: true, 
+      message: 'Сообщение успешно удалено!',
+      messageId: messageId
+    });
+  } catch (error) {
+    console.error('Ошибка удаления сообщения:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка удаления сообщения' 
+    });
+  }
+});
+
 // Запуск сервера
 app.listen(PORT, () => {
   console.log(`\n✅ Веб-панель управления запущена!`);

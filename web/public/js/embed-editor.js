@@ -479,111 +479,8 @@ async function sendEmbed() {
       return encodeUrl(absoluteUrl);
     }
     
-    for (let i = 0; i < rulesBlocks.length; i++) {
-      const block = rulesBlocks[i];
-      
-      // Формируем описание из правил блока (формат как в Roshan)
-      let descriptionText = '';
-      if (block.rules && block.rules.length > 0) {
-        block.rules.forEach((rule, index) => {
-          const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
-          const ruleDescription = rule.description || '';
-          const punishmentText = rule.punishment ? ` | Наказание: **${rule.punishment}**` : '';
-          const durationText = rule.duration ? ` (Длительность: ${rule.duration})` : '';
-          
-          if (ruleDescription) {
-            // Формат: **Правило - 2.1:** Описание | Наказание: **Варн / Мут**
-            descriptionText += `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
-            
-            // Добавляем пустую строку между правилами, кроме последнего
-            if (index < block.rules.length - 1) {
-              descriptionText += '\n\n';
-            }
-          }
-        });
-      }
-      
-      // Создаём embed для блока
-      const blockEmbed = {
-        title: block.title || baseEmbedData.title || 'Правила сервера',
-        description: descriptionText.trim() || baseEmbedData.description || '',
-        color: baseColor,
-        timestamp: baseEmbedData.timestamp
-      };
-      
-      // Если нет описания, но есть картинка или заголовок, всё равно отправляем
-      if (!blockEmbed.description && !block.image && !block.title) {
-        // Пропускаем пустые блоки
-        continue;
-      }
-      
-      // Добавляем картинку (сверху embed)
-      // Discord не принимает data URL (base64), только обычные URL (http/https)
-      if (block.image) {
-        const originalImageUrl = block.image;
-        if (originalImageUrl.startsWith('data:')) {
-          warnings.push(`Блок ${i + 1}: Картинка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
-        } else {
-          // Преобразуем относительные URL в абсолютные
-          const absoluteUrl = getAbsoluteUrl(originalImageUrl);
-          console.log(`Блок ${i + 1} - Оригинальный URL картинки:`, originalImageUrl);
-          console.log(`Блок ${i + 1} - Преобразованный URL:`, absoluteUrl);
-          if (absoluteUrl && isValidUrl(absoluteUrl)) {
-            blockEmbed.image = { url: absoluteUrl };
-            console.log(`✅ Блок ${i + 1} - URL картинки валиден:`, absoluteUrl);
-          } else {
-            console.error(`❌ Блок ${i + 1} - Невалидный URL картинки:`, originalImageUrl, '->', absoluteUrl);
-            warnings.push(`Блок ${i + 1}: Неверный URL картинки`);
-          }
-        }
-      } else if (baseEmbedData.image && baseEmbedData.image.url) {
-        if (!baseEmbedData.image.url.startsWith('data:')) {
-          const absoluteUrl = getAbsoluteUrl(baseEmbedData.image.url);
-          if (absoluteUrl && isValidUrl(absoluteUrl)) {
-            blockEmbed.image = { url: absoluteUrl };
-          }
-        }
-      }
-      
-      // Добавляем иконку (thumbnail)
-      // Discord не принимает data URL (base64), только обычные URL (http/https)
-      if (block.icon) {
-        const originalIconUrl = block.icon;
-        if (originalIconUrl.startsWith('data:')) {
-          warnings.push(`Блок ${i + 1}: Иконка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
-        } else {
-          // Преобразуем относительные URL в абсолютные
-          const absoluteUrl = getAbsoluteUrl(originalIconUrl);
-          console.log(`Блок ${i + 1} - Оригинальный URL иконки:`, originalIconUrl);
-          console.log(`Блок ${i + 1} - Преобразованный URL:`, absoluteUrl);
-          if (absoluteUrl && isValidUrl(absoluteUrl)) {
-            blockEmbed.thumbnail = { url: absoluteUrl };
-            console.log(`✅ Блок ${i + 1} - URL иконки валиден:`, absoluteUrl);
-          } else {
-            console.error(`❌ Блок ${i + 1} - Невалидный URL иконки:`, originalIconUrl, '->', absoluteUrl);
-            warnings.push(`Блок ${i + 1}: Неверный URL иконки`);
-          }
-        }
-      } else if (baseEmbedData.thumbnail && baseEmbedData.thumbnail.url) {
-        if (!baseEmbedData.thumbnail.url.startsWith('data:')) {
-          const absoluteUrl = getAbsoluteUrl(baseEmbedData.thumbnail.url);
-          if (absoluteUrl && isValidUrl(absoluteUrl)) {
-            blockEmbed.thumbnail = { url: absoluteUrl };
-          }
-        }
-      }
-      
-      // Добавляем автора и футер из базового embed
-      if (baseEmbedData.author) {
-        blockEmbed.author = baseEmbedData.author;
-      }
-      if (baseEmbedData.footer) {
-        blockEmbed.footer = baseEmbedData.footer;
-      }
-      
-      // Логируем embed перед отправкой
-      console.log(`📤 Отправка блока ${i + 1}:`, JSON.stringify(blockEmbed, null, 2));
-      
+    // Функция для отправки одного embed
+    async function sendSingleEmbed(embed) {
       try {
         const response = await fetch('/api/send-embed', {
           method: 'POST',
@@ -592,7 +489,7 @@ async function sendEmbed() {
           },
           body: JSON.stringify({
             channelId: channelId,
-            embed: blockEmbed
+            embed: embed
           })
         });
         
@@ -602,20 +499,129 @@ async function sendEmbed() {
           successCount++;
           // Сохраняем информацию о отправленном сообщении
           if (result.messageId && result.channelId) {
-            saveSentMessage(result.messageId, result.channelId, blockEmbed);
+            saveSentMessage(result.messageId, result.channelId, embed);
           }
+          return true;
         } else {
           errorCount++;
-          console.error(`Ошибка отправки блока ${i + 1}:`, result.message);
+          console.error('Ошибка отправки embed:', result.message);
+          return false;
         }
       } catch (error) {
         errorCount++;
-        console.error(`Ошибка отправки блока ${i + 1}:`, error);
+        console.error('Ошибка отправки embed:', error);
+        return false;
+      }
+    }
+    
+    for (let i = 0; i < rulesBlocks.length; i++) {
+      const block = rulesBlocks[i];
+      
+      // Сначала отправляем основное embed с картинкой (если есть картинка или заголовок)
+      if (block.image || block.title || baseEmbedData.title || baseEmbedData.description) {
+        const headerEmbed = {
+          title: block.title || baseEmbedData.title || 'Правила сервера',
+          description: baseEmbedData.description || '',
+          color: baseColor,
+          timestamp: baseEmbedData.timestamp
+        };
+        
+        // Добавляем картинку (сверху embed)
+        if (block.image) {
+          const originalImageUrl = block.image;
+          if (originalImageUrl.startsWith('data:')) {
+            warnings.push(`Блок ${i + 1}: Картинка пропущена (Discord не поддерживает data URL. Используйте загрузку файла)`);
+          } else {
+            const absoluteUrl = getAbsoluteUrl(originalImageUrl);
+            if (absoluteUrl && isValidUrl(absoluteUrl)) {
+              headerEmbed.image = { url: absoluteUrl };
+            } else {
+              warnings.push(`Блок ${i + 1}: Неверный URL картинки`);
+            }
+          }
+        } else if (baseEmbedData.image && baseEmbedData.image.url) {
+          if (!baseEmbedData.image.url.startsWith('data:')) {
+            const absoluteUrl = getAbsoluteUrl(baseEmbedData.image.url);
+            if (absoluteUrl && isValidUrl(absoluteUrl)) {
+              headerEmbed.image = { url: absoluteUrl };
+            }
+          }
+        }
+        
+        // Добавляем иконку (thumbnail)
+        if (block.icon) {
+          const originalIconUrl = block.icon;
+          if (!originalIconUrl.startsWith('data:')) {
+            const absoluteUrl = getAbsoluteUrl(originalIconUrl);
+            if (absoluteUrl && isValidUrl(absoluteUrl)) {
+              headerEmbed.thumbnail = { url: absoluteUrl };
+            }
+          }
+        } else if (baseEmbedData.thumbnail && baseEmbedData.thumbnail.url) {
+          if (!baseEmbedData.thumbnail.url.startsWith('data:')) {
+            const absoluteUrl = getAbsoluteUrl(baseEmbedData.thumbnail.url);
+            if (absoluteUrl && isValidUrl(absoluteUrl)) {
+              headerEmbed.thumbnail = { url: absoluteUrl };
+            }
+          }
+        }
+        
+        // Добавляем автора и футер из базового embed
+        if (baseEmbedData.author) {
+          headerEmbed.author = baseEmbedData.author;
+        }
+        if (baseEmbedData.footer) {
+          headerEmbed.footer = baseEmbedData.footer;
+        }
+        
+        // Отправляем основное embed только если есть что показать
+        if (headerEmbed.title || headerEmbed.description || headerEmbed.image) {
+          console.log(`📤 Отправка заголовка блока ${i + 1}:`, JSON.stringify(headerEmbed, null, 2));
+          await sendSingleEmbed(headerEmbed);
+          await new Promise(resolve => setTimeout(resolve, 500)); // Задержка между сообщениями
+        }
       }
       
-      // Задержка между отправками, чтобы не перегружать Discord API (rate limiting)
-      if (i < rulesBlocks.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000));
+      // Теперь отправляем каждое правило как отдельное сообщение
+      if (block.rules && block.rules.length > 0) {
+        for (let j = 0; j < block.rules.length; j++) {
+          const rule = block.rules[j];
+          
+          if (!rule.description || rule.description.trim() === '') {
+            continue; // Пропускаем пустые правила
+          }
+          
+          // Формируем описание для одного правила
+          const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
+          const ruleDescription = rule.description || '';
+          const punishmentText = rule.punishment ? ` | Наказание: **${rule.punishment}**` : '';
+          const durationText = rule.duration ? ` (Длительность: ${rule.duration})` : '';
+          
+          const descriptionText = `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
+          
+          // Создаём embed для одного правила
+          const ruleEmbed = {
+            description: descriptionText.trim(),
+            color: baseColor,
+            timestamp: baseEmbedData.timestamp
+          };
+          
+          // Добавляем автора и футер из базового embed
+          if (baseEmbedData.author) {
+            ruleEmbed.author = baseEmbedData.author;
+          }
+          if (baseEmbedData.footer) {
+            ruleEmbed.footer = baseEmbedData.footer;
+          }
+          
+          console.log(`📤 Отправка правила ${j + 1} из блока ${i + 1}:`, JSON.stringify(ruleEmbed, null, 2));
+          await sendSingleEmbed(ruleEmbed);
+          
+          // Задержка между отправками правил (кроме последнего)
+          if (j < block.rules.length - 1 || i < rulesBlocks.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+          }
+        }
       }
     }
     
@@ -929,9 +935,14 @@ function updateSentMessagesUI() {
           <strong>${preview}</strong>
           <span class="sent-message-time">${timeStr}</span>
         </div>
-        <button class="btn-edit-message" onclick="editMessage('${msg.messageId}', '${msg.channelId}')">
-          ✏️ Редактировать
-        </button>
+        <div class="sent-message-actions">
+          <button class="btn-edit-message" onclick="editMessage('${msg.messageId}', '${msg.channelId}')">
+            ✏️
+          </button>
+          <button class="btn-delete-message" onclick="deleteMessage('${msg.messageId}', '${msg.channelId}')">
+            🗑️
+          </button>
+        </div>
       </div>
     `;
   }).join('');
@@ -1098,6 +1109,42 @@ async function saveMessageChanges(messageId, channelId) {
   } catch (error) {
     console.error('Error:', error);
     showMessage('error', '❌ Не удалось отредактировать сообщение');
+  }
+}
+
+// Удаление сообщения
+async function deleteMessage(messageId, channelId) {
+  if (!confirm('Вы уверены, что хотите удалить это сообщение? Это действие нельзя отменить.')) {
+    return;
+  }
+  
+  try {
+    const response = await fetch('/api/delete-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channelId: channelId,
+        messageId: messageId
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Удаляем сообщение из массива
+      sentMessages = sentMessages.filter(msg => !(msg.messageId === messageId && msg.channelId === channelId));
+      localStorage.setItem('sentMessages', JSON.stringify(sentMessages));
+      updateSentMessagesUI();
+      
+      showMessage('success', '✅ Сообщение успешно удалено!');
+    } else {
+      showMessage('error', `❌ Ошибка: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    showMessage('error', '❌ Не удалось удалить сообщение');
   }
 }
 

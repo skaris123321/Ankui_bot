@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="/css/embed-editor.css">
   <style>
     :root {
-      --sidebar-width: 220px;
-      --preview-width: 320px;
+      --sidebar-width: 180px;
+      --preview-width: 280px;
       --border-radius: 12px;
       --transition: all 0.2s ease;
     }
@@ -24,7 +24,7 @@
     
     /* Боковая панель в стиле ProBot */
     .sidebar {
-      width: 240px;
+      width: var(--sidebar-width);
       background: #1E1F22;
       border-right: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
@@ -296,9 +296,10 @@
     }
     
     .sent-messages-list {
-      max-height: 300px;
+      max-height: 250px;
       overflow-y: auto;
       margin-top: 0.5rem;
+      padding: 0 0.5rem;
     }
     
     .sent-messages-list::-webkit-scrollbar {
@@ -314,8 +315,8 @@
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.08);
       border-radius: var(--border-radius);
-      padding: 0.75rem;
-      margin-bottom: 0.5rem;
+      padding: 0.5rem;
+      margin-bottom: 0.4rem;
       transition: var(--transition);
     }
     
@@ -327,37 +328,61 @@
     .sent-message-preview {
       display: flex;
       flex-direction: column;
-      gap: 0.25rem;
-      margin-bottom: 0.5rem;
+      gap: 0.2rem;
+      margin-bottom: 0.4rem;
     }
     
     .sent-message-preview strong {
       color: var(--text-primary);
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       font-weight: 600;
+      line-height: 1.3;
     }
     
     .sent-message-time {
       color: var(--text-secondary);
-      font-size: 0.7rem;
+      font-size: 0.65rem;
     }
     
-    .btn-edit-message {
-      width: 100%;
-      padding: 0.5rem;
-      background: rgba(88, 101, 242, 0.2);
-      border: 1px solid rgba(88, 101, 242, 0.4);
-      border-radius: var(--border-radius);
-      color: var(--primary-color);
-      font-size: 0.8rem;
+    .sent-message-actions {
+      display: flex;
+      gap: 0.4rem;
+      margin-top: 0.4rem;
+    }
+    
+    .btn-edit-message,
+    .btn-delete-message {
+      flex: 1;
+      padding: 0.4rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.7rem;
       font-weight: 500;
       cursor: pointer;
       transition: var(--transition);
+      border: none;
+    }
+    
+    .btn-edit-message {
+      background: rgba(88, 101, 242, 0.2);
+      border: 1px solid rgba(88, 101, 242, 0.4);
+      color: var(--primary-color);
     }
     
     .btn-edit-message:hover {
       background: rgba(88, 101, 242, 0.3);
       border-color: var(--primary-color);
+      transform: translateY(-1px);
+    }
+    
+    .btn-delete-message {
+      background: rgba(237, 66, 69, 0.2);
+      border: 1px solid rgba(237, 66, 69, 0.4);
+      color: #ED4245;
+    }
+    
+    .btn-delete-message:hover {
+      background: rgba(237, 66, 69, 0.3);
+      border-color: #ED4245;
       transform: translateY(-1px);
     }
     
