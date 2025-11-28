@@ -853,7 +853,27 @@ if (document.getElementById('embedPreview')) {
 }
 
 // Хранение отправленных сообщений
-let sentMessages = JSON.parse(localStorage.getItem('sentMessages') || '[]');
+let sentMessages = [];
+
+// Загрузка отправленных сообщений из localStorage
+function loadSentMessages() {
+  try {
+    const stored = localStorage.getItem('sentMessages');
+    if (stored) {
+      sentMessages = JSON.parse(stored);
+      console.log('📨 Загружено отправленных сообщений:', sentMessages.length);
+    } else {
+      sentMessages = [];
+      console.log('📨 Нет сохраненных сообщений');
+    }
+  } catch (error) {
+    console.error('❌ Ошибка загрузки отправленных сообщений:', error);
+    sentMessages = [];
+  }
+}
+
+// Загружаем при инициализации
+loadSentMessages();
 
 // Сохранение отправленного сообщения
 function saveSentMessage(messageId, channelId, embedData) {
@@ -877,10 +897,23 @@ function saveSentMessage(messageId, channelId, embedData) {
 // Обновление UI для отправленных сообщений
 function updateSentMessagesUI() {
   const container = document.getElementById('sentMessagesContainer');
-  if (!container) return;
+  if (!container) {
+    console.log('⚠️ Контейнер sentMessagesContainer не найден');
+    // Пробуем еще раз через небольшую задержку
+    setTimeout(() => {
+      const retryContainer = document.getElementById('sentMessagesContainer');
+      if (retryContainer) {
+        console.log('✅ Контейнер найден при повторной попытке');
+        updateSentMessagesUI();
+      }
+    }, 500);
+    return;
+  }
+  
+  console.log('📨 Обновление списка отправленных сообщений. Всего:', sentMessages.length);
   
   if (sentMessages.length === 0) {
-    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">Нет отправленных сообщений</p>';
+    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem; font-size: 0.85rem;">Нет отправленных сообщений</p>';
     return;
   }
   
@@ -1069,9 +1102,26 @@ async function saveMessageChanges(messageId, channelId) {
 }
 
 // Инициализация UI отправленных сообщений при загрузке страницы
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', updateSentMessagesUI);
-} else {
-  updateSentMessagesUI();
+function initSentMessages() {
+  // Ждем, пока DOM полностью загрузится
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(updateSentMessagesUI, 100);
+    });
+  } else {
+    // Если DOM уже загружен, ждем немного для гарантии
+    setTimeout(updateSentMessagesUI, 100);
+  }
 }
+
+// Вызываем инициализацию
+initSentMessages();
+
+// Также обновляем при изменении localStorage (если открыто несколько вкладок)
+window.addEventListener('storage', (e) => {
+  if (e.key === 'sentMessages') {
+    sentMessages = JSON.parse(e.newValue || '[]');
+    updateSentMessagesUI();
+  }
+});
 

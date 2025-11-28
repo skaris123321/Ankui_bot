@@ -9,8 +9,8 @@
   <link rel="stylesheet" href="/css/embed-editor.css">
   <style>
     :root {
-      --sidebar-width: 260px;
-      --preview-width: 380px;
+      --sidebar-width: 220px;
+      --preview-width: 320px;
       --border-radius: 12px;
       --transition: all 0.2s ease;
     }
@@ -22,15 +22,15 @@
       background: var(--background);
     }
     
-    /* Улучшенная боковая панель */
+    /* Боковая панель в стиле ProBot */
     .sidebar {
-      width: var(--sidebar-width);
-      background: var(--background-dark);
-      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      width: 240px;
+      background: #1E1F22;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
       display: flex;
       flex-direction: column;
       overflow-y: auto;
-      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+      overflow-x: hidden;
     }
     
     .sidebar::-webkit-scrollbar {
@@ -50,24 +50,100 @@
       background: rgba(255, 255, 255, 0.2);
     }
     
-    .sidebar-header {
-      padding: 1.25rem 1rem;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      background: rgba(0, 0, 0, 0.2);
+    /* Профиль пользователя вверху */
+    .sidebar-user-profile {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
     }
     
-    .sidebar-header h2 {
-      margin: 0;
-      font-size: 1rem;
+    .sidebar-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-user-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .sidebar-user-name {
+      flex: 1;
+      min-width: 0;
       font-weight: 600;
       color: var(--text-primary);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    /* Категории навигации */
+    .sidebar-nav-category {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0;
+    }
+    
+    .sidebar-nav-category-title {
+      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #8E9297;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      color: #B9BBBE;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+      border-radius: 4px;
+      margin: 0.125rem 0.5rem;
+    }
+    
+    .sidebar-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item.active {
+      background: rgba(88, 101, 242, 0.15);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-nav-item-text {
+      flex: 1;
+    }
+    
     .sidebar-content {
       flex: 1;
-      padding: 0.75rem;
+      padding: 0;
     }
     
     .server-list-item {
@@ -205,6 +281,8 @@
       margin-top: 1rem;
       padding-top: 1rem;
       border-top: 1px solid rgba(255, 255, 255, 0.1);
+      display: block !important;
+      visibility: visible !important;
     }
     
     .sent-messages-sidebar label {
@@ -300,6 +378,7 @@
       align-items: center;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       z-index: 10;
+      gap: 1.5rem;
     }
     
     .editor-toolbar h1 {
@@ -307,6 +386,23 @@
       font-size: 1.25rem;
       font-weight: 600;
       color: var(--text-primary);
+      flex: 1;
+    }
+    
+    .editor-toolbar-server-selector {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    
+    .editor-toolbar-server-selector select {
+      padding: 0.5rem 1rem;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      min-width: 180px;
     }
     
     .editor-toolbar-actions {
@@ -340,9 +436,10 @@
     
     .editor-form {
       flex: 1;
-      padding: 1.5rem;
+      padding: 1.5rem 2rem;
       overflow-y: auto;
       background: var(--background);
+      min-width: 0; /* Позволяет flex-элементу сжиматься */
     }
     
     .editor-form::-webkit-scrollbar {
@@ -1127,51 +1224,31 @@
   <%- include('partials/header') %>
   
   <main class="dashboard-container">
-    <!-- Боковая панель навигации (как в Probot) -->
+    <!-- Боковая панель навигации в стиле ProBot -->
     <div class="sidebar">
-      <div class="sidebar-header">
-        <h2>📋 Серверы</h2>
+      <!-- Профиль пользователя -->
+      <div class="sidebar-user-profile">
+        <div class="sidebar-user-avatar">
+          <% if (user && user.avatar) { %>
+            <img src="<%= user.avatar %>" alt="<%= user.username %>">
+          <% } else { %>
+            👤
+          <% } %>
+        </div>
+        <div class="sidebar-user-name">
+          <%= user ? user.username : 'Гость' %>
+        </div>
       </div>
+      
       <div class="sidebar-content">
-        <% if (guilds.length > 0) { %>
-          <div id="serverListSidebar">
-            <% guilds.forEach(guild => { %>
-              <div class="server-list-item" data-guild-id="<%= guild.id %>" onclick="selectGuild('<%= guild.id %>', '<%= guild.name %>')">
-                <div class="server-list-icon">
-                  <% if (guild.icon) { %>
-                    <img src="<%= guild.icon %>" alt="<%= guild.name %>">
-                  <% } else { %>
-                    <%= guild.name.charAt(0).toUpperCase() %>
-                  <% } %>
-                </div>
-                <div class="server-list-info">
-                  <div class="server-list-name"><%= guild.name %></div>
-                  <div class="server-list-members"><%= guild.memberCount || 0 %> участников</div>
-                </div>
-              </div>
-            <% }); %>
+        <!-- Категория ОБЩЕЕ -->
+        <div class="sidebar-nav-category">
+          <div class="sidebar-nav-category-title">ОБЩЕЕ</div>
+          <div class="sidebar-nav-item active">
+            <div class="sidebar-nav-item-icon">📄</div>
+            <div class="sidebar-nav-item-text">Embed-сообщения</div>
           </div>
-          
-          <div class="channel-selector-sidebar" id="channelSelectorSidebar" style="display: none;">
-            <label>Канал для отправки:</label>
-            <select id="targetChannelSidebar">
-              <option value="">Выберите канал...</option>
-            </select>
-          </div>
-          
-          <!-- Секция отправленных сообщений -->
-          <div class="sent-messages-sidebar">
-            <label>📨 Отправленные сообщения:</label>
-            <div id="sentMessagesContainer" class="sent-messages-list">
-              <p style="color: var(--text-secondary); text-align: center; padding: 1rem; font-size: 0.85rem;">Нет отправленных сообщений</p>
-            </div>
-          </div>
-        <% } else { %>
-          <div class="info-box">
-            <p>⚠️ Бот не подключен ни к одному серверу.</p>
-            <a href="https://discord.com/api/oauth2/authorize?client_id=1443654730239709206&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary">Пригласить бота</a>
-          </div>
-        <% } %>
+        </div>
       </div>
     </div>
     
@@ -1179,6 +1256,21 @@
     <div class="main-content">
       <div class="editor-toolbar">
         <h1>🎨 Редактор Embed сообщений</h1>
+        <div class="editor-toolbar-server-selector">
+          <% if (guilds.length > 0) { %>
+            <select id="serverSelectToolbar" onchange="handleServerSelect(this.value)">
+              <option value="">Выберите сервер...</option>
+              <% guilds.forEach(guild => { %>
+                <option value="<%= guild.id %>" data-guild-name="<%= guild.name %>"><%= guild.name %></option>
+              <% }); %>
+            </select>
+            <select id="channelSelectToolbar" style="display: none;" onchange="handleChannelSelect(this.value)">
+              <option value="">Выберите канал...</option>
+            </select>
+          <% } else { %>
+            <a href="https://discord.com/api/oauth2/authorize?client_id=1443654730239709206&permissions=8&scope=bot%20applications.commands" target="_blank" class="btn btn-primary" style="font-size: 0.875rem; padding: 0.5rem 1rem;">Пригласить бота</a>
+          <% } %>
+        </div>
         <div class="editor-toolbar-actions">
           <button type="button" class="btn btn-secondary" onclick="resetEmbed()">🔄 Сбросить</button>
           <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="sendEmbed()">📤 Отправить</button>
@@ -1346,25 +1438,45 @@
     let selectedGuildId = null;
     let selectedChannelId = null;
     
+    // Обработчик выбора сервера из тулбара
+    async function handleServerSelect(guildId) {
+      if (!guildId) {
+        selectedGuildId = null;
+        selectedChannelId = null;
+        const channelSelect = document.getElementById('channelSelectToolbar');
+        if (channelSelect) {
+          channelSelect.style.display = 'none';
+        }
+        return;
+      }
+      
+      const serverSelect = document.getElementById('serverSelectToolbar');
+      const guildName = serverSelect.options[serverSelect.selectedIndex].dataset.guildName;
+      await selectGuild(guildId, guildName);
+      
+      // Показываем выбор канала в тулбаре
+      const channelSelect = document.getElementById('channelSelectToolbar');
+      if (channelSelect) {
+        channelSelect.style.display = 'block';
+      }
+    }
+    
+    // Обработчик выбора канала из тулбара
+    function handleChannelSelect(channelId) {
+      if (!channelId) {
+        selectedChannelId = null;
+        return;
+      }
+      
+      const channelSelect = document.getElementById('channelSelectToolbar');
+      const channelName = channelSelect.options[channelSelect.selectedIndex].textContent.replace('# ', '');
+      selectChannel(channelId, channelName);
+    }
+    
     // Выбор сервера
     async function selectGuild(guildId, guildName) {
       selectedGuildId = guildId;
       selectedChannelId = null;
-      
-      // Обновляем выделение серверов в боковой панели
-      document.querySelectorAll('.server-list-item').forEach(item => {
-        item.classList.remove('active');
-      });
-      const clickedItem = document.querySelector(`[data-guild-id="${guildId}"]`);
-      if (clickedItem) {
-        clickedItem.classList.add('active');
-      }
-      
-      // Показываем выбор канала в боковой панели
-      const channelSelector = document.getElementById('channelSelectorSidebar');
-      if (channelSelector) {
-        channelSelector.style.display = 'block';
-      }
       
       // Загружаем каналы
       try {
@@ -1372,25 +1484,22 @@
         const data = await response.json();
         
         if (data.success) {
-          const channelSelect = document.getElementById('targetChannelSidebar');
-          if (channelSelect) {
-            channelSelect.innerHTML = '<option value="">Выберите канал...</option>';
+          // Обновляем select каналов в тулбаре
+          const channelSelectToolbar = document.getElementById('channelSelectToolbar');
+          if (channelSelectToolbar) {
+            channelSelectToolbar.innerHTML = '<option value="">Выберите канал...</option>';
             
             data.channels.forEach(channel => {
               const option = document.createElement('option');
               option.value = channel.id;
               option.textContent = '# ' + channel.name;
-              channelSelect.appendChild(option);
+              channelSelectToolbar.appendChild(option);
             });
             
-            channelSelect.onchange = function() {
-              if (this.value) {
-                selectChannel(this.value, this.options[this.selectedIndex].textContent.replace('# ', ''));
-              }
-            };
+            channelSelectToolbar.style.display = 'block';
           }
           
-          // Также обновляем старое поле для обратной совместимости
+          // Также обновляем старое поле для обратной совместимости (если есть)
           const oldChannelList = document.getElementById('channelList');
           if (oldChannelList) {
             oldChannelList.innerHTML = '';
@@ -1404,14 +1513,11 @@
             });
           }
         } else {
-          const oldChannelList = document.getElementById('channelList');
-          if (oldChannelList) {
-            oldChannelList.innerHTML = '<p>❌ Не удалось загрузить каналы</p>';
-          }
+          showMessage('error', '❌ Не удалось загрузить каналы');
         }
       } catch (error) {
         console.error('Ошибка загрузки каналов:', error);
-        document.getElementById('channelList').innerHTML = '<p>❌ Ошибка загрузки каналов</p>';
+        showMessage('error', '❌ Ошибка загрузки каналов');
       }
     }
     
@@ -1419,19 +1525,19 @@
     function selectChannel(channelId, channelName) {
       selectedChannelId = channelId;
       
-      // Обновляем выделение каналов (для старого интерфейса)
+      // Обновляем select в тулбаре
+      const channelSelectToolbar = document.getElementById('channelSelectToolbar');
+      if (channelSelectToolbar) {
+        channelSelectToolbar.value = channelId;
+      }
+      
+      // Обновляем выделение каналов (для старого интерфейса, если есть)
       document.querySelectorAll('.channel-item').forEach(item => {
         item.classList.remove('selected');
       });
       const clickedItem = document.querySelector(`[data-channel-id="${channelId}"]`);
       if (clickedItem) {
         clickedItem.classList.add('selected');
-      }
-      
-      // Обновляем select в боковой панели
-      const channelSelect = document.getElementById('targetChannelSidebar');
-      if (channelSelect) {
-        channelSelect.value = channelId;
       }
       
       // Показываем редактор (если он скрыт)
@@ -1486,9 +1592,9 @@
     
     // Отправка embed - переопределяем функцию из embed-editor.js
     async function sendEmbed() {
-      // Используем канал из боковой панели или старого интерфейса
-      const channelSelect = document.getElementById('targetChannelSidebar');
-      const channelId = channelSelect ? channelSelect.value : selectedChannelId;
+      // Используем канал из тулбара
+      const channelSelectToolbar = document.getElementById('channelSelectToolbar');
+      const channelId = channelSelectToolbar ? channelSelectToolbar.value : selectedChannelId;
       
       if (!channelId) {
         showMessage('error', '❌ Выберите канал для отправки!');
@@ -1509,7 +1615,7 @@
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
-            channelId: selectedChannelId,
+            channelId: channelId,
             embed: embedData
           })
         });
@@ -1518,6 +1624,10 @@
         
         if (result.success) {
           showMessage('success', '✅ Сообщение отправлено в Discord!');
+          // Обновляем список отправленных сообщений
+          if (typeof updateSentMessagesUI === 'function') {
+            updateSentMessagesUI();
+          }
         } else {
           showMessage('error', `❌ Ошибка: ${result.message}`);
         }
