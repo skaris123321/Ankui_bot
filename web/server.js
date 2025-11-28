@@ -90,14 +90,14 @@ app.get('/dashboard', async (req, res) => {
     }
     
     res.render('dashboard', {
-      user: req.session.user || { username: 'Гость', id: '0' },
+      user: req.session.user || null,
       page: 'dashboard',
       guilds: guilds
     });
   } catch (error) {
     console.error('Ошибка загрузки дашборда:', error);
     res.render('dashboard', {
-      user: req.session.user || { username: 'Гость', id: '0' },
+      user: req.session.user || null,
       page: 'dashboard',
       guilds: []
     });
