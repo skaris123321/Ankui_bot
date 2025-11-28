@@ -919,28 +919,45 @@ function updateSentMessagesUI() {
   console.log('📨 Обновление списка отправленных сообщений. Всего:', sentMessages.length);
   
   if (sentMessages.length === 0) {
-    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem; font-size: 0.85rem;">Нет отправленных сообщений</p>';
+    container.innerHTML = '<p style="color: #8E9297; text-align: center; padding: 1rem; font-size: 0.75rem;">Нет отправленных сообщений</p>';
     return;
+  }
+  
+  // Функция для экранирования HTML
+  function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
   }
   
   container.innerHTML = sentMessages.map((msg, index) => {
     const date = new Date(msg.timestamp);
-    const timeStr = date.toLocaleString('ru-RU');
+    const timeStr = date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
     const title = msg.embedData.title || 'Без заголовка';
-    const preview = title.length > 30 ? title.substring(0, 30) + '...' : title;
+    const preview = title.length > 20 ? title.substring(0, 20) + '...' : title;
+    
+    const msgId = escapeHtml(msg.messageId);
+    const chId = escapeHtml(msg.channelId);
+    const safeTitle = escapeHtml(preview);
+    const safeTime = escapeHtml(timeStr);
     
     return `
-      <div class="sent-message-item" data-message-id="${msg.messageId}" data-channel-id="${msg.channelId}">
+      <div class="sent-message-item" data-message-id="${msgId}" data-channel-id="${chId}">
         <div class="sent-message-preview">
-          <strong>${preview}</strong>
-          <span class="sent-message-time">${timeStr}</span>
+          <strong>${safeTitle}</strong>
+          <span class="sent-message-time">${safeTime}</span>
         </div>
-        <div class="sent-message-actions">
-          <button class="btn-edit-message" onclick="editMessage('${msg.messageId}', '${msg.channelId}')">
-            ✏️
+        <button class="sent-message-menu-btn" onclick="toggleMessageMenu(event, '${msgId}', '${chId}')">
+          ⋮
+        </button>
+        <div class="sent-message-menu" id="menu-${msgId}-${chId}">
+          <button class="sent-message-menu-item" onclick="editMessage('${msgId}', '${chId}'); closeAllMenus();">
+            ✏️ Изменить отправленное сообщение
           </button>
-          <button class="btn-delete-message" onclick="deleteMessage('${msg.messageId}', '${msg.channelId}')">
-            🗑️
+          <div class="sent-message-menu-divider"></div>
+          <button class="sent-message-menu-item delete" onclick="deleteMessage('${msgId}', '${chId}'); closeAllMenus();">
+            🗑️ Удалить
           </button>
         </div>
       </div>
@@ -1111,6 +1128,35 @@ async function saveMessageChanges(messageId, channelId) {
     showMessage('error', '❌ Не удалось отредактировать сообщение');
   }
 }
+
+// Управление меню сообщений
+function toggleMessageMenu(event, messageId, channelId) {
+  event.stopPropagation();
+  
+  const menuId = `menu-${messageId}-${channelId}`;
+  const menu = document.getElementById(menuId);
+  
+  if (!menu) return;
+  
+  // Закрываем все другие меню
+  closeAllMenus();
+  
+  // Переключаем текущее меню
+  menu.classList.toggle('show');
+}
+
+function closeAllMenus() {
+  document.querySelectorAll('.sent-message-menu').forEach(menu => {
+    menu.classList.remove('show');
+  });
+}
+
+// Закрываем меню при клике вне его
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.sent-message-item')) {
+    closeAllMenus();
+  }
+});
 
 // Удаление сообщения
 async function deleteMessage(messageId, channelId) {

@@ -296,10 +296,14 @@
     }
     
     .sent-messages-list {
-      max-height: 250px;
+      max-height: 300px;
       overflow-y: auto;
       margin-top: 0.5rem;
       padding: 0 0.5rem;
+    }
+    
+    .sent-messages-sidebar {
+      width: 100%;
     }
     
     .sent-messages-list::-webkit-scrollbar {
@@ -314,76 +318,117 @@
     .sent-message-item {
       background: rgba(255, 255, 255, 0.03);
       border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: var(--border-radius);
+      border-radius: 6px;
       padding: 0.5rem;
       margin-bottom: 0.4rem;
       transition: var(--transition);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
     }
     
     .sent-message-item:hover {
       background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(88, 101, 242, 0.3);
+      border-color: rgba(255, 255, 255, 0.12);
     }
     
     .sent-message-preview {
+      flex: 1;
+      min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 0.2rem;
-      margin-bottom: 0.4rem;
+      gap: 0.15rem;
     }
     
     .sent-message-preview strong {
       color: var(--text-primary);
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 600;
-      line-height: 1.3;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     
     .sent-message-time {
       color: var(--text-secondary);
-      font-size: 0.65rem;
+      font-size: 0.6rem;
     }
     
-    .sent-message-actions {
+    .sent-message-menu-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      cursor: pointer;
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+      font-size: 1rem;
+      line-height: 1;
+      transition: var(--transition);
+      flex-shrink: 0;
       display: flex;
-      gap: 0.4rem;
-      margin-top: 0.4rem;
+      align-items: center;
+      justify-content: center;
     }
     
-    .btn-edit-message,
-    .btn-delete-message {
-      flex: 1;
-      padding: 0.4rem 0.5rem;
+    .sent-message-menu-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+    
+    .sent-message-menu {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 0.25rem;
+      background: #2F3136;
+      border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 6px;
-      font-size: 0.7rem;
-      font-weight: 500;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      min-width: 180px;
+      z-index: 1000;
+      display: none;
+      overflow: hidden;
+    }
+    
+    .sent-message-menu.show {
+      display: block;
+    }
+    
+    .sent-message-menu-item {
+      padding: 0.625rem 0.75rem;
+      color: var(--text-primary);
+      font-size: 0.85rem;
       cursor: pointer;
       transition: var(--transition);
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
       border: none;
+      background: transparent;
+      width: 100%;
+      text-align: left;
     }
     
-    .btn-edit-message {
+    .sent-message-menu-item:hover {
       background: rgba(88, 101, 242, 0.2);
-      border: 1px solid rgba(88, 101, 242, 0.4);
-      color: var(--primary-color);
+      color: var(--text-primary);
     }
     
-    .btn-edit-message:hover {
-      background: rgba(88, 101, 242, 0.3);
-      border-color: var(--primary-color);
-      transform: translateY(-1px);
-    }
-    
-    .btn-delete-message {
-      background: rgba(237, 66, 69, 0.2);
-      border: 1px solid rgba(237, 66, 69, 0.4);
+    .sent-message-menu-item.delete {
       color: #ED4245;
     }
     
-    .btn-delete-message:hover {
-      background: rgba(237, 66, 69, 0.3);
-      border-color: #ED4245;
-      transform: translateY(-1px);
+    .sent-message-menu-item.delete:hover {
+      background: rgba(237, 66, 69, 0.2);
+    }
+    
+    .sent-message-menu-divider {
+      height: 1px;
+      background: rgba(255, 255, 255, 0.1);
+      margin: 0.25rem 0;
     }
     
     /* Основная область редактора */
@@ -1272,6 +1317,14 @@
           <div class="sidebar-nav-item active">
             <div class="sidebar-nav-item-icon">📄</div>
             <div class="sidebar-nav-item-text">Embed-сообщения</div>
+          </div>
+        </div>
+        
+        <!-- Секция отправленных сообщений -->
+        <div class="sidebar-nav-category" style="margin-top: 1rem;">
+          <div class="sidebar-nav-category-title">ОТПРАВЛЕННЫЕ СООБЩЕНИЯ</div>
+          <div id="sentMessagesContainer" class="sent-messages-list">
+            <p style="color: #8E9297; text-align: center; padding: 1rem; font-size: 0.75rem;">Нет отправленных сообщений</p>
           </div>
         </div>
       </div>
