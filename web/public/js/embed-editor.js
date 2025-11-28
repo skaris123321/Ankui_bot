@@ -600,6 +600,10 @@ async function sendEmbed() {
         
         if (result.success) {
           successCount++;
+          // Сохраняем информацию о отправленном сообщении
+          if (result.messageId && result.channelId) {
+            saveSentMessage(result.messageId, result.channelId, blockEmbed);
+          }
         } else {
           errorCount++;
           console.error(`Ошибка отправки блока ${i + 1}:`, result.message);
@@ -755,7 +759,13 @@ async function sendEmbed() {
     const result = await response.json();
     
     if (result.success) {
-      showMessage('success', '✅ Сообщение отправлено в Discord!');
+      // Сохраняем информацию о отправленном сообщении
+      if (result.messageId && result.channelId) {
+        saveSentMessage(result.messageId, result.channelId, embedData);
+        showMessage('success', '✅ Сообщение отправлено в Discord! Нажмите "Редактировать" для изменения.');
+      } else {
+        showMessage('success', '✅ Сообщение отправлено в Discord!');
+      }
     } else {
       showMessage('error', `❌ Ошибка: ${result.message}`);
     }
@@ -840,5 +850,228 @@ if (embedTimestamp) embedTimestamp.addEventListener('change', updatePreview);
 // Начальный предпросмотр (только если preview существует)
 if (document.getElementById('embedPreview')) {
   updatePreview();
+}
+
+// Хранение отправленных сообщений
+let sentMessages = JSON.parse(localStorage.getItem('sentMessages') || '[]');
+
+// Сохранение отправленного сообщения
+function saveSentMessage(messageId, channelId, embedData) {
+  const messageInfo = {
+    messageId: messageId,
+    channelId: channelId,
+    embedData: embedData,
+    timestamp: Date.now()
+  };
+  
+  sentMessages.unshift(messageInfo); // Добавляем в начало
+  // Ограничиваем количество сохраненных сообщений (последние 50)
+  if (sentMessages.length > 50) {
+    sentMessages = sentMessages.slice(0, 50);
+  }
+  
+  localStorage.setItem('sentMessages', JSON.stringify(sentMessages));
+  updateSentMessagesUI();
+}
+
+// Обновление UI для отправленных сообщений
+function updateSentMessagesUI() {
+  const container = document.getElementById('sentMessagesContainer');
+  if (!container) return;
+  
+  if (sentMessages.length === 0) {
+    container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">Нет отправленных сообщений</p>';
+    return;
+  }
+  
+  container.innerHTML = sentMessages.map((msg, index) => {
+    const date = new Date(msg.timestamp);
+    const timeStr = date.toLocaleString('ru-RU');
+    const title = msg.embedData.title || 'Без заголовка';
+    const preview = title.length > 30 ? title.substring(0, 30) + '...' : title;
+    
+    return `
+      <div class="sent-message-item" data-message-id="${msg.messageId}" data-channel-id="${msg.channelId}">
+        <div class="sent-message-preview">
+          <strong>${preview}</strong>
+          <span class="sent-message-time">${timeStr}</span>
+        </div>
+        <button class="btn-edit-message" onclick="editMessage('${msg.messageId}', '${msg.channelId}')">
+          ✏️ Редактировать
+        </button>
+      </div>
+    `;
+  }).join('');
+}
+
+// Редактирование сообщения
+async function editMessage(messageId, channelId) {
+  // Находим сохраненное сообщение
+  const messageInfo = sentMessages.find(msg => msg.messageId === messageId && msg.channelId === channelId);
+  
+  if (!messageInfo) {
+    showMessage('error', '❌ Информация о сообщении не найдена');
+    return;
+  }
+  
+  // Загружаем данные embed в редактор
+  const embedData = messageInfo.embedData;
+  
+  // Заполняем поля редактора
+  const titleEl = document.getElementById('embedTitle');
+  const descriptionEl = document.getElementById('embedDescription');
+  const colorEl = document.getElementById('embedColor');
+  const footerEl = document.getElementById('embedFooter');
+  const authorEl = document.getElementById('embedAuthor');
+  const authorIconEl = document.getElementById('embedAuthorIcon');
+  const footerIconEl = document.getElementById('embedFooterIcon');
+  const imageEl = document.getElementById('embedImage');
+  const thumbnailEl = document.getElementById('embedThumbnail');
+  const timestampEl = document.getElementById('embedTimestamp');
+  
+  if (titleEl) titleEl.value = embedData.title || '';
+  if (descriptionEl) descriptionEl.value = embedData.description || '';
+  if (colorEl) colorEl.value = '#' + (embedData.color || 0x5865F2).toString(16).padStart(6, '0');
+  if (footerEl) footerEl.value = embedData.footer?.text || '';
+  if (authorEl) authorEl.value = embedData.author?.name || '';
+  if (authorIconEl) authorIconEl.value = embedData.author?.icon_url || '';
+  if (footerIconEl) footerIconEl.value = embedData.footer?.icon_url || '';
+  if (imageEl) imageEl.value = embedData.image?.url || '';
+  if (thumbnailEl) thumbnailEl.value = embedData.thumbnail?.url || '';
+  if (timestampEl) timestampEl.checked = !!embedData.timestamp;
+  
+  // Обновляем предпросмотр
+  if (typeof updatePreview === 'function') {
+    updatePreview();
+  }
+  
+  // Показываем кнопку "Сохранить изменения" вместо "Отправить"
+  const sendBtn = document.getElementById('sendEmbedBtn');
+  if (sendBtn) {
+    sendBtn.textContent = '💾 Сохранить изменения';
+    sendBtn.onclick = () => saveMessageChanges(messageId, channelId);
+    sendBtn.dataset.editing = 'true';
+    sendBtn.dataset.messageId = messageId;
+    sendBtn.dataset.channelId = channelId;
+  }
+  
+  showMessage('success', '📝 Загружено для редактирования. Измените и нажмите "Сохранить изменения"');
+}
+
+// Сохранение изменений сообщения
+async function saveMessageChanges(messageId, channelId) {
+  const embedData = getEmbedData();
+  
+  if (!embedData.title && !embedData.description) {
+    showMessage('error', '❌ Заполните хотя бы заголовок или описание!');
+    return;
+  }
+  
+  // Валидация URL (используем те же функции, что и при отправке)
+  function isValidUrl(url) {
+    if (!url || typeof url !== 'string') return false;
+    try {
+      const urlObj = new URL(url);
+      return urlObj.protocol === 'http:' || urlObj.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+  
+  function getAbsoluteUrl(url) {
+    if (!url || typeof url !== 'string' || url.trim() === '') return null;
+    
+    let absoluteUrl;
+    if (url.startsWith('http://') || url.startsWith('https://')) {
+      absoluteUrl = url;
+    } else if (url.startsWith('/')) {
+      absoluteUrl = window.location.origin + url;
+    } else {
+      try {
+        new URL(url);
+        absoluteUrl = url;
+      } catch {
+        absoluteUrl = window.location.origin + '/' + url;
+      }
+    }
+    
+    try {
+      const urlObj = new URL(absoluteUrl);
+      urlObj.pathname = encodeURI(urlObj.pathname);
+      return urlObj.toString();
+    } catch {
+      return encodeURI(absoluteUrl);
+    }
+  }
+  
+  // Проверяем и преобразуем URL изображений
+  if (embedData.image && embedData.image.url) {
+    const absoluteUrl = getAbsoluteUrl(embedData.image.url);
+    if (absoluteUrl && isValidUrl(absoluteUrl)) {
+      embedData.image.url = absoluteUrl;
+    } else {
+      delete embedData.image;
+    }
+  }
+  
+  if (embedData.thumbnail && embedData.thumbnail.url) {
+    const absoluteUrl = getAbsoluteUrl(embedData.thumbnail.url);
+    if (absoluteUrl && isValidUrl(absoluteUrl)) {
+      embedData.thumbnail.url = absoluteUrl;
+    } else {
+      delete embedData.thumbnail;
+    }
+  }
+  
+  try {
+    const response = await fetch('/api/edit-message', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        channelId: channelId,
+        messageId: messageId,
+        embed: embedData
+      })
+    });
+    
+    const result = await response.json();
+    
+    if (result.success) {
+      // Обновляем сохраненное сообщение
+      const messageIndex = sentMessages.findIndex(msg => msg.messageId === messageId && msg.channelId === channelId);
+      if (messageIndex !== -1) {
+        sentMessages[messageIndex].embedData = embedData;
+        sentMessages[messageIndex].timestamp = Date.now();
+        localStorage.setItem('sentMessages', JSON.stringify(sentMessages));
+        updateSentMessagesUI();
+      }
+      
+      // Возвращаем кнопку "Отправить"
+      const sendBtn = document.getElementById('sendEmbedBtn');
+      if (sendBtn) {
+        sendBtn.textContent = '📤 Отправить';
+        sendBtn.onclick = sendEmbed;
+        delete sendBtn.dataset.editing;
+        delete sendBtn.dataset.messageId;
+        delete sendBtn.dataset.channelId;
+      }
+      
+      showMessage('success', '✅ Сообщение успешно отредактировано!');
+    } else {
+      showMessage('error', `❌ Ошибка: ${result.message}`);
+    }
+  } catch (error) {
+    console.error('Error:', error);
+    showMessage('error', '❌ Не удалось отредактировать сообщение');
+  }
+}
+
+// Инициализация UI отправленных сообщений при загрузке страницы
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', updateSentMessagesUI);
+} else {
+  updateSentMessagesUI();
 }
 

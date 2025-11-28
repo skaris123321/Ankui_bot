@@ -200,6 +200,89 @@
       color: white;
     }
     
+    /* Секция отправленных сообщений */
+    .sent-messages-sidebar {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .sent-messages-sidebar label {
+      display: block;
+      margin-bottom: 0.5rem;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .sent-messages-list {
+      max-height: 300px;
+      overflow-y: auto;
+      margin-top: 0.5rem;
+    }
+    
+    .sent-messages-list::-webkit-scrollbar {
+      width: 4px;
+    }
+    
+    .sent-messages-list::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 2px;
+    }
+    
+    .sent-message-item {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--border-radius);
+      padding: 0.75rem;
+      margin-bottom: 0.5rem;
+      transition: var(--transition);
+    }
+    
+    .sent-message-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(88, 101, 242, 0.3);
+    }
+    
+    .sent-message-preview {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin-bottom: 0.5rem;
+    }
+    
+    .sent-message-preview strong {
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      font-weight: 600;
+    }
+    
+    .sent-message-time {
+      color: var(--text-secondary);
+      font-size: 0.7rem;
+    }
+    
+    .btn-edit-message {
+      width: 100%;
+      padding: 0.5rem;
+      background: rgba(88, 101, 242, 0.2);
+      border: 1px solid rgba(88, 101, 242, 0.4);
+      border-radius: var(--border-radius);
+      color: var(--primary-color);
+      font-size: 0.8rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    .btn-edit-message:hover {
+      background: rgba(88, 101, 242, 0.3);
+      border-color: var(--primary-color);
+      transform: translateY(-1px);
+    }
+    
     /* Основная область редактора */
     .main-content {
       flex: 1;
@@ -1049,6 +1132,14 @@
               <option value="">Выберите канал...</option>
             </select>
           </div>
+          
+          <!-- Секция отправленных сообщений -->
+          <div class="sent-messages-sidebar">
+            <label>📨 Отправленные сообщения:</label>
+            <div id="sentMessagesContainer" class="sent-messages-list">
+              <p style="color: var(--text-secondary); text-align: center; padding: 1rem; font-size: 0.85rem;">Нет отправленных сообщений</p>
+            </div>
+          </div>
         <% } else { %>
           <div class="info-box">
             <p>⚠️ Бот не подключен ни к одному серверу.</p>
@@ -1064,7 +1155,7 @@
         <h1>🎨 Редактор Embed сообщений</h1>
         <div class="editor-toolbar-actions">
           <button type="button" class="btn btn-secondary" onclick="resetEmbed()">🔄 Сбросить</button>
-          <button type="button" class="btn btn-primary" onclick="sendEmbed()">📤 Отправить</button>
+          <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="sendEmbed()">📤 Отправить</button>
         </div>
       </div>
       

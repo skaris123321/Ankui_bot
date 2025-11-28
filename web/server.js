@@ -431,18 +431,142 @@ app.post('/api/send-embed', async (req, res) => {
     
     console.log('📤 Отправка embed в Discord:', JSON.stringify(embed, null, 2));
     
-    // Отправляем embed
-    await channel.send({ embeds: [embed] });
+    // Отправляем embed и получаем отправленное сообщение
+    const sentMessage = await channel.send({ embeds: [embed] });
     
     res.json({ 
       success: true, 
-      message: 'Сообщение успешно отправлено!' 
+      message: 'Сообщение успешно отправлено!',
+      messageId: sentMessage.id,
+      channelId: channelId
     });
   } catch (error) {
     console.error('Ошибка отправки embed:', error);
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ошибка отправки сообщения' 
+    });
+  }
+});
+
+// API для редактирования сообщения
+app.post('/api/edit-message', async (req, res) => {
+  const { channelId, messageId, embed } = req.body;
+  
+  if (!channelId || !messageId || !embed) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Не указан канал, ID сообщения или данные embed' 
+    });
+  }
+  
+  try {
+    // Получаем клиента бота
+    const client = require('../bot/client');
+    
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Бот не подключен к Discord' 
+      });
+    }
+    
+    // Получаем канал
+    const channel = await client.channels.fetch(channelId);
+    
+    if (!channel || !channel.isTextBased()) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Канал не найден или не является текстовым' 
+      });
+    }
+    
+    // Получаем сообщение
+    const message = await channel.messages.fetch(messageId);
+    
+    if (!message) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Сообщение не найдено' 
+      });
+    }
+    
+    // Функция для валидации и кодирования URL
+    function validateAndCleanUrl(url) {
+      if (!url || typeof url !== 'string') return null;
+      
+      url = url.trim();
+      
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+          console.warn('Невалидный протокол URL:', url);
+          return null;
+        }
+        urlObj.pathname = encodeURI(urlObj.pathname);
+        return urlObj.toString();
+      } catch (error) {
+        try {
+          return encodeURI(url);
+        } catch {
+          console.warn('Невалидный URL:', url, error.message);
+          return null;
+        }
+      }
+    }
+    
+    // Валидируем и очищаем URL изображений перед редактированием
+    if (embed.image && embed.image.url) {
+      const cleanedUrl = validateAndCleanUrl(embed.image.url);
+      if (cleanedUrl) {
+        embed.image.url = cleanedUrl;
+      } else {
+        delete embed.image;
+      }
+    }
+    
+    if (embed.thumbnail && embed.thumbnail.url) {
+      const cleanedUrl = validateAndCleanUrl(embed.thumbnail.url);
+      if (cleanedUrl) {
+        embed.thumbnail.url = cleanedUrl;
+      } else {
+        delete embed.thumbnail;
+      }
+    }
+    
+    if (embed.author && embed.author.icon_url) {
+      const cleanedUrl = validateAndCleanUrl(embed.author.icon_url);
+      if (cleanedUrl) {
+        embed.author.icon_url = cleanedUrl;
+      } else {
+        delete embed.author.icon_url;
+      }
+    }
+    
+    if (embed.footer && embed.footer.icon_url) {
+      const cleanedUrl = validateAndCleanUrl(embed.footer.icon_url);
+      if (cleanedUrl) {
+        embed.footer.icon_url = cleanedUrl;
+      } else {
+        delete embed.footer.icon_url;
+      }
+    }
+    
+    console.log('✏️ Редактирование сообщения в Discord:', messageId);
+    
+    // Редактируем сообщение
+    await message.edit({ embeds: [embed] });
+    
+    res.json({ 
+      success: true, 
+      message: 'Сообщение успешно отредактировано!',
+      messageId: messageId
+    });
+  } catch (error) {
+    console.error('Ошибка редактирования сообщения:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка редактирования сообщения' 
     });
   }
 });
