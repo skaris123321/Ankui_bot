@@ -149,9 +149,9 @@
 /* Discord Message Preview */
 .discord-preview {
   background-color: #36393F;
-  border-radius: 10px;
+  border-radius: 8px;
   padding: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 1rem;
 }
 
 .discord-message {
@@ -200,8 +200,9 @@
   border-left: 4px solid #5865F2;
   background-color: #2F3136;
   border-radius: 4px;
-  padding: 0.5rem 1rem 1rem 0.75rem;
-  max-width: 520px;
+  padding: 0.75rem 1rem 1rem 0.75rem;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .embed-preview.empty {

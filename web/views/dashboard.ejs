@@ -277,177 +277,37 @@
     }
     
     /* Секция отправленных сообщений */
-    .sent-messages-sidebar {
-      margin-top: 1rem;
-      padding-top: 1rem;
-      border-top: 1px solid rgba(255, 255, 255, 0.1);
-      display: block !important;
-      visibility: visible !important;
-    }
-    
-    .sent-messages-sidebar label {
-      display: block;
-      margin-bottom: 0.5rem;
-      color: var(--text-secondary);
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-    
-    .sent-messages-list {
-      max-height: 300px;
-      overflow-y: auto;
-      margin-top: 0.5rem;
-      padding: 0 0.5rem;
-    }
-    
-    .sent-messages-sidebar {
-      width: 100%;
-    }
-    
-    .sent-messages-list::-webkit-scrollbar {
-      width: 4px;
-    }
-    
-    .sent-messages-list::-webkit-scrollbar-thumb {
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 2px;
-    }
-    
-    .sent-message-item {
-      background: rgba(255, 255, 255, 0.03);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 6px;
-      padding: 0.5rem;
-      margin-bottom: 0.4rem;
-      transition: var(--transition);
-      position: relative;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 0.5rem;
-    }
-    
-    .sent-message-item:hover {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.12);
-    }
-    
-    .sent-message-preview {
-      flex: 1;
-      min-width: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 0.15rem;
-    }
-    
-    .sent-message-preview strong {
-      color: var(--text-primary);
-      font-size: 0.75rem;
-      font-weight: 600;
-      line-height: 1.2;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    
-    .sent-message-time {
-      color: var(--text-secondary);
-      font-size: 0.6rem;
-    }
-    
-    .sent-message-menu-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-secondary);
-      cursor: pointer;
-      padding: 0.25rem 0.5rem;
-      border-radius: 4px;
-      font-size: 1rem;
-      line-height: 1;
-      transition: var(--transition);
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    
-    .sent-message-menu-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-primary);
-    }
-    
-    .sent-message-menu {
-      position: absolute;
-      top: 100%;
-      right: 0;
-      margin-top: 0.25rem;
-      background: #2F3136;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      min-width: 180px;
-      z-index: 1000;
-      display: none;
-      overflow: hidden;
-    }
-    
-    .sent-message-menu.show {
-      display: block;
-    }
-    
-    .sent-message-menu-item {
-      padding: 0.625rem 0.75rem;
-      color: var(--text-primary);
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: var(--transition);
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      border: none;
-      background: transparent;
-      width: 100%;
-      text-align: left;
-    }
-    
-    .sent-message-menu-item:hover {
-      background: rgba(88, 101, 242, 0.2);
-      color: var(--text-primary);
-    }
-    
-    .sent-message-menu-item.delete {
-      color: #ED4245;
-    }
-    
-    .sent-message-menu-item.delete:hover {
-      background: rgba(237, 66, 69, 0.2);
-    }
-    
-    .sent-message-menu-divider {
-      height: 1px;
-      background: rgba(255, 255, 255, 0.1);
-      margin: 0.25rem 0;
-    }
-    
     /* Основная область редактора */
     .main-content {
       flex: 1;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
+      overflow-y: auto;
+      background: var(--background);
+      padding: 2rem;
+    }
+    
+    .editor-container {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
+      display: flex;
+      gap: 2rem;
+      align-items: flex-start;
     }
     
     .editor-toolbar {
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto 2rem;
       padding: 1rem 1.5rem;
       background: var(--background-light);
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
       display: flex;
       justify-content: space-between;
       align-items: center;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-      z-index: 10;
       gap: 1.5rem;
     }
     
@@ -495,21 +355,23 @@
     .editor-workspace {
       flex: 1;
       display: flex;
-      overflow: hidden;
+      gap: 2rem;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
     }
     
     .editor-panel-main {
       flex: 1;
-      display: flex;
-      overflow: hidden;
+      max-width: 600px;
     }
     
     .editor-form {
-      flex: 1;
-      padding: 1.5rem 2rem;
+      background: var(--background-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
       overflow-y: auto;
-      background: var(--background);
-      min-width: 0; /* Позволяет flex-элементу сжиматься */
     }
     
     .editor-form::-webkit-scrollbar {
@@ -531,11 +393,15 @@
     
     .preview-panel-fixed {
       width: var(--preview-width);
-      background: var(--background-dark);
-      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      min-width: var(--preview-width);
+      background: var(--background-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
       padding: 1.5rem;
       overflow-y: auto;
-      box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+      position: sticky;
+      top: 2rem;
+      max-height: calc(100vh - 200px);
     }
     
     .preview-panel-fixed::-webkit-scrollbar {
@@ -1320,13 +1186,6 @@
           </div>
         </div>
         
-        <!-- Секция отправленных сообщений -->
-        <div class="sidebar-nav-category" style="margin-top: 1rem;">
-          <div class="sidebar-nav-category-title">ОТПРАВЛЕННЫЕ СООБЩЕНИЯ</div>
-          <div id="sentMessagesContainer" class="sent-messages-list">
-            <p style="color: #8E9297; text-align: center; padding: 1rem; font-size: 0.75rem;">Нет отправленных сообщений</p>
-          </div>
-        </div>
       </div>
     </div>
     
@@ -1478,7 +1337,6 @@
             </label>
           </div>
           
-          <button class="btn btn-primary btn-large" onclick="sendEmbed()">🚀 Отправить в Discord</button>
           </div>
         </div>
         
@@ -1702,10 +1560,6 @@
         
         if (result.success) {
           showMessage('success', '✅ Сообщение отправлено в Discord!');
-          // Обновляем список отправленных сообщений
-          if (typeof updateSentMessagesUI === 'function') {
-            updateSentMessagesUI();
-          }
         } else {
           showMessage('error', `❌ Ошибка: ${result.message}`);
         }
