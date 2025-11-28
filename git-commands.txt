@@ -1,0 +1,8 @@
+cd C:\Users\Катя\Desktop\Bot
+
+git add .
+
+git commit -m "Improve UI/UX: fix dropdown dark theme, enhance editor design and animations"
+
+git push origin main
+
