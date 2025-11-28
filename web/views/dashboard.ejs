@@ -1181,7 +1181,6 @@
           <% if (user && user.avatar) { %>
             <img src="<%= user.avatar %>" alt="<%= user.username %>">
           <% } else { %>
-            👤
           <% } %>
         </div>
         <div class="sidebar-user-name">
@@ -1324,24 +1323,24 @@
           </div>
           
           <div class="editor-section">
-            <label>🖼️ Изображение</label>
+            <label>Изображение</label>
             <div class="image-upload-group">
               <input type="hidden" id="embedImage" value="">
-              <label for="embedImageFile" class="btn btn-secondary btn-upload">📁 Выбрать файл</label>
+              <label for="embedImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
               <input type="file" id="embedImageFile" accept="image/*" style="display: none;">
               <span id="imageFileName" class="file-name"></span>
-              <small style="color: var(--text-secondary); font-size: 12px;">💡 Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
           </div>
           
           <div class="editor-section">
-            <label>🖼️ Миниатюра</label>
+            <label>Миниатюра</label>
             <div class="image-upload-group">
               <input type="hidden" id="embedThumbnail" value="">
-              <label for="embedThumbnailFile" class="btn btn-secondary btn-upload">📁 Выбрать файл</label>
+              <label for="embedThumbnailFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
               <input type="file" id="embedThumbnailFile" accept="image/*" style="display: none;">
               <span id="thumbnailFileName" class="file-name"></span>
-              <small style="color: var(--text-secondary); font-size: 12px;">💡 Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
           </div>
           
@@ -1558,6 +1557,88 @@
         return;
       }
       
+      // Проверяем, есть ли блоки правил
+      const hasRulesBlocks = typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0;
+      
+      if (hasRulesBlocks) {
+        // Используем функцию из embed-editor.js для отправки блоков правил
+        // Но обновляем channelId перед отправкой
+        const originalSendEmbed = window.sendEmbedOriginal || sendEmbed;
+        
+        // Временно переопределяем получение channelId
+        const originalGetChannel = () => channelId;
+        
+        // Вызываем оригинальную функцию с правильным channelId
+        const embedData = getEmbedData();
+        const colorEl = document.getElementById('embedColor');
+        const baseColor = colorEl ? parseInt(colorEl.value.replace('#', ''), 16) : 0x5865F2;
+        
+        // Отправляем блоки правил (упрощенная версия)
+        for (let i = 0; i < rulesBlocks.length; i++) {
+          const block = rulesBlocks[i];
+          
+          if (block.title || block.rules) {
+            const blockEmbed = {
+              title: block.title || embedData.title || 'Правила сервера',
+              description: embedData.description || '',
+              color: baseColor,
+              timestamp: embedData.timestamp
+            };
+            
+            if (block.image) {
+              blockEmbed.image = { url: block.image };
+            }
+            if (block.icon) {
+              blockEmbed.thumbnail = { url: block.icon };
+            }
+            
+            try {
+              const response = await fetch('/api/send-embed', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ channelId: channelId, embed: blockEmbed })
+              });
+              const result = await response.json();
+              if (!result.success) {
+                showMessage('error', `❌ Ошибка отправки блока ${i + 1}: ${result.message}`);
+              }
+              await new Promise(resolve => setTimeout(resolve, 500));
+            } catch (error) {
+              showMessage('error', `❌ Ошибка отправки блока ${i + 1}`);
+            }
+          }
+          
+          // Отправляем правила из блока
+          if (block.rules && block.rules.length > 0) {
+            for (let j = 0; j < block.rules.length; j++) {
+              const rule = block.rules[j];
+              if (!rule.description || rule.description.trim() === '') continue;
+              
+              const ruleEmbed = {
+                description: rule.description,
+                color: baseColor,
+                timestamp: embedData.timestamp
+              };
+              
+              try {
+                const response = await fetch('/api/send-embed', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ channelId: channelId, embed: ruleEmbed })
+                });
+                await new Promise(resolve => setTimeout(resolve, 500));
+              } catch (error) {
+                console.error('Ошибка отправки правила:', error);
+              }
+            }
+          }
+        }
+        
+        showMessage('success', '✅ Блоки правил отправлены!');
+        return;
+      }
+      
+      // Обычная отправка embed (без блоков правил)
       const embedData = getEmbedData();
       
       if (!embedData.title && !embedData.description) {
@@ -1936,7 +2017,7 @@
           
           <div class="rule-block-media">
             <div class="rule-block-media-field">
-              <label>🖼️ Картинка:</label>
+              <label>Картинка:</label>
               <input type="hidden" 
                      id="block-image-${block.id}"
                      value="${escapeHtml(block.image || '')}">
@@ -1945,9 +2026,9 @@
                      accept="image/*" 
                      style="display: none;"
                      onchange="handleBlockImageUpload(${block.id}, this.files[0])">
-              <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-image-file-${block.id}').click()" style="margin-top: 0.5rem;">📁 Загрузить файл</button>
+              <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-image-file-${block.id}').click()" style="margin-top: 0.5rem;">Загрузить файл</button>
               <span id="block-image-name-${block.id}" class="file-name-display"></span>
-              <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">💡 Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
+              <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
             <div class="rule-block-media-field">
               <label>Иконка:</label>
@@ -1959,9 +2040,9 @@
                      accept="image/*" 
                      style="display: none;"
                      onchange="handleBlockIconUpload(${block.id}, this.files[0])">
-              <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-icon-file-${block.id}').click()" style="margin-top: 0.5rem;">📁 Загрузить файл</button>
+              <button type="button" class="btn btn-secondary btn-file-upload" onclick="document.getElementById('block-icon-file-${block.id}').click()" style="margin-top: 0.5rem;">Загрузить файл</button>
               <span id="block-icon-name-${block.id}" class="file-name-display"></span>
-              <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">💡 Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
+              <small style="color: var(--text-secondary); font-size: 12px; display: block; margin-top: 0.5rem;">Максимальный размер: 10 МБ. Форматы: JPEG, PNG, GIF, WEBP.</small>
             </div>
           </div>
         </div>

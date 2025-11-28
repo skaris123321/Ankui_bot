@@ -1,3 +1,3 @@
 git add .
-git commit -m "UI improvements: remove edit/delete features, compact centered editor, improve preview, replace emoji with SVG icons, clean navigation"
+git commit -m "UI improvements: remove all emojis, clean navigation, replace Guest with Bot, improve sendEmbed function"
 git push origin main
