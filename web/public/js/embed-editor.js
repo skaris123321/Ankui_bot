@@ -521,15 +521,21 @@ async function sendEmbed() {
       // Собираем все embeds блока в массив для отправки в одном сообщении
       const blockEmbeds = [];
       
-      // Создаём основное embed с картинкой (всегда создаем для структуры, даже если нет картинки)
+      // Создаём основное embed с картинкой (только если есть картинка или заголовок)
       let headerEmbed = null;
-      // Создаем headerEmbed если есть картинка, заголовок блока, или базовые данные
-      if (block.image || block.title || baseEmbedData.title || baseEmbedData.description || (block.rules && block.rules.length > 0)) {
+      // Создаем headerEmbed только если есть картинка или заголовок блока (не добавляем описание, чтобы не дублировать)
+      if (block.image || block.title || baseEmbedData.title) {
         headerEmbed = {
-          title: blockTitle || '\u200b', // Используем невидимый символ для выравнивания
-          description: blockDescription || '\u200b', // Пустое описание для выравнивания
+          title: blockTitle || '\u200b',
           color: baseColor
         };
+        
+        // Добавляем описание только если нет правил (чтобы не дублировать)
+        if (!block.rules || block.rules.length === 0) {
+          if (blockDescription && blockDescription.trim() !== '') {
+            headerEmbed.description = blockDescription;
+          }
+        }
         
         // Добавляем timestamp только если он включен
         if (baseEmbedData.timestamp) {
@@ -584,8 +590,10 @@ async function sendEmbed() {
           headerEmbed.footer = baseEmbedData.footer;
         }
         
-        // Всегда добавляем header embed в массив (если он создан)
-        blockEmbeds.push(headerEmbed);
+        // Добавляем header embed только если есть картинка или заголовок
+        if (headerEmbed.image || (headerEmbed.title && headerEmbed.title !== '\u200b')) {
+          blockEmbeds.push(headerEmbed);
+        }
       }
       
       // Добавляем все правила как отдельные embeds в том же сообщении
@@ -597,13 +605,24 @@ async function sendEmbed() {
             continue; // Пропускаем пустые правила
           }
           
-          // Формируем описание для одного правила
+          // Формируем описание для одного правила с поддержкой переносов строк
           const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
-          const ruleDescription = rule.description || '';
-          const punishmentText = rule.punishment ? ` | Наказание: **${rule.punishment}**` : '';
-          const durationText = rule.duration ? ` (Длительность: ${rule.duration})` : '';
+          // Сохраняем переносы строк в описании (Discord поддерживает \n)
+          let ruleDescription = rule.description || '';
+          // Заменяем двойные переносы на одинарные для правильного отображения
+          ruleDescription = ruleDescription.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
           
-          const descriptionText = `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
+          const punishmentText = rule.punishment ? `\n| Наказание: **${rule.punishment}**` : '';
+          const durationText = rule.duration ? `\n(Длительность: ${rule.duration})` : '';
+          
+          // Формируем полное описание с переносами строк
+          let descriptionText = '';
+          if (ruleNumber) {
+            descriptionText = `${ruleNumber}\n${ruleDescription}`;
+          } else {
+            descriptionText = ruleDescription;
+          }
+          descriptionText += punishmentText + durationText;
           
           // Создаём embed для одного правила с той же структурой для выравнивания ширины
           const ruleEmbed = {

@@ -1,3 +1,3 @@
 git add .
-git commit -m "Fix: ensure image and rules embeds always sent in one message together"
+git commit -m "Fix: remove duplicate description, add line breaks support in rules, ensure consistent embed sizes"
 git push origin main
