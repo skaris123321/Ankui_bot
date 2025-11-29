@@ -1949,19 +1949,22 @@
         }
       });
       
-      // НЕ добавляем правила в описание, так как они отправляются отдельно как embeds
-      // Это предотвращает дублирование правил в сообщении
-      // Если есть пользовательский текст, показываем только его
-      const userText = descriptionField.dataset.userText || '';
-      if (userText) {
-        descriptionField.value = userText;
-      } else {
-        descriptionField.value = '';
+      // Добавляем правила в описание (как было раньше)
+      // Сохраняем пользовательский текст перед добавлением правил
+      if (!descriptionField.dataset.userText) {
+        // Если пользовательский текст еще не сохранен, сохраняем текущее значение
+        const currentValue = descriptionField.value.trim();
+        if (currentValue && !currentValue.includes('Правило -')) {
+          descriptionField.dataset.userText = currentValue;
+        }
       }
       
-      // Сохраняем пользовательский текст
-      if (!descriptionField.dataset.userText) {
-        descriptionField.dataset.userText = descriptionField.value;
+      // Если есть пользовательский текст, добавляем его перед блоками правил
+      const userText = descriptionField.dataset.userText || '';
+      if (userText) {
+        descriptionField.value = userText + (userText ? '\n\n' : '') + rulesText;
+      } else {
+        descriptionField.value = rulesText;
       }
       
       // Обновляем preview

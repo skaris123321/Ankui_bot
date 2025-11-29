@@ -393,10 +393,15 @@ async function sendEmbed() {
     return;
   }
   
+  // Правила теперь добавляются в описание через renderRulesBlocks()
+  // Не отправляем их отдельными embeds, чтобы избежать дублирования
+  // Отправляем обычное сообщение с описанием, которое содержит правила
+  
   // Проверяем, есть ли блоки правил
   const hasRulesBlocks = typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0;
   
-  if (hasRulesBlocks) {
+  // Пропускаем отдельную отправку блоков правил - они уже в описании
+  if (false && hasRulesBlocks) {
     // Отправляем каждый блок правил как отдельный embed
     const baseEmbedData = getEmbedData();
     const colorEl = document.getElementById('embedColor');
