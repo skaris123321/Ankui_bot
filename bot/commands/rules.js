@@ -21,21 +21,45 @@ module.exports = {
     try {
       // Если есть блоки правил
       if (blocksData && blocksData.length > 0) {
+        // Создаем или получаем webhook для отправки слитных сообщений
+        let webhook = null;
+        const useWebhook = blocksData.length > 1; // Используем webhook, если больше одного блока
+        
+        if (useWebhook) {
+          const webhooks = await targetChannel.fetchWebhooks();
+          webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
+          
+          if (!webhook) {
+            webhook = await targetChannel.createWebhook({
+              name: `${client.user.username} Messages`,
+              avatar: client.user.displayAvatarURL(),
+              reason: 'Для отправки слитных сообщений без подписи бота'
+            });
+          }
+        }
+
         // Отправляем каждый блок как отдельный embed
-        for (const block of blocksData) {
+        for (let i = 0; i < blocksData.length; i++) {
+          const block = blocksData[i];
+          const isFirstBlock = i === 0;
+          
           const embed = new EmbedBuilder()
             .setColor('#5865F2')
-            .setTitle(block.title || `📜 Правила сервера ${interaction.guild.name}`)
-            .setTimestamp()
-            .setFooter({ 
-              text: `Обновлено ${interaction.user.username}`,
-              iconURL: interaction.user.displayAvatarURL()
-            });
+            .setTitle(block.title || `📜 Правила сервера ${interaction.guild.name}`);
+          
+          // Добавляем footer и timestamp только к первому блоку
+          if (isFirstBlock) {
+            embed.setTimestamp()
+              .setFooter({ 
+                text: `Обновлено ${interaction.user.username}`,
+                iconURL: interaction.user.displayAvatarURL()
+              });
+          }
           
           // Устанавливаем иконку, если указана
           if (block.icon) {
             embed.setThumbnail(block.icon);
-          } else {
+          } else if (isFirstBlock) {
             embed.setThumbnail(interaction.guild.iconURL({ dynamic: true }));
           }
           
@@ -71,7 +95,26 @@ module.exports = {
             });
           }
           
-          await targetChannel.send({ embeds: [embed] });
+          // Первый блок отправляем обычным сообщением (с подписью бота)
+          // Остальные блоки отправляем через webhook (без подписи, слитные)
+          if (isFirstBlock) {
+            await targetChannel.send({ embeds: [embed] });
+            // Небольшая задержка перед отправкой следующих сообщений
+            if (useWebhook) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          } else {
+            // Отправляем через webhook для слитных сообщений
+            await webhook.send({
+              embeds: [embed],
+              username: client.user.username,
+              avatarURL: client.user.displayAvatarURL()
+            });
+            // Небольшая задержка между сообщениями для правильного отображения
+            if (i < blocksData.length - 1) {
+              await new Promise(resolve => setTimeout(resolve, 500));
+            }
+          }
         }
       } else {
         // Если блоков нет, используем старый формат
