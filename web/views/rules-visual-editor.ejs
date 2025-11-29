@@ -353,7 +353,7 @@
             fieldValue += `<br>**Наказание:** ${escapeHtml(rule.punishment)}`;
           }
           if (rule.duration) {
-            fieldValue += `<br>⏱️ **Длительность:** ${escapeHtml(rule.duration)}`;
+            fieldValue += `<br>**Длительность:** ${escapeHtml(rule.duration)}`;
           }
         }
         
@@ -399,18 +399,11 @@
       const embeds = [];
       
       // Первый embed - картинка
-      // Добавляем пустое поле, чтобы структура совпадала с остальными embeds
-      // Это заставит Discord выровнять все embeds по одной ширине
       const imageEmbed = {
         color: rulesColorInt,
         image: {
           url: imageBlockImage
-        },
-        fields: [{
-          name: '\u200b', // Невидимый символ - пустое поле для выравнивания
-          value: '\u200b',
-          inline: false
-        }]
+        }
       };
       
       if (imageBlockTitle) {
@@ -434,7 +427,7 @@
             fieldValue += `\n**Наказание:** ${rule.punishment}`;
           }
           if (rule.duration) {
-            fieldValue += `\n⏱️ **Длительность:** ${rule.duration}`;
+            fieldValue += `\n**Длительность:** ${rule.duration}`;
           }
         }
         
@@ -488,12 +481,7 @@
       if (imageBlockImage) {
         const imageEmbed = {
           color: rulesColorInt,
-          image: { url: imageBlockImage },
-          fields: [{
-            name: '\u200b', // Невидимый символ - пустое поле для выравнивания
-            value: '\u200b',
-            inline: false
-          }]
+          image: { url: imageBlockImage }
         };
         if (imageBlockTitle) {
           imageEmbed.title = imageBlockTitle;
