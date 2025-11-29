@@ -1,3 +1,3 @@
 git add .
-git commit -m "Revert: return rules to description (as before), disable separate embeds sending"
+git commit -m "Fix: remove separate rule blocks sending, only send description with rules"
 git push origin main
