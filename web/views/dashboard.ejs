@@ -356,11 +356,14 @@
     }
     
     .editor-workspace {
+      max-width: 1200px;
       width: 100%;
+      margin: 0 auto;
       display: flex;
       gap: 2rem;
       align-items: flex-start;
       flex-wrap: nowrap;
+      justify-content: center;
     }
     
     .editor-panel-main {
@@ -396,6 +399,7 @@
     .preview-panel-fixed {
       flex: 1;
       min-width: 400px;
+      max-width: 600px;
       background: var(--background-light);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: var(--border-radius);
@@ -406,6 +410,7 @@
       max-height: calc(100vh - 120px);
       display: flex;
       flex-direction: column;
+      flex-shrink: 0;
     }
     
     .preview-panel-fixed::-webkit-scrollbar {
