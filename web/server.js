@@ -219,6 +219,14 @@ app.get('/embed-editor', (req, res) => {
   });
 });
 
+// Страница визуального редактора правил
+app.get('/rules-visual-editor', (req, res) => {
+  res.render('rules-visual-editor', {
+    user: req.session.user || { username: 'Гость', id: '0' },
+    page: 'rules-visual-editor'
+  });
+});
+
 // API для получения каналов сервера
 app.get('/api/guild/:guildId/channels', async (req, res) => {
   const { guildId } = req.params;
