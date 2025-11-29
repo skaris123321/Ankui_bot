@@ -522,13 +522,18 @@ async function sendEmbed() {
       const blockEmbeds = [];
       
       // Создаём основное embed с картинкой (если есть картинка или заголовок)
+      let headerEmbed = null;
       if (block.image || block.title || baseEmbedData.title || baseEmbedData.description) {
-        const headerEmbed = {
-          title: blockTitle,
-          description: blockDescription,
-          color: baseColor,
-          timestamp: baseEmbedData.timestamp
+        headerEmbed = {
+          title: blockTitle || '\u200b', // Используем невидимый символ для выравнивания
+          description: blockDescription || '\u200b', // Пустое описание для выравнивания
+          color: baseColor
         };
+        
+        // Добавляем timestamp только если он включен
+        if (baseEmbedData.timestamp) {
+          headerEmbed.timestamp = baseEmbedData.timestamp;
+        }
         
         // Добавляем картинку (сверху embed)
         if (block.image) {
@@ -578,8 +583,8 @@ async function sendEmbed() {
           headerEmbed.footer = baseEmbedData.footer;
         }
         
-        // Добавляем основное embed только если есть что показать
-        if (headerEmbed.title || headerEmbed.description || headerEmbed.image) {
+        // Всегда добавляем header embed если есть изображение, иначе только если есть заголовок или описание
+        if (headerEmbed.image || headerEmbed.title !== '\u200b' || (headerEmbed.description && headerEmbed.description !== '\u200b')) {
           blockEmbeds.push(headerEmbed);
         }
       }
@@ -601,20 +606,34 @@ async function sendEmbed() {
           
           const descriptionText = `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
           
-          // Создаём embed для одного правила с тем же заголовком для выравнивания
+          // Создаём embed для одного правила с той же структурой для выравнивания ширины
           const ruleEmbed = {
-            title: blockTitle,
+            title: blockTitle || '\u200b', // Используем тот же заголовок для выравнивания
             description: descriptionText.trim(),
-            color: baseColor,
-            timestamp: baseEmbedData.timestamp
+            color: baseColor
           };
           
-          // Добавляем автора и футер из базового embed
-          if (baseEmbedData.author) {
-            ruleEmbed.author = baseEmbedData.author;
+          // Добавляем timestamp только если он включен (как в headerEmbed)
+          if (baseEmbedData.timestamp) {
+            ruleEmbed.timestamp = baseEmbedData.timestamp;
           }
-          if (baseEmbedData.footer) {
-            ruleEmbed.footer = baseEmbedData.footer;
+          
+          // Добавляем автора и футер из headerEmbed для одинаковой структуры (если headerEmbed был создан)
+          if (headerEmbed) {
+            if (headerEmbed.author) {
+              ruleEmbed.author = headerEmbed.author;
+            }
+            if (headerEmbed.footer) {
+              ruleEmbed.footer = headerEmbed.footer;
+            }
+          } else {
+            // Если нет headerEmbed, используем базовые данные
+            if (baseEmbedData.author) {
+              ruleEmbed.author = baseEmbedData.author;
+            }
+            if (baseEmbedData.footer) {
+              ruleEmbed.footer = baseEmbedData.footer;
+            }
           }
           
           blockEmbeds.push(ruleEmbed);
@@ -622,8 +641,9 @@ async function sendEmbed() {
       }
       
       // Отправляем все embeds блока в одном сообщении для выравнивания ширины
+      // Все embeds в одном сообщении автоматически имеют одинаковую ширину в Discord
       if (blockEmbeds.length > 0) {
-        console.log(`📤 Отправка блока ${i + 1} с ${blockEmbeds.length} embeds:`, JSON.stringify(blockEmbeds, null, 2));
+        console.log(`📤 Отправка блока ${i + 1} с ${blockEmbeds.length} embeds в ОДНОМ сообщении:`, JSON.stringify(blockEmbeds, null, 2));
         try {
           const response = await fetch('/api/send-embed', {
             method: 'POST',
@@ -632,7 +652,7 @@ async function sendEmbed() {
             },
             body: JSON.stringify({
               channelId: channelId,
-              embeds: blockEmbeds
+              embeds: blockEmbeds  // Все embeds отправляются как массив в одном сообщении
             })
           });
           
@@ -640,6 +660,7 @@ async function sendEmbed() {
           
           if (result.success) {
             successCount += blockEmbeds.length;
+            console.log(`✅ Блок ${i + 1} успешно отправлен в одном сообщении с ${blockEmbeds.length} embeds`);
           } else {
             errorCount++;
             console.error('Ошибка отправки блока:', result.message);
@@ -649,7 +670,7 @@ async function sendEmbed() {
           console.error('Ошибка отправки блока:', error);
         }
         
-        // Задержка между блоками
+        // Задержка между блоками (разные блоки отправляются как разные сообщения)
         if (i < rulesBlocks.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 500));
         }
