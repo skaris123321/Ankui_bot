@@ -516,7 +516,10 @@ async function sendEmbed() {
       
       // Сохраняем структуру заголовка для выравнивания ширины
       const blockTitle = block.title || baseEmbedData.title || 'Правила сервера';
-      const blockDescription = baseEmbedData.description || '';
+      
+      // НЕ используем описание из baseEmbedData, если есть правила, чтобы избежать дублирования
+      // Описание может содержать правила, добавленные функцией renderRulesBlocks()
+      const blockDescription = (!block.rules || block.rules.length === 0) ? (baseEmbedData.description || '') : '';
       
       // Собираем все embeds блока в массив для отправки в одном сообщении
       const blockEmbeds = [];
@@ -606,7 +609,16 @@ async function sendEmbed() {
           }
           
           // Формируем описание для одного правила с поддержкой переносов строк
-          const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
+          // Убираем "Правило -" из номера если он уже там есть
+          let ruleNumberText = rule.number || '';
+          if (ruleNumberText) {
+            // Убираем префикс "Правило -" если он уже есть
+            ruleNumberText = ruleNumberText.replace(/^Правило\s*-\s*/i, '').trim();
+            ruleNumberText = `**Правило - ${ruleNumberText}:**`;
+          } else {
+            ruleNumberText = '';
+          }
+          
           // Сохраняем переносы строк в описании (Discord поддерживает \n)
           let ruleDescription = rule.description || '';
           // Заменяем двойные переносы на одинарные для правильного отображения
@@ -617,8 +629,8 @@ async function sendEmbed() {
           
           // Формируем полное описание с переносами строк
           let descriptionText = '';
-          if (ruleNumber) {
-            descriptionText = `${ruleNumber}\n${ruleDescription}`;
+          if (ruleNumberText) {
+            descriptionText = `${ruleNumberText}\n${ruleDescription}`;
           } else {
             descriptionText = ruleDescription;
           }

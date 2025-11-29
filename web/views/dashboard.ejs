@@ -1911,13 +1911,27 @@
         
         if (block.rules && block.rules.length > 0) {
           block.rules.forEach((rule, index) => {
-            const ruleNumber = rule.number ? `**Правило - ${rule.number}:**` : '';
+            // Убираем "Правило -" из номера если он уже там есть
+            let ruleNumberText = rule.number || '';
+            if (ruleNumberText) {
+              // Убираем префикс "Правило -" если он уже есть
+              ruleNumberText = ruleNumberText.replace(/^Правило\s*-\s*/i, '').trim();
+              ruleNumberText = `**Правило - ${ruleNumberText}:**`;
+            } else {
+              ruleNumberText = '';
+            }
+            
             const ruleDescription = rule.description || '';
-            const punishmentText = rule.punishment ? ` | Наказание: **${rule.punishment}**` : '';
-            const durationText = rule.duration ? ` (Длительность: ${rule.duration})` : '';
+            const punishmentText = rule.punishment ? `\n| Наказание: **${rule.punishment}**` : '';
+            const durationText = rule.duration ? `\n(Длительность: ${rule.duration})` : '';
             
             if (ruleDescription) {
-              rulesText += `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
+              // Формируем текст правила с переносами строк
+              if (ruleNumberText) {
+                rulesText += `${ruleNumberText}\n${ruleDescription}${punishmentText}${durationText}`;
+              } else {
+                rulesText += `${ruleDescription}${punishmentText}${durationText}`;
+              }
               if (index < block.rules.length - 1) {
                 rulesText += '\n\n';
               }
@@ -1926,12 +1940,14 @@
         }
       });
       
-      // Если есть пользовательский текст, добавляем его перед блоками правил
+      // НЕ добавляем правила в описание, так как они отправляются отдельно как embeds
+      // Это предотвращает дублирование правил в сообщении
+      // Если есть пользовательский текст, показываем только его
       const userText = descriptionField.dataset.userText || '';
-      if (userText && !descriptionField.value.includes(rulesText)) {
-        descriptionField.value = userText + (userText ? '\n\n' : '') + rulesText;
+      if (userText) {
+        descriptionField.value = userText;
       } else {
-        descriptionField.value = rulesText;
+        descriptionField.value = '';
       }
       
       // Сохраняем пользовательский текст
