@@ -356,9 +356,7 @@
     }
     
     .editor-workspace {
-      max-width: 1400px;
       width: 100%;
-      margin: 0 auto;
       display: flex;
       gap: 2rem;
       align-items: flex-start;
@@ -366,9 +364,9 @@
     }
     
     .editor-panel-main {
-      flex: 1;
-      min-width: 500px;
-      max-width: 700px;
+      flex: 0 0 auto;
+      width: 600px;
+      max-width: 600px;
     }
     
     .editor-form {
@@ -396,8 +394,8 @@
     }
     
     .preview-panel-fixed {
-      width: var(--preview-width);
-      min-width: var(--preview-width);
+      flex: 1;
+      min-width: 400px;
       background: var(--background-light);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: var(--border-radius);
@@ -408,7 +406,6 @@
       max-height: calc(100vh - 120px);
       display: flex;
       flex-direction: column;
-      flex-shrink: 0;
     }
     
     .preview-panel-fixed::-webkit-scrollbar {
