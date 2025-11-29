@@ -434,58 +434,45 @@ app.post('/api/send-embed', async (req, res) => {
     
     console.log('📤 Отправка embeds в Discord:', JSON.stringify(validatedEmbeds, null, 2));
     
-    // Если только один embed, отправляем обычным сообщением
-    if (validatedEmbeds.length === 1) {
-      const sentMessage = await channel.send({ embeds: validatedEmbeds });
-      
-      res.json({ 
-        success: true, 
-        message: 'Сообщение успешно отправлено!',
-        messageId: sentMessage.id,
-        channelId: channelId
-      });
-    } else {
-      // Если несколько embeds, отправляем первый обычным сообщением,
-      // остальные через webhook для слитных сообщений
-      const firstEmbed = validatedEmbeds[0];
-      const remainingEmbeds = validatedEmbeds.slice(1);
-      
-      // Отправляем первый embed обычным сообщением
-      const sentMessage = await channel.send({ embeds: [firstEmbed] });
-      
-      // Создаем или получаем webhook для отправки слитных сообщений
-      const webhooks = await channel.fetchWebhooks();
-      let webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
-      
-      if (!webhook) {
-        webhook = await channel.createWebhook({
-          name: `${client.user.username} Messages`,
-          avatar: client.user.displayAvatarURL(),
-          reason: 'Для отправки слитных сообщений без подписи бота'
-        });
-      }
-      
-      // Отправляем остальные embeds через webhook
-      for (let i = 0; i < remainingEmbeds.length; i++) {
-        await webhook.send({
-          embeds: [remainingEmbeds[i]],
-          username: client.user.username,
-          avatarURL: client.user.displayAvatarURL()
-        });
-        
-        // Небольшая задержка между сообщениями
-        if (i < remainingEmbeds.length - 1) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
-      
-      res.json({ 
-        success: true, 
-        message: 'Сообщения успешно отправлены!',
-        messageId: sentMessage.id,
-        channelId: channelId
+    // Создаем или получаем webhook для отправки всех сообщений
+    // Все сообщения от одного webhook автоматически выравниваются по ширине
+    const webhooks = await channel.fetchWebhooks();
+    let webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
+    
+    if (!webhook) {
+      webhook = await channel.createWebhook({
+        name: `${client.user.username} Messages`,
+        avatar: client.user.displayAvatarURL(),
+        reason: 'Для отправки сообщений с выравниванием по ширине'
       });
     }
+    
+    // Отправляем все embeds через webhook для правильного выравнивания
+    let firstMessageId = null;
+    for (let i = 0; i < validatedEmbeds.length; i++) {
+      const sentMessage = await webhook.send({
+        embeds: [validatedEmbeds[i]],
+        username: client.user.username,
+        avatarURL: client.user.displayAvatarURL()
+      });
+      
+      // Сохраняем ID первого сообщения для ответа
+      if (i === 0) {
+        firstMessageId = sentMessage.id;
+      }
+      
+      // Небольшая задержка между сообщениями для правильного отображения
+      if (i < validatedEmbeds.length - 1) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      message: validatedEmbeds.length === 1 ? 'Сообщение успешно отправлено!' : 'Сообщения успешно отправлены!',
+      messageId: firstMessageId,
+      channelId: channelId
+    });
   } catch (error) {
     console.error('Ошибка отправки embed:', error);
     res.status(500).json({ 

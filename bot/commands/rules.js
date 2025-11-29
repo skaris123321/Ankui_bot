@@ -21,24 +21,21 @@ module.exports = {
     try {
       // Если есть блоки правил
       if (blocksData && blocksData.length > 0) {
-        // Создаем или получаем webhook для отправки слитных сообщений
-        let webhook = null;
-        const useWebhook = blocksData.length > 1; // Используем webhook, если больше одного блока
+        // Создаем или получаем webhook для отправки всех сообщений
+        // Отправляем все через webhook для правильного выравнивания по ширине
+        const webhooks = await targetChannel.fetchWebhooks();
+        let webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
         
-        if (useWebhook) {
-          const webhooks = await targetChannel.fetchWebhooks();
-          webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
-          
-          if (!webhook) {
-            webhook = await targetChannel.createWebhook({
-              name: `${client.user.username} Messages`,
-              avatar: client.user.displayAvatarURL(),
-              reason: 'Для отправки слитных сообщений без подписи бота'
-            });
-          }
+        if (!webhook) {
+          webhook = await targetChannel.createWebhook({
+            name: `${client.user.username} Messages`,
+            avatar: client.user.displayAvatarURL(),
+            reason: 'Для отправки сообщений с выравниванием по ширине'
+          });
         }
 
-        // Отправляем каждый блок как отдельный embed
+        // Отправляем каждый блок как отдельный embed через webhook
+        // Все сообщения от одного webhook автоматически выравниваются по ширине
         for (let i = 0; i < blocksData.length; i++) {
           const block = blocksData[i];
           const isFirstBlock = i === 0;
@@ -95,25 +92,17 @@ module.exports = {
             });
           }
           
-          // Первый блок отправляем обычным сообщением (с подписью бота)
-          // Остальные блоки отправляем через webhook (без подписи, слитные)
-          if (isFirstBlock) {
-            await targetChannel.send({ embeds: [embed] });
-            // Небольшая задержка перед отправкой следующих сообщений
-            if (useWebhook) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
-          } else {
-            // Отправляем через webhook для слитных сообщений
-            await webhook.send({
-              embeds: [embed],
-              username: client.user.username,
-              avatarURL: client.user.displayAvatarURL()
-            });
-            // Небольшая задержка между сообщениями для правильного отображения
-            if (i < blocksData.length - 1) {
-              await new Promise(resolve => setTimeout(resolve, 500));
-            }
+          // Отправляем все блоки через webhook для правильного выравнивания
+          // Сообщения от одного webhook автоматически выравниваются по ширине
+          await webhook.send({
+            embeds: [embed],
+            username: client.user.username,
+            avatarURL: client.user.displayAvatarURL()
+          });
+          
+          // Небольшая задержка между сообщениями для правильного отображения
+          if (i < blocksData.length - 1) {
+            await new Promise(resolve => setTimeout(resolve, 500));
           }
         }
       } else {
