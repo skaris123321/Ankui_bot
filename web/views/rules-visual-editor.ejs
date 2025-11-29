@@ -322,7 +322,7 @@
         if (rule.punishment || rule.duration) {
           fieldValue += '<br>';
           if (rule.punishment) {
-            fieldValue += `<br>⚖️ **Наказание:** ${escapeHtml(rule.punishment)}`;
+            fieldValue += `<br>**Наказание:** ${escapeHtml(rule.punishment)}`;
           }
           if (rule.duration) {
             fieldValue += `<br>⏱️ **Длительность:** ${escapeHtml(rule.duration)}`;
@@ -368,6 +368,7 @@
       // Первый embed - картинка
       const imageEmbed = {
         color: 0x5865F2,
+        description: '\u200b', // Невидимый символ для выравнивания ширины
         image: {
           url: imageBlockImage
         }
@@ -391,7 +392,7 @@
         if (rule.punishment || rule.duration) {
           fieldValue += '\n';
           if (rule.punishment) {
-            fieldValue += `\n⚖️ **Наказание:** ${rule.punishment}`;
+            fieldValue += `\n**Наказание:** ${rule.punishment}`;
           }
           if (rule.duration) {
             fieldValue += `\n⏱️ **Длительность:** ${rule.duration}`;
@@ -400,6 +401,7 @@
         
         const ruleEmbed = {
           color: 0x5865F2,
+          description: '\u200b', // Невидимый символ для выравнивания ширины
           fields: [{
             name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
             value: fieldValue,
@@ -445,6 +447,7 @@
       if (imageBlockImage) {
         const imageEmbed = {
           color: 0x5865F2,
+          description: '\u200b', // Невидимый символ для выравнивания ширины
           image: { url: imageBlockImage }
         };
         if (imageBlockTitle) {
@@ -462,12 +465,13 @@
         
         if (rule.punishment || rule.duration) {
           fieldValue += '\n';
-          if (rule.punishment) fieldValue += `\n⚖️ **Наказание:** ${rule.punishment}`;
+          if (rule.punishment) fieldValue += `\n**Наказание:** ${rule.punishment}`;
           if (rule.duration) fieldValue += `\n⏱️ **Длительность:** ${rule.duration}`;
         }
         
         embeds.push({
           color: 0x5865F2,
+          description: '\u200b', // Невидимый символ для выравнивания ширины
           fields: [{
             name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
             value: fieldValue,
