@@ -368,17 +368,69 @@
     
     #rulesEditorWorkspace {
       display: flex;
-      flex-direction: column;
+      gap: 2rem;
+      align-items: flex-start;
       width: 100%;
-      height: calc(100vh - 180px);
     }
     
-    #rulesEditorWorkspace iframe {
+    /* Стили для редактора правил */
+    .rule-item {
+      background-color: var(--background-dark);
+      padding: 1.5rem;
+      border-radius: 8px;
+      margin-bottom: 1rem;
+      border-left: 3px solid var(--primary-color);
+    }
+    
+    .rule-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    
+    .rule-item-header h4 {
+      margin: 0;
+      color: var(--text-primary);
+    }
+    
+    .rule-item-fields {
+      display: grid;
+      gap: 1rem;
+    }
+    
+    .rule-item-fields input,
+    .rule-item-fields textarea {
       width: 100%;
-      height: 100%;
-      border: none;
+      padding: 0.75rem;
       background: var(--background);
-      border-radius: var(--border-radius);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 5px;
+      color: var(--text-primary);
+      font-family: inherit;
+    }
+    
+    .rule-item-fields textarea {
+      resize: vertical;
+      min-height: 80px;
+    }
+    
+    .remove-btn {
+      background: #ED4245;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    
+    .remove-btn:hover {
+      background: #c0392b;
+    }
+    
+    #rulesRulesContainer {
+      margin-top: 1rem;
     }
     
     .editor-panel-main {
@@ -1206,7 +1258,7 @@
           <div class="sidebar-nav-item active" data-editor="embed" onclick="switchEditor('embed')">
             <div class="sidebar-nav-item-icon">📝</div>
             <div class="sidebar-nav-item-text">Редактор сообщений</div>
-          </div>
+            </div>
           <div class="sidebar-nav-item" data-editor="rules" onclick="switchEditor('rules')">
             <div class="sidebar-nav-item-icon">📜</div>
             <div class="sidebar-nav-item-text">Редактор правил</div>
@@ -1245,9 +1297,9 @@
       <div id="editorContainer">
         <!-- Редактор сообщений -->
         <div class="editor-workspace" id="embedEditorWorkspace">
-          <!-- Основной редактор -->
-          <div class="editor-panel-main">
-            <div class="editor-form" id="embedSection">
+        <!-- Основной редактор -->
+        <div class="editor-panel-main">
+          <div class="editor-form" id="embedSection">
       
           <!-- Редактор полей -->
           <div class="editor-panel-content">
@@ -1397,8 +1449,74 @@
       
       <!-- Редактор правил -->
       <div class="editor-workspace" id="rulesEditorWorkspace" style="display: none;">
-        <iframe src="/rules-visual-editor" style="width: 100%; height: calc(100vh - 200px); border: none; background: var(--background);" id="rulesEditorIframe"></iframe>
-      </div>
+        <!-- Основной редактор правил -->
+        <div class="editor-panel-main">
+          <div class="editor-form">
+            <!-- Блок с картинкой -->
+            <div class="image-block-section" style="background-color: var(--background-dark); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 3px solid #57F287;">
+              <h3 style="margin-top: 0; margin-bottom: 1rem;">🖼️ Блок с картинкой (первый блок)</h3>
+              
+              <div class="editor-section">
+                <label>📝 Заголовок (опционально)</label>
+                <input type="text" id="rulesImageBlockTitle" class="input-field" placeholder="Например: ВОЙС КАНАЛЫ" maxlength="256" oninput="updateRulesPreview()">
+              </div>
+              
+              <div class="editor-section">
+                <label>🖼️ Картинка *</label>
+                <div class="image-upload-group">
+                  <input type="hidden" id="rulesImageBlockImage" value="">
+                  <label for="rulesImageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                  <input type="file" id="rulesImageBlockImageFile" accept="image/*" style="display: none;">
+                  <span id="rulesImageBlockImageFileName" class="file-name"></span>
+                  <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Правила -->
+            <div class="editor-section">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">📋 Правила</h3>
+                <button class="btn btn-primary" onclick="addRulesRule()">➕ Добавить правило</button>
+              </div>
+              <div id="rulesRulesContainer">
+                <p style="color: var(--text-secondary); font-style: italic;">Нажмите "➕ Добавить правило" чтобы начать</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Панель предпросмотра для правил -->
+        <div class="preview-panel-fixed">
+          <h3>Предпросмотр</h3>
+          <div class="discord-preview">
+            <div class="discord-message">
+              <div class="message-avatar">
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
+              </div>
+              <div class="message-content">
+                <div class="message-header">
+                  <span class="message-username">Ваш Бот</span>
+                  <span class="message-badge">БОТ</span>
+                  <span class="message-timestamp">Сегодня в <%= new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) %></span>
+                </div>
+                <div id="rulesPreview" class="embed-preview empty">
+                  Начните добавлять блок с картинкой и правила...
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div class="action-buttons" style="margin-top: 1rem;">
+            <h3>📤 Отправка в Discord</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+              Выберите канал в тулбаре выше, затем нажмите кнопку отправки
+            </p>
+            <button class="btn btn-primary btn-large" onclick="sendRulesFromDashboard()" style="width: 100%;">🚀 Отправить в Discord</button>
+            <button class="btn btn-secondary btn-large" onclick="copyRulesJSON()" style="width: 100%; margin-top: 0.5rem;">📋 Копировать JSON</button>
+          </div>
+        </div>
+        </div>
       </div>
     </div>
   </main>
@@ -1541,6 +1659,9 @@
         if (editorToolbar) {
           const h1 = editorToolbar.querySelector('h1');
           if (h1) h1.textContent = 'Редактор Embed сообщений';
+          // Показываем кнопки для embed редактора
+          const sendBtn = document.getElementById('sendEmbedBtn');
+          if (sendBtn) sendBtn.style.display = 'inline-flex';
         }
       } else if (editorType === 'rules') {
         if (embedWorkspace) embedWorkspace.style.display = 'none';
@@ -1548,6 +1669,13 @@
         if (editorToolbar) {
           const h1 = editorToolbar.querySelector('h1');
           if (h1) h1.textContent = 'Редактор правил';
+          // Скрываем кнопку отправки embed, так как для правил своя кнопка
+          const sendBtn = document.getElementById('sendEmbedBtn');
+          if (sendBtn) sendBtn.style.display = 'none';
+        }
+        // Обновляем предпросмотр правил при переключении
+        if (typeof updateRulesPreview === 'function') {
+          updateRulesPreview();
         }
       }
     }
@@ -2122,7 +2250,344 @@
           }
         });
       }
+      
+      // Инициализация редактора правил
+      initRulesEditor();
     });
+    
+    // ========== РЕДАКТОР ПРАВИЛ ==========
+    let rulesEditorRules = [];
+    let rulesEditorRuleCounter = 0;
+    
+    function initRulesEditor() {
+      // Обработчик загрузки изображения для редактора правил
+      const imageFileInput = document.getElementById('rulesImageBlockImageFile');
+      const titleInput = document.getElementById('rulesImageBlockTitle');
+      
+      if (imageFileInput) {
+        imageFileInput.addEventListener('change', async function(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const fileNameSpan = document.getElementById('rulesImageBlockImageFileName');
+          if (fileNameSpan) {
+            fileNameSpan.textContent = `⏳ Загрузка ${file.name}...`;
+          }
+          
+          try {
+            const url = await uploadFile(file);
+            const hiddenInput = document.getElementById('rulesImageBlockImage');
+            if (hiddenInput) {
+              hiddenInput.value = url;
+            }
+            if (fileNameSpan) {
+              fileNameSpan.textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+            }
+            updateRulesPreview();
+          } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            if (fileNameSpan) {
+              fileNameSpan.textContent = `❌ Ошибка: ${error.message}`;
+            }
+            e.target.value = '';
+          }
+        });
+      }
+      
+      if (titleInput) {
+        titleInput.addEventListener('input', updateRulesPreview);
+      }
+      
+      updateRulesPreview();
+    }
+    
+    // Добавление правила в редакторе правил
+    function addRulesRule() {
+      const ruleId = rulesEditorRuleCounter++;
+      rulesEditorRules.push({
+        id: ruleId,
+        number: '',
+        description: '',
+        punishment: '',
+        duration: ''
+      });
+      renderRulesEditorRules();
+      updateRulesPreview();
+    }
+    
+    // Удаление правила
+    function removeRulesRule(ruleId) {
+      rulesEditorRules = rulesEditorRules.filter(r => r.id !== ruleId);
+      renderRulesEditorRules();
+      updateRulesPreview();
+    }
+    
+    // Отрисовка правил
+    function renderRulesEditorRules() {
+      const container = document.getElementById('rulesRulesContainer');
+      if (!container) return;
+      
+      if (rulesEditorRules.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); font-style: italic;">Нажмите "➕ Добавить правило" чтобы начать</p>';
+        return;
+      }
+      
+      container.innerHTML = rulesEditorRules.map(rule => `
+        <div class="rule-item" data-rule-id="${rule.id}">
+          <div class="rule-item-header">
+            <h4>Правило ${rule.id + 1}</h4>
+            <button class="remove-btn" onclick="removeRulesRule(${rule.id})">🗑️ Удалить</button>
+          </div>
+          <div class="rule-item-fields">
+            <div>
+              <label>Номер правила:</label>
+              <input type="text" 
+                     placeholder="Например: 2.1" 
+                     value="${escapeHtml(rule.number)}"
+                     oninput="updateRulesRule(${rule.id}, 'number', this.value)">
+            </div>
+            <div>
+              <label>Описание:</label>
+              <textarea placeholder="Опишите правило..."
+                        oninput="updateRulesRule(${rule.id}, 'description', this.value)">${escapeHtml(rule.description)}</textarea>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+              <div>
+                <label>Наказание:</label>
+                <input type="text" 
+                       placeholder="Например: Варн / Мут"
+                       value="${escapeHtml(rule.punishment)}"
+                       oninput="updateRulesRule(${rule.id}, 'punishment', this.value)">
+              </div>
+              <div>
+                <label>Длительность:</label>
+                <input type="text" 
+                       placeholder="Например: До 30 минут"
+                       value="${escapeHtml(rule.duration)}"
+                       oninput="updateRulesRule(${rule.id}, 'duration', this.value)">
+              </div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    }
+    
+    // Обновление правила
+    function updateRulesRule(ruleId, field, value) {
+      const rule = rulesEditorRules.find(r => r.id === ruleId);
+      if (rule) {
+        rule[field] = value;
+        updateRulesPreview();
+      }
+    }
+    
+    // Обновление предпросмотра правил
+    function updateRulesPreview() {
+      const preview = document.getElementById('rulesPreview');
+      if (!preview) return;
+      
+      const imageBlockTitle = document.getElementById('rulesImageBlockTitle')?.value || '';
+      const imageBlockImage = document.getElementById('rulesImageBlockImage')?.value || '';
+      
+      if (!imageBlockImage && rulesEditorRules.length === 0) {
+        preview.innerHTML = '<div class="empty">Начните добавлять блок с картинкой и правила...</div>';
+        preview.classList.add('empty');
+        return;
+      }
+      
+      preview.classList.remove('empty');
+      
+      let html = '';
+      
+      // Первый блок - картинка
+      if (imageBlockImage) {
+        html += '<div class="embed" style="border-left: 4px solid #5865F2;">';
+        if (imageBlockTitle) {
+          html += `<div class="embed-title">${escapeHtml(imageBlockTitle)}</div>`;
+        }
+        html += `<div class="embed-image-container">`;
+        html += `<img src="${imageBlockImage}" class="embed-image" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'color: #ED4245; padding: 1rem;\\'>❌ Не удалось загрузить изображение</div>';" style="max-width: 100%; border-radius: 4px;">`;
+        html += `</div>`;
+        html += '</div>';
+      }
+      
+      // Блоки с правилами
+      rulesEditorRules.forEach(rule => {
+        if (!rule.description && !rule.number) return;
+        
+        html += '<div class="embed" style="border-left: 4px solid #5865F2; margin-top: 1rem;">';
+        
+        const ruleNumber = rule.number || '';
+        const description = rule.description || '';
+        
+        let fieldValue = description ? `**${escapeHtml(description)}**` : '';
+        
+        if (rule.punishment || rule.duration) {
+          fieldValue += '<br>';
+          if (rule.punishment) {
+            fieldValue += `<br>⚖️ **Наказание:** ${escapeHtml(rule.punishment)}`;
+          }
+          if (rule.duration) {
+            fieldValue += `<br>⏱️ **Длительность:** ${escapeHtml(rule.duration)}`;
+          }
+        }
+        
+        html += `<div class="embed-field">`;
+        html += `<div class="embed-field-name">${ruleNumber ? `Правило - ${escapeHtml(ruleNumber)}` : 'Правило'}</div>`;
+        html += `<div class="embed-field-value">${fieldValue}</div>`;
+        html += `</div>`;
+        
+        html += '</div>';
+      });
+      
+      preview.innerHTML = html;
+    }
+    
+    // Отправка правил из dashboard
+    async function sendRulesFromDashboard() {
+      const channelSelectToolbar = document.getElementById('channelSelectToolbar');
+      const channelId = channelSelectToolbar ? channelSelectToolbar.value : selectedChannelId;
+      
+      if (!channelId) {
+        showMessage('error', '❌ Выберите канал для отправки!');
+        return;
+      }
+      
+      const imageBlockTitle = document.getElementById('rulesImageBlockTitle')?.value || '';
+      const imageBlockImage = document.getElementById('rulesImageBlockImage')?.value || '';
+      
+      if (!imageBlockImage) {
+        showMessage('error', '❌ Добавьте картинку в первый блок');
+        return;
+      }
+      
+      if (rulesEditorRules.length === 0 || !rulesEditorRules.some(r => r.description)) {
+        showMessage('error', '❌ Добавьте хотя бы одно правило');
+        return;
+      }
+      
+      // Создаем embeds
+      const embeds = [];
+      
+      // Первый embed - картинка
+      const imageEmbed = {
+        color: 0x5865F2,
+        image: {
+          url: imageBlockImage
+        }
+      };
+      
+      if (imageBlockTitle) {
+        imageEmbed.title = imageBlockTitle;
+      }
+      
+      embeds.push(imageEmbed);
+      
+      // Embeds с правилами
+      rulesEditorRules.forEach(rule => {
+        if (!rule.description) return;
+        
+        const ruleNumber = rule.number || '';
+        const description = rule.description || '';
+        
+        let fieldValue = `**${description}**`;
+        
+        if (rule.punishment || rule.duration) {
+          fieldValue += '\n';
+          if (rule.punishment) {
+            fieldValue += `\n⚖️ **Наказание:** ${rule.punishment}`;
+          }
+          if (rule.duration) {
+            fieldValue += `\n⏱️ **Длительность:** ${rule.duration}`;
+          }
+        }
+        
+        const ruleEmbed = {
+          color: 0x5865F2,
+          fields: [{
+            name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
+            value: fieldValue,
+            inline: false
+          }]
+        };
+        
+        embeds.push(ruleEmbed);
+      });
+      
+      try {
+        const response = await fetch('/api/send-rules', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            channelId: channelId,
+            embeds: embeds
+          })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          showMessage('success', '✅ Правила успешно отправлены в Discord!');
+        } else {
+          showMessage('error', '❌ Ошибка: ' + (result.message || 'Неизвестная ошибка'));
+        }
+      } catch (error) {
+        console.error('Ошибка отправки правил:', error);
+        showMessage('error', '❌ Ошибка при отправке правил: ' + error.message);
+      }
+    }
+    
+    // Копирование JSON правил
+    function copyRulesJSON() {
+      const imageBlockTitle = document.getElementById('rulesImageBlockTitle')?.value || '';
+      const imageBlockImage = document.getElementById('rulesImageBlockImage')?.value || '';
+      
+      const embeds = [];
+      
+      if (imageBlockImage) {
+        const imageEmbed = {
+          color: 0x5865F2,
+          image: { url: imageBlockImage }
+        };
+        if (imageBlockTitle) {
+          imageEmbed.title = imageBlockTitle;
+        }
+        embeds.push(imageEmbed);
+      }
+      
+      rulesEditorRules.forEach(rule => {
+        if (!rule.description) return;
+        
+        const ruleNumber = rule.number || '';
+        const description = rule.description || '';
+        let fieldValue = `**${description}**`;
+        
+        if (rule.punishment || rule.duration) {
+          fieldValue += '\n';
+          if (rule.punishment) fieldValue += `\n⚖️ **Наказание:** ${rule.punishment}`;
+          if (rule.duration) fieldValue += `\n⏱️ **Длительность:** ${rule.duration}`;
+        }
+        
+        embeds.push({
+          color: 0x5865F2,
+          fields: [{
+            name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
+            value: fieldValue,
+            inline: false
+          }]
+        });
+      });
+      
+      const json = JSON.stringify({ embeds: embeds }, null, 2);
+      navigator.clipboard.writeText(json).then(() => {
+        showMessage('success', '✅ JSON скопирован в буфер обмена!');
+      }).catch(err => {
+        console.error('Ошибка копирования:', err);
+        showMessage('error', '❌ Не удалось скопировать JSON');
+      });
+    }
   </script>
 </body>
 </html>
