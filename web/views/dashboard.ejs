@@ -1925,12 +1925,21 @@
             const punishmentText = rule.punishment ? `\n| Наказание: **${rule.punishment}**` : '';
             const durationText = rule.duration ? `\n(Длительность: ${rule.duration})` : '';
             
-            if (ruleDescription) {
+            // Добавляем правило, если есть хотя бы номер, описание, наказание или длительность
+            if (ruleNumberText || ruleDescription || rule.punishment || rule.duration) {
               // Формируем текст правила с переносами строк
               if (ruleNumberText) {
-                rulesText += `${ruleNumberText}\n${ruleDescription}${punishmentText}${durationText}`;
+                if (ruleDescription) {
+                  rulesText += `${ruleNumberText}\n${ruleDescription}${punishmentText}${durationText}`;
+                } else {
+                  rulesText += `${ruleNumberText}${punishmentText}${durationText}`;
+                }
               } else {
-                rulesText += `${ruleDescription}${punishmentText}${durationText}`;
+                if (ruleDescription) {
+                  rulesText += `${ruleDescription}${punishmentText}${durationText}`;
+                } else {
+                  rulesText += `${punishmentText}${durationText}`.trim();
+                }
               }
               if (index < block.rules.length - 1) {
                 rulesText += '\n\n';

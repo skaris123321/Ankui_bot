@@ -604,8 +604,12 @@ async function sendEmbed() {
         for (let j = 0; j < block.rules.length; j++) {
           const rule = block.rules[j];
           
-          if (!rule.description || rule.description.trim() === '') {
-            continue; // Пропускаем пустые правила
+          // Пропускаем только полностью пустые правила (нет номера, описания, наказания и длительности)
+          if ((!rule.number || rule.number.trim() === '') &&
+              (!rule.description || rule.description.trim() === '') &&
+              (!rule.punishment || rule.punishment.trim() === '') &&
+              (!rule.duration || rule.duration.trim() === '')) {
+            continue; // Пропускаем полностью пустые правила
           }
           
           // Формируем описание для одного правила с поддержкой переносов строк
@@ -630,7 +634,11 @@ async function sendEmbed() {
           // Формируем полное описание с переносами строк
           let descriptionText = '';
           if (ruleNumberText) {
-            descriptionText = `${ruleNumberText}\n${ruleDescription}`;
+            if (ruleDescription) {
+              descriptionText = `${ruleNumberText}\n${ruleDescription}`;
+            } else {
+              descriptionText = ruleNumberText;
+            }
           } else {
             descriptionText = ruleDescription;
           }
