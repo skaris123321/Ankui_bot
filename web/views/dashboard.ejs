@@ -293,19 +293,9 @@
       flex: 1;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      background: var(--background);
-    }
-    
-    .editor-container {
-      max-width: 1200px;
-      width: 100%;
-      margin: 0 auto;
-      display: flex;
-      gap: 2rem;
-      align-items: flex-start;
-      padding: 2rem;
       overflow-y: auto;
+      background: var(--background);
+      padding: 2rem;
     }
     
     .editor-toolbar {
@@ -321,6 +311,7 @@
       align-items: center;
       box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
       gap: 1.5rem;
+      flex-shrink: 0;
     }
     
     .editor-toolbar h1 {
@@ -365,20 +356,18 @@
     }
     
     .editor-workspace {
-      flex: 1;
+      max-width: 1200px;
+      width: 100%;
+      margin: 0 auto;
       display: flex;
       gap: 2rem;
       align-items: flex-start;
-      min-width: 0;
-      overflow: visible;
       flex-wrap: nowrap;
     }
     
     .editor-panel-main {
       flex: 1;
-      max-width: 600px;
       min-width: 0;
-      flex-shrink: 1;
     }
     
     .editor-form {
@@ -386,7 +375,6 @@
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: var(--border-radius);
       padding: 1.5rem;
-      overflow-y: auto;
     }
     
     .editor-form::-webkit-scrollbar {
@@ -409,7 +397,6 @@
     .preview-panel-fixed {
       width: var(--preview-width);
       min-width: var(--preview-width);
-      max-width: var(--preview-width);
       background: var(--background-light);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: var(--border-radius);
@@ -417,7 +404,7 @@
       overflow-y: auto;
       position: sticky;
       top: 2rem;
-      max-height: calc(100vh - 200px);
+      max-height: calc(100vh - 120px);
       display: flex;
       flex-direction: column;
       flex-shrink: 0;
