@@ -521,9 +521,10 @@ async function sendEmbed() {
       // Собираем все embeds блока в массив для отправки в одном сообщении
       const blockEmbeds = [];
       
-      // Создаём основное embed с картинкой (если есть картинка или заголовок)
+      // Создаём основное embed с картинкой (всегда создаем для структуры, даже если нет картинки)
       let headerEmbed = null;
-      if (block.image || block.title || baseEmbedData.title || baseEmbedData.description) {
+      // Создаем headerEmbed если есть картинка, заголовок блока, или базовые данные
+      if (block.image || block.title || baseEmbedData.title || baseEmbedData.description || (block.rules && block.rules.length > 0)) {
         headerEmbed = {
           title: blockTitle || '\u200b', // Используем невидимый символ для выравнивания
           description: blockDescription || '\u200b', // Пустое описание для выравнивания
@@ -583,10 +584,8 @@ async function sendEmbed() {
           headerEmbed.footer = baseEmbedData.footer;
         }
         
-        // Всегда добавляем header embed если есть изображение, иначе только если есть заголовок или описание
-        if (headerEmbed.image || headerEmbed.title !== '\u200b' || (headerEmbed.description && headerEmbed.description !== '\u200b')) {
-          blockEmbeds.push(headerEmbed);
-        }
+        // Всегда добавляем header embed в массив (если он создан)
+        blockEmbeds.push(headerEmbed);
       }
       
       // Добавляем все правила как отдельные embeds в том же сообщении
