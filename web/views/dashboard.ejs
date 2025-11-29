@@ -1456,75 +1456,75 @@
       </div>
       
         <!-- Редактор правил -->
-        <div class="editor-workspace" id="rulesEditorWorkspace" style="display: none;">
-          <!-- Основной редактор правил -->
-          <div class="editor-panel-main">
-            <div class="editor-form">
-              <!-- Блок с картинкой -->
-              <div class="image-block-section" style="background-color: var(--background-dark); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 3px solid #57F287;">
-                <h3 style="margin-top: 0; margin-bottom: 1rem;">🖼️ Блок с картинкой (первый блок)</h3>
-                
-                <div class="editor-section">
-                  <label>📝 Заголовок (опционально)</label>
-                  <input type="text" id="imageBlockTitle" class="input-field" placeholder="Например: ВОЙС КАНАЛЫ" maxlength="256">
-                </div>
-                
-                <div class="editor-section">
-                  <label>🖼️ Картинка *</label>
-                  <div class="image-upload-group">
-                    <input type="hidden" id="imageBlockImage" value="">
-                    <label for="imageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
-                    <input type="file" id="imageBlockImageFile" accept="image/*" style="display: none;">
-                    <span id="imageBlockImageFileName" class="file-name"></span>
-                    <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
-                  </div>
-                </div>
+      <div class="editor-workspace" id="rulesEditorWorkspace" style="display: none;">
+        <!-- Основной редактор правил -->
+        <div class="editor-panel-main">
+          <div class="editor-form">
+            <!-- Блок с картинкой -->
+            <div class="image-block-section" style="background-color: var(--background-dark); padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; border-left: 3px solid #57F287;">
+              <h3 style="margin-top: 0; margin-bottom: 1rem;">🖼️ Блок с картинкой (первый блок)</h3>
+              
+              <div class="editor-section">
+                <label>📝 Заголовок (опционально)</label>
+                <input type="text" id="imageBlockTitle" class="input-field" placeholder="Например: ВОЙС КАНАЛЫ" maxlength="256">
               </div>
               
-              <!-- Правила -->
               <div class="editor-section">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-                  <h3 style="margin: 0;">📋 Правила</h3>
-                  <button class="btn btn-primary" onclick="addRule()">➕ Добавить правило</button>
+                <label>🖼️ Картинка *</label>
+                <div class="image-upload-group">
+                  <input type="hidden" id="imageBlockImage" value="">
+                  <label for="imageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                  <input type="file" id="imageBlockImageFile" accept="image/*" style="display: none;">
+                  <span id="imageBlockImageFileName" class="file-name"></span>
+                  <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
                 </div>
-                <div id="rulesContainer">
-                  <p style="color: var(--text-secondary); font-style: italic;">Нажмите "➕ Добавить правило" чтобы начать</p>
+              </div>
+            </div>
+            
+            <!-- Правила -->
+            <div class="editor-section">
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <h3 style="margin: 0;">📋 Правила</h3>
+                <button class="btn btn-primary" onclick="addRule()">➕ Добавить правило</button>
+              </div>
+              <div id="rulesContainer">
+                <p style="color: var(--text-secondary); font-style: italic;">Нажмите "➕ Добавить правило" чтобы начать</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Панель предпросмотра для правил -->
+        <div class="preview-panel-fixed">
+          <h3>Предпросмотр</h3>
+          <div class="discord-preview">
+            <div class="discord-message">
+              <div class="message-avatar">
+                <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
+              </div>
+              <div class="message-content">
+                <div class="message-header">
+                  <span class="message-username">Ваш Бот</span>
+                  <span class="message-badge">БОТ</span>
+                  <span class="message-timestamp">Сегодня в <%= new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) %></span>
+                </div>
+                <div id="rulesEmbedPreview" class="embed-preview empty">
+                  Начните добавлять блок с картинкой и правила...
                 </div>
               </div>
             </div>
           </div>
           
-          <!-- Панель предпросмотра для правил -->
-          <div class="preview-panel-fixed">
-            <h3>Предпросмотр</h3>
-            <div class="discord-preview">
-              <div class="discord-message">
-                <div class="message-avatar">
-                  <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Bot">
-                </div>
-                <div class="message-content">
-                  <div class="message-header">
-                    <span class="message-username">Ваш Бот</span>
-                    <span class="message-badge">БОТ</span>
-                    <span class="message-timestamp">Сегодня в <%= new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) %></span>
-                  </div>
-                  <div id="rulesEmbedPreview" class="embed-preview empty">
-                    Начните добавлять блок с картинкой и правила...
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <div class="action-buttons" style="margin-top: 1rem;">
-              <h3>📤 Отправка в Discord</h3>
-              <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
-                Выберите канал в тулбаре выше, затем нажмите кнопку отправки
-              </p>
-              <button class="btn btn-primary btn-large" onclick="sendRulesFromDashboard()" style="width: 100%;">🚀 Отправить в Discord</button>
-              <button class="btn btn-secondary btn-large" onclick="copyJSON()" style="width: 100%; margin-top: 0.5rem;">📋 Копировать JSON</button>
-            </div>
+          <div class="action-buttons" style="margin-top: 1rem;">
+            <h3>📤 Отправка в Discord</h3>
+            <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1rem;">
+              Выберите канал в тулбаре выше, затем нажмите кнопку отправки
+            </p>
+            <button class="btn btn-primary btn-large" onclick="sendRulesFromDashboard()" style="width: 100%;">🚀 Отправить в Discord</button>
+            <button class="btn btn-secondary btn-large" onclick="copyJSON()" style="width: 100%; margin-top: 0.5rem;">📋 Копировать JSON</button>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </main>
