@@ -220,11 +220,33 @@ app.get('/embed-editor', (req, res) => {
 });
 
 // Страница визуального редактора правил
-app.get('/rules-visual-editor', (req, res) => {
-  res.render('rules-visual-editor', {
-    user: req.session.user || { username: 'Гость', id: '0' },
-    page: 'rules-visual-editor'
-  });
+app.get('/rules-visual-editor', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    let guilds = [];
+    
+    if (client && client.isReady()) {
+      guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+        memberCount: guild.memberCount
+      }));
+    }
+    
+    res.render('rules-visual-editor', {
+      user: req.session.user || { username: 'Гость', id: '0' },
+      page: 'rules-visual-editor',
+      guilds: guilds
+    });
+  } catch (error) {
+    console.error('Ошибка при загрузке редактора правил:', error);
+    res.render('rules-visual-editor', {
+      user: req.session.user || { username: 'Гость', id: '0' },
+      page: 'rules-visual-editor',
+      guilds: []
+    });
+  }
 });
 
 // API для получения каналов сервера
