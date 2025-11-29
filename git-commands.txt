@@ -1,3 +1,3 @@
 git add .
-git commit -m "Fix: restore scroll functionality and correct preview panel layout on right side"
+git commit -m "Improve preview panel: increase width to 400px, balance editor and preview layout"
 git push origin main
