@@ -1447,8 +1447,8 @@
         </div>
       </div>
       
-      <!-- Редактор правил -->
-      <div class="editor-workspace" id="rulesEditorWorkspace" style="display: none;">
+        <!-- Редактор правил -->
+        <div class="editor-workspace" id="rulesEditorWorkspace" style="display: none;">
         <!-- Основной редактор правил -->
         <div class="editor-panel-main">
           <div class="editor-form">
@@ -1516,7 +1516,7 @@
             <button class="btn btn-secondary btn-large" onclick="copyRulesJSON()" style="width: 100%; margin-top: 0.5rem;">📋 Копировать JSON</button>
           </div>
         </div>
-        </div>
+      </div>
       </div>
     </div>
   </main>
@@ -1673,9 +1673,16 @@
           const sendBtn = document.getElementById('sendEmbedBtn');
           if (sendBtn) sendBtn.style.display = 'none';
         }
-        // Обновляем предпросмотр правил при переключении
-        if (typeof updateRulesPreview === 'function') {
-          updateRulesPreview();
+        // Инициализируем редактор правил, если ещё не инициализирован
+        if (typeof initRulesEditor === 'function') {
+          // Проверяем, инициализирован ли уже редактор
+          const imageFileInput = document.getElementById('rulesImageBlockImageFile');
+          if (imageFileInput && !imageFileInput.hasAttribute('data-initialized')) {
+            initRulesEditor();
+            imageFileInput.setAttribute('data-initialized', 'true');
+          } else if (typeof updateRulesPreview === 'function') {
+            updateRulesPreview();
+          }
         }
       }
     }
