@@ -144,6 +144,23 @@
             </div>
           </div>
           
+          <!-- Цвет боковой полоски -->
+          <div class="editor-section">
+            <label>🎨 Цвет боковой полоски</label>
+            <div class="color-picker">
+              <input type="color" id="rulesColor" value="#5865F2">
+              <span id="rulesColorHex">#5865F2</span>
+            </div>
+            <div class="color-presets">
+              <button class="color-btn" style="background: #5865F2" onclick="setRulesColor('#5865F2')">Discord</button>
+              <button class="color-btn" style="background: #57F287" onclick="setRulesColor('#57F287')">Зелёный</button>
+              <button class="color-btn" style="background: #ED4245" onclick="setRulesColor('#ED4245')">Красный</button>
+              <button class="color-btn" style="background: #FEE75C" onclick="setRulesColor('#FEE75C')">Жёлтый</button>
+              <button class="color-btn" style="background: #EB459E" onclick="setRulesColor('#EB459E')">Розовый</button>
+              <button class="color-btn" style="background: #9B59B6" onclick="setRulesColor('#9B59B6')">Фиолетовый</button>
+            </div>
+          </div>
+          
           <!-- Правила -->
           <div class="editor-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -277,6 +294,15 @@
       }
     }
     
+    // Установка цвета
+    function setRulesColor(color) {
+      const colorInput = document.getElementById('rulesColor');
+      const colorHex = document.getElementById('rulesColorHex');
+      if (colorInput) colorInput.value = color;
+      if (colorHex) colorHex.textContent = color;
+      updatePreview();
+    }
+    
     // Обновление предпросмотра
     function updatePreview() {
       const preview = document.getElementById('embedPreview');
@@ -284,6 +310,8 @@
       
       const imageBlockTitle = document.getElementById('imageBlockTitle')?.value || '';
       const imageBlockImage = document.getElementById('imageBlockImage')?.value || '';
+      const rulesColorEl = document.getElementById('rulesColor');
+      const rulesColor = rulesColorEl ? rulesColorEl.value : '#5865F2';
       
       // Если нет картинки и нет правил, показываем сообщение
       if (!imageBlockImage && rules.length === 0) {
@@ -298,7 +326,7 @@
       
       // Первый блок - картинка
       if (imageBlockImage) {
-        html += '<div class="embed" style="border-left: 4px solid #5865F2;">';
+        html += `<div class="embed" style="border-left: 4px solid ${rulesColor};">`;
         if (imageBlockTitle) {
           html += `<div class="embed-title">${escapeHtml(imageBlockTitle)}</div>`;
         }
@@ -312,7 +340,7 @@
       rules.forEach(rule => {
         if (!rule.description && !rule.number) return; // Пропускаем пустые правила
         
-        html += '<div class="embed" style="border-left: 4px solid #5865F2; margin-top: 1rem;">';
+        html += `<div class="embed" style="border-left: 4px solid ${rulesColor}; margin-top: 1rem;">`;
         
         const ruleNumber = rule.number || '';
         const description = rule.description || '';
@@ -362,12 +390,17 @@
         return;
       }
       
+      // Получаем выбранный цвет
+      const rulesColorEl = document.getElementById('rulesColor');
+      const rulesColor = rulesColorEl ? rulesColorEl.value : '#5865F2';
+      const rulesColorInt = parseInt(rulesColor.replace('#', ''), 16);
+      
       // Создаем embeds
       const embeds = [];
       
       // Первый embed - картинка
       const imageEmbed = {
-        color: 0x5865F2,
+        color: rulesColorInt,
         description: '\u200b', // Невидимый символ для выравнивания ширины
         image: {
           url: imageBlockImage
@@ -400,7 +433,7 @@
         }
         
         const ruleEmbed = {
-          color: 0x5865F2,
+          color: rulesColorInt,
           description: '\u200b', // Невидимый символ для выравнивания ширины
           fields: [{
             name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
@@ -441,12 +474,15 @@
     function copyJSON() {
       const imageBlockTitle = document.getElementById('imageBlockTitle')?.value || '';
       const imageBlockImage = document.getElementById('imageBlockImage')?.value || '';
+      const rulesColorEl = document.getElementById('rulesColor');
+      const rulesColor = rulesColorEl ? rulesColorEl.value : '#5865F2';
+      const rulesColorInt = parseInt(rulesColor.replace('#', ''), 16);
       
       const embeds = [];
       
       if (imageBlockImage) {
         const imageEmbed = {
-          color: 0x5865F2,
+          color: rulesColorInt,
           description: '\u200b', // Невидимый символ для выравнивания ширины
           image: { url: imageBlockImage }
         };
@@ -470,7 +506,7 @@
         }
         
         embeds.push({
-          color: 0x5865F2,
+          color: rulesColorInt,
           description: '\u200b', // Невидимый символ для выравнивания ширины
           fields: [{
             name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
@@ -584,6 +620,20 @@
       
       if (titleInput) {
         titleInput.addEventListener('input', updatePreview);
+      }
+      
+      // Обработчик изменения цвета
+      const rulesColorInput = document.getElementById('rulesColor');
+      const rulesColorHex = document.getElementById('rulesColorHex');
+      
+      if (rulesColorInput && rulesColorHex) {
+        rulesColorInput.addEventListener('input', function(e) {
+          rulesColorHex.textContent = e.target.value;
+          updatePreview();
+        });
+        
+        // Инициализация hex значения
+        rulesColorHex.textContent = rulesColorInput.value;
       }
       
       updatePreview();
