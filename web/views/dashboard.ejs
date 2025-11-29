@@ -1553,88 +1553,10 @@
         return;
       }
       
-      // Проверяем, есть ли блоки правил
-      const hasRulesBlocks = typeof rulesBlocks !== 'undefined' && rulesBlocks && rulesBlocks.length > 0;
+      // Правила уже добавлены в описание через updateDescriptionWithRules()
+      // Отправляем только одно сообщение с описанием, которое содержит правила
       
-      if (hasRulesBlocks) {
-        // Используем функцию из embed-editor.js для отправки блоков правил
-        // Но обновляем channelId перед отправкой
-        const originalSendEmbed = window.sendEmbedOriginal || sendEmbed;
-        
-        // Временно переопределяем получение channelId
-        const originalGetChannel = () => channelId;
-        
-        // Вызываем оригинальную функцию с правильным channelId
-        const embedData = getEmbedData();
-        const colorEl = document.getElementById('embedColor');
-        const baseColor = colorEl ? parseInt(colorEl.value.replace('#', ''), 16) : 0x5865F2;
-        
-        // Отправляем блоки правил (упрощенная версия)
-        for (let i = 0; i < rulesBlocks.length; i++) {
-          const block = rulesBlocks[i];
-          
-          if (block.title || block.rules) {
-            const blockEmbed = {
-              title: block.title || embedData.title || 'Правила сервера',
-              description: embedData.description || '',
-              color: baseColor,
-              timestamp: embedData.timestamp
-            };
-            
-            if (block.image) {
-              blockEmbed.image = { url: block.image };
-            }
-            if (block.icon) {
-              blockEmbed.thumbnail = { url: block.icon };
-            }
-            
-            try {
-              const response = await fetch('/api/send-embed', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ channelId: channelId, embed: blockEmbed })
-              });
-              const result = await response.json();
-              if (!result.success) {
-                showMessage('error', `❌ Ошибка отправки блока ${i + 1}: ${result.message}`);
-              }
-              await new Promise(resolve => setTimeout(resolve, 500));
-            } catch (error) {
-              showMessage('error', `❌ Ошибка отправки блока ${i + 1}`);
-            }
-          }
-          
-          // Отправляем правила из блока
-          if (block.rules && block.rules.length > 0) {
-            for (let j = 0; j < block.rules.length; j++) {
-              const rule = block.rules[j];
-              if (!rule.description || rule.description.trim() === '') continue;
-              
-              const ruleEmbed = {
-                description: rule.description,
-                color: baseColor,
-                timestamp: embedData.timestamp
-              };
-              
-              try {
-                const response = await fetch('/api/send-embed', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ channelId: channelId, embed: ruleEmbed })
-                });
-                await new Promise(resolve => setTimeout(resolve, 500));
-              } catch (error) {
-                console.error('Ошибка отправки правила:', error);
-              }
-            }
-          }
-        }
-        
-        showMessage('success', '✅ Блоки правил отправлены!');
-        return;
-      }
-      
-      // Обычная отправка embed (без блоков правил)
+      // Обычная отправка embed (правила уже в описании)
       const embedData = getEmbedData();
       
       if (!embedData.title && !embedData.description) {
