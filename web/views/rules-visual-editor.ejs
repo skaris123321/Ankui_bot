@@ -398,12 +398,17 @@
       // Создаем embeds
       const embeds = [];
       
-      // Первый embed - картинка
+      // Первый embed - картинка (с пустым полем для выравнивания ширины)
       const imageEmbed = {
         color: rulesColorInt,
         image: {
           url: imageBlockImage
-        }
+        },
+        fields: [{
+          name: '\u200b', // Невидимый символ - пустое поле для выравнивания ширины
+          value: '\u200b',
+          inline: false
+        }]
       };
       
       if (imageBlockTitle) {
@@ -481,7 +486,12 @@
       if (imageBlockImage) {
         const imageEmbed = {
           color: rulesColorInt,
-          image: { url: imageBlockImage }
+          image: { url: imageBlockImage },
+          fields: [{
+            name: '\u200b', // Невидимый символ - пустое поле для выравнивания ширины
+            value: '\u200b',
+            inline: false
+          }]
         };
         if (imageBlockTitle) {
           imageEmbed.title = imageBlockTitle;
