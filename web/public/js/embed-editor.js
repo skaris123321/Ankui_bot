@@ -514,11 +514,18 @@ async function sendEmbed() {
     for (let i = 0; i < rulesBlocks.length; i++) {
       const block = rulesBlocks[i];
       
-      // Сначала отправляем основное embed с картинкой (если есть картинка или заголовок)
+      // Сохраняем структуру заголовка для выравнивания ширины
+      const blockTitle = block.title || baseEmbedData.title || 'Правила сервера';
+      const blockDescription = baseEmbedData.description || '';
+      
+      // Собираем все embeds блока в массив для отправки в одном сообщении
+      const blockEmbeds = [];
+      
+      // Создаём основное embed с картинкой (если есть картинка или заголовок)
       if (block.image || block.title || baseEmbedData.title || baseEmbedData.description) {
         const headerEmbed = {
-          title: block.title || baseEmbedData.title || 'Правила сервера',
-          description: baseEmbedData.description || '',
+          title: blockTitle,
+          description: blockDescription,
           color: baseColor,
           timestamp: baseEmbedData.timestamp
         };
@@ -571,15 +578,13 @@ async function sendEmbed() {
           headerEmbed.footer = baseEmbedData.footer;
         }
         
-        // Отправляем основное embed только если есть что показать
+        // Добавляем основное embed только если есть что показать
         if (headerEmbed.title || headerEmbed.description || headerEmbed.image) {
-          console.log(`📤 Отправка заголовка блока ${i + 1}:`, JSON.stringify(headerEmbed, null, 2));
-          await sendSingleEmbed(headerEmbed);
-          await new Promise(resolve => setTimeout(resolve, 500)); // Задержка между сообщениями
+          blockEmbeds.push(headerEmbed);
         }
       }
       
-      // Теперь отправляем каждое правило как отдельное сообщение
+      // Добавляем все правила как отдельные embeds в том же сообщении
       if (block.rules && block.rules.length > 0) {
         for (let j = 0; j < block.rules.length; j++) {
           const rule = block.rules[j];
@@ -596,8 +601,9 @@ async function sendEmbed() {
           
           const descriptionText = `${ruleNumber} ${ruleDescription}${punishmentText}${durationText}`;
           
-          // Создаём embed для одного правила
+          // Создаём embed для одного правила с тем же заголовком для выравнивания
           const ruleEmbed = {
+            title: blockTitle,
             description: descriptionText.trim(),
             color: baseColor,
             timestamp: baseEmbedData.timestamp
@@ -611,13 +617,41 @@ async function sendEmbed() {
             ruleEmbed.footer = baseEmbedData.footer;
           }
           
-          console.log(`📤 Отправка правила ${j + 1} из блока ${i + 1}:`, JSON.stringify(ruleEmbed, null, 2));
-          await sendSingleEmbed(ruleEmbed);
+          blockEmbeds.push(ruleEmbed);
+        }
+      }
+      
+      // Отправляем все embeds блока в одном сообщении для выравнивания ширины
+      if (blockEmbeds.length > 0) {
+        console.log(`📤 Отправка блока ${i + 1} с ${blockEmbeds.length} embeds:`, JSON.stringify(blockEmbeds, null, 2));
+        try {
+          const response = await fetch('/api/send-embed', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              channelId: channelId,
+              embeds: blockEmbeds
+            })
+          });
           
-          // Задержка между отправками правил (кроме последнего)
-          if (j < block.rules.length - 1 || i < rulesBlocks.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
+          const result = await response.json();
+          
+          if (result.success) {
+            successCount += blockEmbeds.length;
+          } else {
+            errorCount++;
+            console.error('Ошибка отправки блока:', result.message);
           }
+        } catch (error) {
+          errorCount++;
+          console.error('Ошибка отправки блока:', error);
+        }
+        
+        // Задержка между блоками
+        if (i < rulesBlocks.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
       }
     }

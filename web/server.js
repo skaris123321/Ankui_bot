@@ -327,14 +327,17 @@ app.post('/api/upload-image-base64', (req, res) => {
 
 // API для отправки Embed в Discord
 app.post('/api/send-embed', async (req, res) => {
-  const { channelId, embed } = req.body;
+  const { channelId, embed, embeds } = req.body;
   
-  if (!channelId || !embed) {
+  if (!channelId || (!embed && !embeds)) {
     return res.status(400).json({ 
       success: false, 
       message: 'Не указан канал или данные embed' 
     });
   }
+  
+  // Поддержка как одного embed, так и массива embeds
+  const embedsArray = embeds || (embed ? [embed] : []);
   
   try {
     // Получаем клиента бота
@@ -386,53 +389,53 @@ app.post('/api/send-embed', async (req, res) => {
       }
     }
     
-    // Валидируем и очищаем URL изображений перед отправкой
-    if (embed.image && embed.image.url) {
-      const cleanedUrl = validateAndCleanUrl(embed.image.url);
-      if (cleanedUrl) {
-        embed.image.url = cleanedUrl;
-        console.log('✅ URL изображения валиден:', cleanedUrl);
-      } else {
-        console.warn('❌ Удаляем невалидный URL изображения:', embed.image.url);
-        delete embed.image;
+    // Валидируем и очищаем URL изображений для всех embeds
+    const validatedEmbeds = embedsArray.map(embedItem => {
+      const validatedEmbed = { ...embedItem };
+      
+      if (validatedEmbed.image && validatedEmbed.image.url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.image.url);
+        if (cleanedUrl) {
+          validatedEmbed.image.url = cleanedUrl;
+        } else {
+          delete validatedEmbed.image;
+        }
       }
-    }
-    
-    if (embed.thumbnail && embed.thumbnail.url) {
-      const cleanedUrl = validateAndCleanUrl(embed.thumbnail.url);
-      if (cleanedUrl) {
-        embed.thumbnail.url = cleanedUrl;
-        console.log('✅ URL иконки валиден:', cleanedUrl);
-      } else {
-        console.warn('❌ Удаляем невалидный URL иконки:', embed.thumbnail.url);
-        delete embed.thumbnail;
+      
+      if (validatedEmbed.thumbnail && validatedEmbed.thumbnail.url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.thumbnail.url);
+        if (cleanedUrl) {
+          validatedEmbed.thumbnail.url = cleanedUrl;
+        } else {
+          delete validatedEmbed.thumbnail;
+        }
       }
-    }
-    
-    if (embed.author && embed.author.icon_url) {
-      const cleanedUrl = validateAndCleanUrl(embed.author.icon_url);
-      if (cleanedUrl) {
-        embed.author.icon_url = cleanedUrl;
-      } else {
-        console.warn('❌ Удаляем невалидный URL иконки автора:', embed.author.icon_url);
-        delete embed.author.icon_url;
+      
+      if (validatedEmbed.author && validatedEmbed.author.icon_url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.author.icon_url);
+        if (cleanedUrl) {
+          validatedEmbed.author.icon_url = cleanedUrl;
+        } else {
+          delete validatedEmbed.author.icon_url;
+        }
       }
-    }
-    
-    if (embed.footer && embed.footer.icon_url) {
-      const cleanedUrl = validateAndCleanUrl(embed.footer.icon_url);
-      if (cleanedUrl) {
-        embed.footer.icon_url = cleanedUrl;
-      } else {
-        console.warn('❌ Удаляем невалидный URL иконки футера:', embed.footer.icon_url);
-        delete embed.footer.icon_url;
+      
+      if (validatedEmbed.footer && validatedEmbed.footer.icon_url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.footer.icon_url);
+        if (cleanedUrl) {
+          validatedEmbed.footer.icon_url = cleanedUrl;
+        } else {
+          delete validatedEmbed.footer.icon_url;
+        }
       }
-    }
+      
+      return validatedEmbed;
+    });
     
-    console.log('📤 Отправка embed в Discord:', JSON.stringify(embed, null, 2));
+    console.log('📤 Отправка embeds в Discord:', JSON.stringify(validatedEmbeds, null, 2));
     
-    // Отправляем embed и получаем отправленное сообщение
-    const sentMessage = await channel.send({ embeds: [embed] });
+    // Отправляем все embeds в одном сообщении для выравнивания ширины
+    const sentMessage = await channel.send({ embeds: validatedEmbeds });
     
     res.json({ 
       success: true, 
