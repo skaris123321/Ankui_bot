@@ -21,21 +21,9 @@ module.exports = {
     try {
       // Если есть блоки правил
       if (blocksData && blocksData.length > 0) {
-        // Создаем или получаем webhook для отправки всех сообщений
-        // Отправляем все через webhook для правильного выравнивания по ширине
-        const webhooks = await targetChannel.fetchWebhooks();
-        let webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
+        const embeds = [];
         
-        if (!webhook) {
-          webhook = await targetChannel.createWebhook({
-            name: `${client.user.username} Messages`,
-            avatar: client.user.displayAvatarURL(),
-            reason: 'Для отправки сообщений с выравниванием по ширине'
-          });
-        }
-
-        // Отправляем каждый блок как отдельный embed через webhook
-        // Все сообщения от одного webhook автоматически выравниваются по ширине
+        // Создаем embeds для каждого блока
         for (let i = 0; i < blocksData.length; i++) {
           const block = blocksData[i];
           const isFirstBlock = i === 0;
@@ -92,19 +80,11 @@ module.exports = {
             });
           }
           
-          // Отправляем все блоки через webhook для правильного выравнивания
-          // Сообщения от одного webhook автоматически выравниваются по ширине
-          await webhook.send({
-            embeds: [embed],
-            username: client.user.username,
-            avatarURL: client.user.displayAvatarURL()
-          });
-          
-          // Небольшая задержка между сообщениями для правильного отображения
-          if (i < blocksData.length - 1) {
-            await new Promise(resolve => setTimeout(resolve, 500));
-          }
+          embeds.push(embed);
         }
+        
+        // Отправляем ВСЕ embeds в ОДНОМ сообщении для правильного выравнивания
+        await targetChannel.send({ embeds: embeds });
       } else {
         // Если блоков нет, используем старый формат
         const rulesText = settings.rules_text || this.getDefaultRules();

@@ -141,6 +141,29 @@ app.get('/guild/:guildId', (req, res) => {
   });
 });
 
+// API для получения списка серверов
+app.get('/api/guilds', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    
+    if (!client || !client.isReady()) {
+      return res.json([]);
+    }
+    
+    const guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+      id: guild.id,
+      name: guild.name,
+      icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+      memberCount: guild.memberCount
+    }));
+    
+    res.json(guilds);
+  } catch (error) {
+    console.error('Ошибка получения серверов:', error);
+    res.json([]);
+  }
+});
+
 // API для сохранения настроек сервера
 app.post('/api/guild/:guildId/settings', (req, res) => {
   const guildId = req.params.guildId;
@@ -434,43 +457,13 @@ app.post('/api/send-embed', async (req, res) => {
     
     console.log('📤 Отправка embeds в Discord:', JSON.stringify(validatedEmbeds, null, 2));
     
-    // Создаем или получаем webhook для отправки всех сообщений
-    // Все сообщения от одного webhook автоматически выравниваются по ширине
-    const webhooks = await channel.fetchWebhooks();
-    let webhook = webhooks.find(w => w.name === `${client.user.username} Messages`);
-    
-    if (!webhook) {
-      webhook = await channel.createWebhook({
-        name: `${client.user.username} Messages`,
-        avatar: client.user.displayAvatarURL(),
-        reason: 'Для отправки сообщений с выравниванием по ширине'
-      });
-    }
-    
-    // Отправляем все embeds через webhook для правильного выравнивания
-    let firstMessageId = null;
-    for (let i = 0; i < validatedEmbeds.length; i++) {
-      const sentMessage = await webhook.send({
-        embeds: [validatedEmbeds[i]],
-        username: client.user.username,
-        avatarURL: client.user.displayAvatarURL()
-      });
-      
-      // Сохраняем ID первого сообщения для ответа
-      if (i === 0) {
-        firstMessageId = sentMessage.id;
-      }
-      
-      // Небольшая задержка между сообщениями для правильного отображения
-      if (i < validatedEmbeds.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-    }
+    // Отправляем все embeds в одном сообщении (обычная отправка)
+    const sentMessage = await channel.send({ embeds: validatedEmbeds });
     
     res.json({ 
       success: true, 
-      message: validatedEmbeds.length === 1 ? 'Сообщение успешно отправлено!' : 'Сообщения успешно отправлены!',
-      messageId: firstMessageId,
+      message: 'Сообщение успешно отправлено!',
+      messageId: sentMessage.id,
       channelId: channelId
     });
   } catch (error) {
@@ -478,6 +471,125 @@ app.post('/api/send-embed', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ошибка отправки сообщения' 
+    });
+  }
+});
+
+// API для отправки правил в Discord (все embeds в одном сообщении)
+app.post('/api/send-rules', async (req, res) => {
+  const { channelId, embeds } = req.body;
+  
+  if (!channelId || !embeds || !Array.isArray(embeds) || embeds.length === 0) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Не указан канал или данные embeds' 
+    });
+  }
+  
+  try {
+    // Получаем клиента бота
+    const client = require('../bot/client');
+    
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Бот не подключен к Discord' 
+      });
+    }
+    
+    // Получаем канал
+    const channel = await client.channels.fetch(channelId);
+    
+    if (!channel || !channel.isTextBased()) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Канал не найден или не является текстовым' 
+      });
+    }
+    
+    // Функция для валидации и кодирования URL
+    function validateAndCleanUrl(url) {
+      if (!url || typeof url !== 'string') return null;
+      
+      url = url.trim();
+      
+      try {
+        const urlObj = new URL(url);
+        if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+          console.warn('Невалидный протокол URL:', url);
+          return null;
+        }
+        urlObj.pathname = encodeURI(urlObj.pathname);
+        return urlObj.toString();
+      } catch (error) {
+        try {
+          return encodeURI(url);
+        } catch {
+          console.warn('Невалидный URL:', url, error.message);
+          return null;
+        }
+      }
+    }
+    
+    // Валидируем и очищаем URL изображений для всех embeds
+    const validatedEmbeds = embeds.map(embedItem => {
+      const validatedEmbed = { ...embedItem };
+      
+      if (validatedEmbed.image && validatedEmbed.image.url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.image.url);
+        if (cleanedUrl) {
+          validatedEmbed.image.url = cleanedUrl;
+        } else {
+          delete validatedEmbed.image;
+        }
+      }
+      
+      if (validatedEmbed.thumbnail && validatedEmbed.thumbnail.url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.thumbnail.url);
+        if (cleanedUrl) {
+          validatedEmbed.thumbnail.url = cleanedUrl;
+        } else {
+          delete validatedEmbed.thumbnail;
+        }
+      }
+      
+      if (validatedEmbed.author && validatedEmbed.author.icon_url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.author.icon_url);
+        if (cleanedUrl) {
+          validatedEmbed.author.icon_url = cleanedUrl;
+        } else {
+          delete validatedEmbed.author.icon_url;
+        }
+      }
+      
+      if (validatedEmbed.footer && validatedEmbed.footer.icon_url) {
+        const cleanedUrl = validateAndCleanUrl(validatedEmbed.footer.icon_url);
+        if (cleanedUrl) {
+          validatedEmbed.footer.icon_url = cleanedUrl;
+        } else {
+          delete validatedEmbed.footer.icon_url;
+        }
+      }
+      
+      return validatedEmbed;
+    });
+    
+    console.log('📤 Отправка правил в Discord (все в одном сообщении):', validatedEmbeds.length, 'embeds');
+    
+    // Отправляем ВСЕ embeds в ОДНОМ сообщении для правильного выравнивания
+    const sentMessage = await channel.send({ embeds: validatedEmbeds });
+    
+    res.json({ 
+      success: true, 
+      message: 'Правила успешно отправлены!',
+      messageId: sentMessage.id,
+      channelId: channelId
+    });
+  } catch (error) {
+    console.error('Ошибка отправки правил:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка отправки правил' 
     });
   }
 });
