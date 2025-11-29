@@ -78,6 +78,36 @@
       margin-bottom: 2rem;
       border-left: 3px solid #57F287;
     }
+    
+    .image-upload-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    
+    .btn-upload {
+      display: inline-block;
+      padding: 0.5rem 1rem;
+      background: rgba(88, 101, 242, 0.2);
+      border: 1px solid rgba(88, 101, 242, 0.3);
+      border-radius: 5px;
+      color: var(--text-primary);
+      cursor: pointer;
+      text-align: center;
+      transition: all 0.2s;
+      width: fit-content;
+    }
+    
+    .btn-upload:hover {
+      background: rgba(88, 101, 242, 0.3);
+      border-color: rgba(88, 101, 242, 0.5);
+    }
+    
+    .file-name {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
   </style>
 </head>
 <body>
@@ -103,9 +133,14 @@
             </div>
             
             <div class="editor-section">
-              <label>🖼️ Картинка (URL) *</label>
-              <input type="url" id="imageBlockImage" class="input-field" placeholder="https://example.com/image.png" oninput="updatePreview()">
-              <small>Обязательное поле - это первый блок, который будет виден</small>
+              <label>🖼️ Картинка *</label>
+              <div class="image-upload-group">
+                <input type="hidden" id="imageBlockImage" value="">
+                <label for="imageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                <input type="file" id="imageBlockImageFile" accept="image/*" style="display: none;">
+                <span id="imageBlockImageFileName" class="file-name"></span>
+                <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+              </div>
             </div>
           </div>
           
@@ -457,14 +492,92 @@
       return div.innerHTML;
     }
     
-    // Обновление предпросмотра при изменении картинки
+    // Функция загрузки файла
+    async function uploadFile(file) {
+      return new Promise((resolve, reject) => {
+        // Проверяем размер файла (максимум 10 МБ)
+        if (file.size > 10 * 1024 * 1024) {
+          reject(new Error('Размер файла не должен превышать 10 МБ'));
+          return;
+        }
+        
+        // Проверяем тип файла
+        const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
+        if (!allowedTypes.includes(file.type)) {
+          reject(new Error('Разрешены только изображения (JPEG, PNG, GIF, WEBP)'));
+          return;
+        }
+        
+        // Создаём FormData для отправки файла
+        const formData = new FormData();
+        formData.append('image', file);
+        
+        // Отправляем файл на сервер
+        fetch('/api/upload-image', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then(result => {
+          if (result.success) {
+            // Возвращаем полный URL (с доменом для Discord)
+            let url = result.url;
+            if (!url.startsWith('/')) {
+              url = '/' + url;
+            }
+            const fullUrl = window.location.origin + url;
+            resolve(fullUrl);
+          } else {
+            reject(new Error(result.message || 'Ошибка загрузки'));
+          }
+        })
+        .catch(error => {
+          console.error('Ошибка загрузки файла:', error);
+          reject(error);
+        });
+      });
+    }
+    
+    // Обработчик загрузки изображения
     document.addEventListener('DOMContentLoaded', () => {
-      const imageInput = document.getElementById('imageBlockImage');
+      const imageFileInput = document.getElementById('imageBlockImageFile');
       const titleInput = document.getElementById('imageBlockTitle');
       
-      if (imageInput) {
-        imageInput.addEventListener('input', updatePreview);
+      if (imageFileInput) {
+        imageFileInput.addEventListener('change', async function(e) {
+          const file = e.target.files[0];
+          if (!file) return;
+          
+          const fileNameSpan = document.getElementById('imageBlockImageFileName');
+          if (fileNameSpan) {
+            fileNameSpan.textContent = `⏳ Загрузка ${file.name}...`;
+          }
+          
+          try {
+            const url = await uploadFile(file);
+            const hiddenInput = document.getElementById('imageBlockImage');
+            if (hiddenInput) {
+              hiddenInput.value = url;
+            }
+            if (fileNameSpan) {
+              fileNameSpan.textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+            }
+            updatePreview();
+          } catch (error) {
+            console.error('Ошибка загрузки:', error);
+            if (fileNameSpan) {
+              fileNameSpan.textContent = `❌ Ошибка: ${error.message}`;
+            }
+            e.target.value = '';
+          }
+        });
       }
+      
       if (titleInput) {
         titleInput.addEventListener('input', updatePreview);
       }

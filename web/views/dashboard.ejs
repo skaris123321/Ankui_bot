@@ -366,6 +366,21 @@
       justify-content: center;
     }
     
+    #rulesEditorWorkspace {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: calc(100vh - 180px);
+    }
+    
+    #rulesEditorWorkspace iframe {
+      width: 100%;
+      height: 100%;
+      border: none;
+      background: var(--background);
+      border-radius: var(--border-radius);
+    }
+    
     .editor-panel-main {
       flex: 0 0 auto;
       width: 600px;
@@ -1185,20 +1200,16 @@
       </div>
       
       <div class="sidebar-content">
-        <!-- Категория ОБЩЕЕ -->
+        <!-- Категория РЕДАКТОРЫ -->
         <div class="sidebar-nav-category">
-          <div class="sidebar-nav-category-title">ОБЩЕЕ</div>
-          <div class="sidebar-nav-item active">
-            <div class="sidebar-nav-item-icon">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                <polyline points="14 2 14 8 20 8"></polyline>
-                <line x1="16" y1="13" x2="8" y2="13"></line>
-                <line x1="16" y1="17" x2="8" y2="17"></line>
-                <polyline points="10 9 9 9 8 9"></polyline>
-              </svg>
-            </div>
-            <div class="sidebar-nav-item-text">Embed-сообщения</div>
+          <div class="sidebar-nav-category-title">РЕДАКТОРЫ</div>
+          <div class="sidebar-nav-item active" data-editor="embed" onclick="switchEditor('embed')">
+            <div class="sidebar-nav-item-icon">📝</div>
+            <div class="sidebar-nav-item-text">Редактор сообщений</div>
+          </div>
+          <div class="sidebar-nav-item" data-editor="rules" onclick="switchEditor('rules')">
+            <div class="sidebar-nav-item-icon">📜</div>
+            <div class="sidebar-nav-item-text">Редактор правил</div>
           </div>
         </div>
         
@@ -1230,10 +1241,13 @@
         </div>
       </div>
       
-      <div class="editor-workspace">
-        <!-- Основной редактор -->
-        <div class="editor-panel-main">
-          <div class="editor-form" id="embedSection">
+      <!-- Контейнер редакторов -->
+      <div id="editorContainer">
+        <!-- Редактор сообщений -->
+        <div class="editor-workspace" id="embedEditorWorkspace">
+          <!-- Основной редактор -->
+          <div class="editor-panel-main">
+            <div class="editor-form" id="embedSection">
       
           <!-- Редактор полей -->
           <div class="editor-panel-content">
@@ -1380,6 +1394,12 @@
           <div id="messageBox" class="message-box"></div>
         </div>
       </div>
+      
+      <!-- Редактор правил -->
+      <div class="editor-workspace" id="rulesEditorWorkspace" style="display: none;">
+        <iframe src="/rules-visual-editor" style="width: 100%; height: calc(100vh - 200px); border: none; background: var(--background);" id="rulesEditorIframe"></iframe>
+      </div>
+      </div>
     </div>
   </main>
   
@@ -1496,6 +1516,39 @@
       const embedSection = document.getElementById('embedSection');
       if (embedSection) {
         embedSection.style.display = 'block';
+      }
+    }
+    
+    // Переключение между редакторами
+    function switchEditor(editorType) {
+      // Обновляем активный пункт меню
+      document.querySelectorAll('.sidebar-nav-item').forEach(item => {
+        item.classList.remove('active');
+      });
+      const activeItem = document.querySelector(`[data-editor="${editorType}"]`);
+      if (activeItem) {
+        activeItem.classList.add('active');
+      }
+      
+      // Переключаем редакторы
+      const embedWorkspace = document.getElementById('embedEditorWorkspace');
+      const rulesWorkspace = document.getElementById('rulesEditorWorkspace');
+      const editorToolbar = document.querySelector('.editor-toolbar');
+      
+      if (editorType === 'embed') {
+        if (embedWorkspace) embedWorkspace.style.display = 'flex';
+        if (rulesWorkspace) rulesWorkspace.style.display = 'none';
+        if (editorToolbar) {
+          const h1 = editorToolbar.querySelector('h1');
+          if (h1) h1.textContent = 'Редактор Embed сообщений';
+        }
+      } else if (editorType === 'rules') {
+        if (embedWorkspace) embedWorkspace.style.display = 'none';
+        if (rulesWorkspace) rulesWorkspace.style.display = 'flex';
+        if (editorToolbar) {
+          const h1 = editorToolbar.querySelector('h1');
+          if (h1) h1.textContent = 'Редактор правил';
+        }
       }
     }
     
