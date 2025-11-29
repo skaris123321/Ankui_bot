@@ -401,7 +401,6 @@
       // Первый embed - картинка
       const imageEmbed = {
         color: rulesColorInt,
-        description: '\u200b', // Невидимый символ для выравнивания ширины
         image: {
           url: imageBlockImage
         }
@@ -434,7 +433,6 @@
         
         const ruleEmbed = {
           color: rulesColorInt,
-          description: '\u200b', // Невидимый символ для выравнивания ширины
           fields: [{
             name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
             value: fieldValue,
@@ -483,7 +481,6 @@
       if (imageBlockImage) {
         const imageEmbed = {
           color: rulesColorInt,
-          description: '\u200b', // Невидимый символ для выравнивания ширины
           image: { url: imageBlockImage }
         };
         if (imageBlockTitle) {
@@ -507,7 +504,6 @@
         
         embeds.push({
           color: rulesColorInt,
-          description: '\u200b', // Невидимый символ для выравнивания ширины
           fields: [{
             name: ruleNumber ? `Правило - ${ruleNumber}` : 'Правило',
             value: fieldValue,
