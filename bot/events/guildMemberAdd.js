@@ -3,18 +3,13 @@ const { Events, EmbedBuilder } = require('discord.js');
 // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - модуль загружается
 console.log(`\n🔵🔵🔵 МОДУЛЬ guildMemberAdd.js ЗАГРУЖЕН 🔵🔵🔵\n`);
 
-// Глобальная защита от двойной отправки - используем глобальный Set с уникальным ключом
+// Глобальная защита от двойной отправки - используем Map с Promise для блокировки
 // Это гарантирует, что защита работает даже если модуль загружается несколько раз
-if (!global.welcomeMessageSent) {
-  global.welcomeMessageSent = new Set();
-  console.log(`✅ Глобальный Set welcomeMessageSent создан`);
+if (!global.welcomeMessagePromises) {
+  global.welcomeMessagePromises = new Map();
+  console.log(`✅ Глобальный Map welcomeMessagePromises создан`);
 } else {
-  console.log(`⚠️ Глобальный Set welcomeMessageSent уже существует! Размер: ${global.welcomeMessageSent.size}`);
-}
-
-// Map для отслеживания времени последней обработки (дополнительная защита)
-if (!global.welcomeMessageTimestamps) {
-  global.welcomeMessageTimestamps = new Map();
+  console.log(`⚠️ Глобальный Map welcomeMessagePromises уже существует! Размер: ${global.welcomeMessagePromises.size}`);
 }
 
 module.exports = {
@@ -24,61 +19,51 @@ module.exports = {
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
-    const now = Date.now();
     
     // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - выводим СРАЗУ при вызове обработчика
-    console.log(`\n🔥🔥🔥 ОБРАБОТЧИК ВЫЗВАН! Пользователь: ${member.user.tag} (${member.user.id}) на сервере ${guildId} 🔥🔥🔥`);
+    console.log(`\n🔥🔥🔥 ОБРАБОТЧИК ВЫЗВАН! Пользователь: ${member.user.tag} (${userId}) на сервере ${guildId} 🔥🔥🔥`);
     console.log(`🔑 Уникальный ключ: ${key}`);
-    console.log(`📋 Размер Set ДО проверки: ${global.welcomeMessageSent.size}`);
-    console.log(`📋 Ключ в Set ДО проверки: ${global.welcomeMessageSent.has(key)}`);
+    console.log(`📋 Размер Map ДО проверки: ${global.welcomeMessagePromises.size}`);
+    console.log(`📋 Ключ в Map ДО проверки: ${global.welcomeMessagePromises.has(key)}`);
     
-    // АТОМАРНАЯ проверка и добавление - делаем все в одном синхронном блоке
-    // Это предотвращает race condition между несколькими одновременными вызовами
-    let shouldProcess = false;
-    
-    // СИНХРОННАЯ проверка и добавление без разрыва
-    if (!global.welcomeMessageSent.has(key)) {
-      const lastProcessed = global.welcomeMessageTimestamps.get(key);
-      if (!lastProcessed || (now - lastProcessed) >= 10000) {
-        // СРАЗУ добавляем в оба Set/Map синхронно
-        global.welcomeMessageSent.add(key);
-        global.welcomeMessageTimestamps.set(key, now);
-        shouldProcess = true;
-        console.log(`✅ [${key}] Ключ добавлен в Set, начинаем обработку`);
-      } else {
-        const secondsAgo = Math.round((now - lastProcessed) / 1000);
-        console.log(`⚠️ [${key}] Пользователь ${member.user.tag} обрабатывался ${secondsAgo} сек назад, пропускаем`);
+    // Если уже обрабатывается - ждем завершения и выходим
+    if (global.welcomeMessagePromises.has(key)) {
+      console.log(`⚠️ [${key}] Пользователь ${member.user.tag} уже обрабатывается, ждем завершения...`);
+      try {
+        await global.welcomeMessagePromises.get(key);
+        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов`);
+      } catch (e) {
+        // Игнорируем ошибки
       }
-    } else {
-      console.log(`⚠️ [${key}] Ключ уже в Set, пропускаем обработку`);
-    }
-    
-    // Если не должны обрабатывать, выходим
-    if (!shouldProcess) {
-      console.log(`🚫 [${key}] Выход из обработчика - обработка не требуется\n`);
       return;
     }
     
-    console.log(`🔄 [${key}] Начало обработки приветствия для ${member.user.tag}`);
+    // Создаем Promise для блокировки - СИНХРОННО добавляем в Map
+    let resolvePromise;
+    const processingPromise = new Promise(resolve => {
+      resolvePromise = resolve;
+    });
     
-    // Удаляем из Set через 30 секунд
+    // СИНХРОННО добавляем в Map ПЕРЕД любыми асинхронными операциями
+    global.welcomeMessagePromises.set(key, processingPromise);
+    console.log(`✅ [${key}] Ключ добавлен в Map, начинаем обработку`);
+    
+    // Удаляем из Map через 10 секунд (на случай если Promise не разрешится)
     setTimeout(() => {
-      global.welcomeMessageSent.delete(key);
-      console.log(`🗑️ [${key}] Ключ удален из Set (через 30 сек)`);
-    }, 30000);
+      if (global.welcomeMessagePromises.has(key)) {
+        global.welcomeMessagePromises.delete(key);
+        console.log(`🗑️ [${key}] Ключ удален из Map (таймаут 10 сек)`);
+      }
+    }, 10000);
     
-    // Удаляем timestamp через 60 секунд
-    setTimeout(() => {
-      global.welcomeMessageTimestamps.delete(key);
-    }, 60000);
-    
+    // Обрабатываем в try-finally, чтобы гарантированно разрешить Promise
     try {
+      console.log(`🔄 [${key}] Начало обработки приветствия для ${member.user.tag}`);
+      
       const settings = client.db.getGuildSettings(guildId);
       
       if (!settings) {
         console.log(`⚠️ [${key}] Настройки для сервера не найдены`);
-        global.welcomeMessageSent.delete(key);
-        global.welcomeMessageTimestamps.delete(key);
         return;
       }
       
@@ -86,8 +71,6 @@ module.exports = {
       
       if (!welcomeEnabled || !settings.welcome_channel_id) {
         console.log(`⚠️ [${key}] Приветствие отключено или канал не указан`);
-        global.welcomeMessageSent.delete(key);
-        global.welcomeMessageTimestamps.delete(key);
         return;
       }
       
@@ -95,8 +78,6 @@ module.exports = {
       
       if (!channel || !channel.isTextBased()) {
         console.error(`❌ [${key}] Канал не найден или не текстовый`);
-        global.welcomeMessageSent.delete(key);
-        global.welcomeMessageTimestamps.delete(key);
         return;
       }
       
@@ -150,7 +131,7 @@ module.exports = {
             .setImage(welcomeImageUrl)
             .setThumbnail(avatarUrl);
           
-          // Отправляем сообщение - ключ уже добавлен в Set выше
+          // Отправляем сообщение
           if (sendType === 'channel') {
             await channel.send({ embeds: [embed] });
             console.log(`✅ [${key}] Изображение отправлено`);
@@ -184,7 +165,13 @@ module.exports = {
       console.log(`✅✅✅ [${key}] Обработка завершена успешно ✅✅✅\n`);
     } catch (error) {
       console.error(`❌ [${key}] Ошибка обработки приветствия:`, error);
-      // Не удаляем из Set при ошибке - пусть остается защита от повторной попытки
+    } finally {
+      // ВСЕГДА разрешаем Promise и удаляем из Map
+      if (resolvePromise) {
+        resolvePromise();
+      }
+      global.welcomeMessagePromises.delete(key);
+      console.log(`🗑️ [${key}] Ключ удален из Map (обработка завершена)`);
     }
   },
 };
