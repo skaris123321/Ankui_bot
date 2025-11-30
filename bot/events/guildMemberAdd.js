@@ -5,40 +5,35 @@ const path = require('path');
 const fs = require('fs');
 const url = require('url');
 
-// Защита от двойной отправки - используем глобальный Map с timestamp
+// Защита от двойной отправки - используем синхронную блокировку
 if (!global.processingWelcomeMembers) {
-  global.processingWelcomeMembers = new Map();
+  global.processingWelcomeMembers = new Set();
 }
 
 module.exports = {
   name: Events.GuildMemberAdd,
   once: false,
   async execute(member, client) {
+    // СИНХРОННАЯ проверка БЕЗ любых асинхронных операций
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
-    const timestamp = Date.now();
     
-    // Проверяем, обрабатывался ли этот пользователь недавно (последние 10 секунд)
+    // МГНОВЕННАЯ проверка - если уже обрабатывается, сразу выходим
     if (global.processingWelcomeMembers.has(key)) {
-      const lastProcessed = global.processingWelcomeMembers.get(key);
-      const timeSince = timestamp - lastProcessed;
-      
-      if (timeSince < 10000) {
-        console.log(`⚠️ Пользователь ${member.user.tag} (${userId}) уже обрабатывался ${timeSince}ms назад, пропускаем дубликат`);
-        return;
-      }
+      console.log(`⚠️ ПРОПУСК: Пользователь ${member.user.tag} (${userId}) уже обрабатывается`);
+      return;
     }
     
-    // Отмечаем время обработки
-    global.processingWelcomeMembers.set(key, timestamp);
-    console.log(`🔄 [${timestamp}] Начинаем обработку пользователя ${member.user.tag} (${key})`);
+    // МГНОВЕННО добавляем в Set - ДО любой асинхронной логики
+    global.processingWelcomeMembers.add(key);
     
-    // Удаляем через 10 секунд
+    console.log(`🔄 Начинаем обработку пользователя ${member.user.tag} (${key})`);
+    
+    // Удаляем через 30 секунд
     setTimeout(() => {
       global.processingWelcomeMembers.delete(key);
-      console.log(`✅ Завершена обработка пользователя ${member.user.tag} (${key})`);
-    }, 10000);
+    }, 30000);
     
     try {
       const settings = client.db.getGuildSettings(guildId);
@@ -111,6 +106,12 @@ module.exports = {
                 .setThumbnail(avatarUrl); // Thumbnail автоматически круглый в Discord
               
               // Отправляем в зависимости от типа - ТОЛЬКО ОДИН РАЗ
+              // Дополнительная проверка - если уже обрабатывается, не отправляем
+              if (global.processingWelcomeMembers.has(key)) {
+                console.log(`⚠️ ДВОЙНАЯ ПРОВЕРКА: Пропускаем отправку для ${key}`);
+                return;
+              }
+              
               let sent = false;
               
               if (sendType === 'channel') {

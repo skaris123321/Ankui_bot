@@ -43,6 +43,13 @@ const eventsPath = path.join(__dirname, 'events');
 if (fs.existsSync(eventsPath)) {
   const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
   
+  // ВСЕГДА удаляем все обработчики GuildMemberAdd перед загрузкой
+  const listenerCount = client.listenerCount(Events.GuildMemberAdd);
+  if (listenerCount > 0) {
+    console.log(`⚠️ УДАЛЯЕМ ${listenerCount} предыдущих обработчиков события GuildMemberAdd`);
+    client.removeAllListeners(Events.GuildMemberAdd);
+  }
+  
   // Отслеживаем уже зарегистрированные события, чтобы избежать дубликатов
   const registeredEvents = new Set();
   
@@ -55,15 +62,6 @@ if (fs.existsSync(eventsPath)) {
     if (registeredEvents.has(eventKey)) {
       console.log(`⚠️ Событие ${event.name} из файла ${file} уже зарегистрировано, пропускаем`);
       continue;
-    }
-    
-    // Удаляем все предыдущие обработчики этого события перед регистрацией нового (только для GuildMemberAdd)
-    if (event.name === Events.GuildMemberAdd) {
-      const listenerCount = client.listenerCount(event.name);
-      if (listenerCount > 0) {
-        console.log(`⚠️ Удаляем ${listenerCount} предыдущих обработчиков события ${event.name}`);
-        client.removeAllListeners(event.name);
-      }
     }
     
     if (event.once) {
