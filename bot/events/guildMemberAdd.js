@@ -63,8 +63,31 @@ module.exports = {
         let welcomeImageUrl = settings.welcome_image_background || '';
         
         if (welcomeImageUrl && welcomeImageUrl.startsWith('/uploads/')) {
-          const baseUrl = process.env.WEB_SERVER_URL || (process.env.PORT ? `http://localhost:${process.env.PORT || 3000}` : 'http://localhost:3000');
+          // Определяем базовый URL - проверяем переменные окружения Render/Railway/etc
+          let baseUrl = process.env.WEB_SERVER_URL || process.env.RENDER_EXTERNAL_URL || process.env.RAILWAY_STATIC_URL;
+          
+          if (!baseUrl) {
+            // Проверяем наличие переменных, указывающих на Render
+            // Render устанавливает RENDER=true и RENDER_SERVICE_NAME
+            if (process.env.RENDER === 'true' || process.env.RENDER_SERVICE_NAME) {
+              // На Render - пытаемся определить URL из названия сервиса
+              const serviceName = process.env.RENDER_SERVICE_NAME || 'ankui-bot';
+              baseUrl = `https://${serviceName}.onrender.com`;
+            } else if (process.env.RAILWAY_ENVIRONMENT) {
+              // На Railway
+              baseUrl = process.env.RAILWAY_PUBLIC_DOMAIN || `http://localhost:${process.env.PORT || 3000}`;
+            } else {
+              // Локальная разработка
+              baseUrl = `http://localhost:${process.env.PORT || 3000}`;
+            }
+          }
+          
+          // Убираем trailing slash если есть
+          baseUrl = baseUrl.replace(/\/$/, '');
           welcomeImageUrl = baseUrl + welcomeImageUrl;
+          
+          console.log(`🔗 Преобразован URL изображения: ${welcomeImageUrl}`);
+          console.log(`🔍 Переменные окружения: RENDER=${process.env.RENDER}, RENDER_SERVICE_NAME=${process.env.RENDER_SERVICE_NAME}, WEB_SERVER_URL=${process.env.WEB_SERVER_URL}`);
         }
         
         if (welcomeImageUrl) {
