@@ -495,32 +495,33 @@
               <code onclick="insertVariable('{mention}')">{mention}</code>
             </div>
           </div>
+        </div>
+        
+        <!-- Изображение приветствия -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h2>Отправить изображение при подключении пользователя к серверу</h2>
+            <label class="toggle-switch">
+              <input type="checkbox" id="welcomeImageEnabled" <%= settings && settings.welcome_image_enabled ? 'checked' : '' %>>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
           
-          <!-- Настройки изображения приветствия -->
-          <div class="form-group" style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid #202225;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <label style="margin: 0;">Отправить изображение при подключении пользователя к серверу</label>
-              <label class="toggle-switch">
-                <input type="checkbox" id="welcomeImageEnabled" <%= settings && settings.welcome_image_enabled ? 'checked' : '' %>>
-                <span class="toggle-slider"></span>
-              </label>
-            </div>
-            
-            <div id="welcomeImageSettings" style="display: <%= settings && settings.welcome_image_enabled ? 'block' : 'none' %>;">
-              <div class="form-group" style="margin-bottom: 1rem;">
-                <label style="margin-bottom: 0.5rem;">Отправить:</label>
-                <div style="display: flex; flex-direction: column; gap: 0.5rem;">
-                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="radio" name="welcomeImageSendType" value="with" <%= settings && settings.welcome_image_send_type === 'with' ? 'checked' : '' %>>
-                    <span>С ТЕКСТОВЫМ СООБЩЕНИЕМ</span>
+          <div id="welcomeImageSettings" style="display: <%= settings && settings.welcome_image_enabled ? 'block' : 'none' %>;">
+              <div class="form-group" style="margin-bottom: 1.5rem;">
+                <label style="margin-bottom: 0.75rem; display: block; color: var(--text-primary); font-weight: 600; font-size: 0.9rem;">Отправить:</label>
+                <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(255, 255, 255, 0.02); border-radius: 6px; padding: 1rem;">
+                  <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='rgba(88, 101, 242, 0.1)'" onmouseout="this.style.background='transparent'">
+                    <input type="radio" name="welcomeImageSendType" value="with" <%= settings && settings.welcome_image_send_type === 'with' ? 'checked' : '' %> style="cursor: pointer; width: 18px; height: 18px;">
+                    <span style="color: var(--text-primary); font-size: 0.9rem;">С ТЕКСТОВЫМ СООБЩЕНИЕМ</span>
                   </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="radio" name="welcomeImageSendType" value="before" <%= settings && settings.welcome_image_send_type === 'before' ? 'checked' : '' %>>
-                    <span>ПЕРЕД ТЕКСТОВЫМ СООБЩЕНИЕМ</span>
+                  <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='rgba(88, 101, 242, 0.1)'" onmouseout="this.style.background='transparent'">
+                    <input type="radio" name="welcomeImageSendType" value="before" <%= settings && settings.welcome_image_send_type === 'before' ? 'checked' : '' %> style="cursor: pointer; width: 18px; height: 18px;">
+                    <span style="color: var(--text-primary); font-size: 0.9rem;">ПЕРЕД ТЕКСТОВЫМ СООБЩЕНИЕМ</span>
                   </label>
-                  <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
-                    <input type="radio" name="welcomeImageSendType" value="channel" <%= !settings || !settings.welcome_image_send_type || settings.welcome_image_send_type === 'channel' ? 'checked' : '' %>>
-                    <span>НА КАНАЛ</span>
+                  <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='rgba(88, 101, 242, 0.1)'" onmouseout="this.style.background='transparent'">
+                    <input type="radio" name="welcomeImageSendType" value="channel" <%= !settings || !settings.welcome_image_send_type || settings.welcome_image_send_type === 'channel' ? 'checked' : '' %> style="cursor: pointer; width: 18px; height: 18px;">
+                    <span style="color: var(--text-primary); font-size: 0.9rem;">НА КАНАЛ</span>
                   </label>
                 </div>
               </div>
