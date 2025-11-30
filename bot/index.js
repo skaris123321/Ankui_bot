@@ -52,12 +52,19 @@ if (fs.existsSync(eventsPath)) {
   console.log(`📄 Файлы: ${eventFiles.join(', ')}\n`);
   
   // ВСЕГДА удаляем все обработчики GuildMemberAdd перед загрузкой
+  // Это критически важно - если обработчик уже зарегистрирован, удаляем его
   const listenerCount = client.listenerCount(Events.GuildMemberAdd);
   console.log(`🔍 Количество обработчиков GuildMemberAdd ПЕРЕД загрузкой: ${listenerCount}`);
   if (listenerCount > 0) {
-    console.log(`⚠️ УДАЛЯЕМ ${listenerCount} предыдущих обработчиков события GuildMemberAdd`);
+    console.error(`❌❌❌ ОБНАРУЖЕНО ${listenerCount} ОБРАБОТЧИКОВ GuildMemberAdd ПЕРЕД ЗАГРУЗКОЙ! ❌❌❌`);
+    console.error(`❌ Это означает, что обработчик уже был зарегистрирован ранее!`);
+    console.error(`❌ УДАЛЯЕМ ВСЕ обработчики...`);
     client.removeAllListeners(Events.GuildMemberAdd);
-    console.log(`✅ Обработчики удалены. Новое количество: ${client.listenerCount(Events.GuildMemberAdd)}`);
+    const newCount = client.listenerCount(Events.GuildMemberAdd);
+    console.log(`✅ Обработчики удалены. Новое количество: ${newCount}`);
+    if (newCount !== 0) {
+      console.error(`❌❌❌ ОШИБКА: После удаления осталось ${newCount} обработчиков! ❌❌❌`);
+    }
   }
   
   // Отслеживаем уже зарегистрированные события, чтобы избежать дубликатов
@@ -74,10 +81,19 @@ if (fs.existsSync(eventsPath)) {
       continue;
     }
     
-    // Для GuildMemberAdd - проверяем количество обработчиков ДО регистрации
+    // Для GuildMemberAdd - КРИТИЧЕСКАЯ ЗАЩИТА ОТ ДВОЙНОЙ РЕГИСТРАЦИИ
     if (event.name === Events.GuildMemberAdd) {
       const beforeCount = client.listenerCount(Events.GuildMemberAdd);
       console.log(`📊 Количество обработчиков GuildMemberAdd ДО регистрации: ${beforeCount}`);
+      
+      // Если уже есть обработчики - УДАЛЯЕМ ВСЕ перед регистрацией
+      if (beforeCount > 0) {
+        console.error(`❌❌❌ ОБНАРУЖЕНО ${beforeCount} ОБРАБОТЧИКОВ GuildMemberAdd! ❌❌❌`);
+        console.error(`❌ УДАЛЯЕМ ВСЕ обработчики перед регистрацией нового...`);
+        client.removeAllListeners(Events.GuildMemberAdd);
+        const afterRemove = client.listenerCount(Events.GuildMemberAdd);
+        console.log(`✅ Обработчики удалены. Новое количество: ${afterRemove}`);
+      }
     }
     
     if (event.once) {
@@ -103,6 +119,8 @@ if (fs.existsSync(eventsPath)) {
         }
       } else if (afterCount === 1) {
         console.log(`✅ Обработчик GuildMemberAdd успешно зарегистрирован (1 экземпляр)`);
+      } else if (afterCount === 0) {
+        console.error(`❌ ОШИБКА: Обработчик не был зарегистрирован!`);
       }
     }
     
