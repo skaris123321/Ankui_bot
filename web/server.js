@@ -416,19 +416,36 @@ app.post('/api/upload-image-base64', (req, res) => {
 
 // API для отправки Embed в Discord
 app.post('/api/send-embed', async (req, res) => {
-  const { channelId, embed, embeds, roleButtons, messageIndex } = req.body;
-  
-  if (!channelId || (!embed && !embeds)) {
-    return res.status(400).json({ 
-      success: false, 
-      message: 'Не указан канал или данные embed' 
-    });
-  }
-  
-  // Поддержка как одного embed, так и массива embeds
-  const embedsArray = embeds || (embed ? [embed] : []);
-  
   try {
+    const { channelId, embed, embeds, roleButtons, messageIndex } = req.body;
+    
+    console.log('📥 Получен запрос на отправку embed:', {
+      channelId: channelId ? 'указан' : 'не указан',
+      hasEmbed: !!embed,
+      hasEmbeds: !!embeds,
+      embedsCount: embeds ? embeds.length : 0,
+      hasRoleButtons: !!roleButtons,
+      roleButtonsCount: roleButtons ? roleButtons.length : 0,
+      messageIndex: messageIndex
+    });
+    
+    if (!channelId || (!embed && !embeds)) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Не указан канал или данные embed' 
+      });
+    }
+    
+    // Поддержка как одного embed, так и массива embeds
+    const embedsArray = embeds || (embed ? [embed] : []);
+    
+    if (!embedsArray || embedsArray.length === 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Нет данных для отправки' 
+      });
+    }
+    
     // Получаем клиента бота
     const client = require('../bot/client');
     
@@ -440,7 +457,16 @@ app.post('/api/send-embed', async (req, res) => {
     }
     
     // Получаем канал
-    const channel = await client.channels.fetch(channelId);
+    let channel;
+    try {
+      channel = await client.channels.fetch(channelId);
+    } catch (error) {
+      console.error('❌ Ошибка получения канала:', error);
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Канал не найден: ' + error.message 
+      });
+    }
     
     if (!channel || !channel.isTextBased()) {
       return res.status(404).json({ 
@@ -521,75 +547,157 @@ app.post('/api/send-embed', async (req, res) => {
       return validatedEmbed;
     });
     
-    console.log('📤 Отправка embeds в Discord:', JSON.stringify(validatedEmbeds, null, 2));
+    // Фильтруем полностью пустые embeds (без title, description, image, thumbnail, fields)
+    const filteredEmbeds = validatedEmbeds.filter(embed => {
+      if (!embed) return false;
+      return embed.title || embed.description || embed.image || embed.thumbnail || (embed.fields && embed.fields.length > 0) || embed.author || embed.footer;
+    });
+    
+    // Проверяем, что есть хотя бы один embed
+    if (!filteredEmbeds || filteredEmbeds.length === 0) {
+      console.error('❌ Все embeds пустые после фильтрации');
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Нет данных для отправки (все embeds пустые)' 
+      });
+    }
+    
+    // Используем отфильтрованные embeds
+    const validatedEmbedsFinal = filteredEmbeds;
+    
+    console.log('📤 Отправка embeds в Discord:', validatedEmbedsFinal.length, 'embeds (было:', validatedEmbeds.length, ')');
+    if (roleButtons && roleButtons.length > 0) {
+      console.log('🔘 Кнопки ролей:', roleButtons.length, 'кнопок');
+    }
     
     // Создаем компоненты с кнопками, если они есть
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
     const components = [];
     
-    if (roleButtons && roleButtons.length > 0) {
-      // Максимум 5 кнопок в одном ряду, максимум 5 рядов
-      const maxButtonsPerRow = 5;
-      const maxRows = 5;
-      let currentRow = new ActionRowBuilder();
-      let rowCount = 0;
-      
-      for (let i = 0; i < roleButtons.length && rowCount < maxRows; i++) {
-        const buttonData = roleButtons[i];
+    if (roleButtons && Array.isArray(roleButtons) && roleButtons.length > 0) {
+      try {
+        // Используем классы из discord.js
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
         
-        if (currentRow.components.length >= maxButtonsPerRow) {
+        // Максимум 5 кнопок в одном ряду, максимум 5 рядов
+        const maxButtonsPerRow = 5;
+        const maxRows = 5;
+        let currentRow = new ActionRowBuilder();
+        let rowCount = 0;
+        
+        for (let i = 0; i < roleButtons.length && rowCount < maxRows; i++) {
+          const buttonData = roleButtons[i];
+          
+          // Пропускаем кнопки без roleId или label
+          if (!buttonData || !buttonData.roleId || !buttonData.label) {
+            console.warn('Пропущена кнопка без roleId или label:', buttonData);
+            continue;
+          }
+          
+          if (currentRow.components.length >= maxButtonsPerRow) {
+            components.push(currentRow);
+            currentRow = new ActionRowBuilder();
+            rowCount++;
+          }
+          
+          try {
+            const button = new ButtonBuilder()
+              .setCustomId(`role_select_${buttonData.roleId}`)
+              .setLabel(buttonData.label.substring(0, 80)) // Максимум 80 символов
+              .setStyle(ButtonStyle.Primary);
+            
+            if (buttonData.emoji && buttonData.emoji.trim()) {
+              try {
+                button.setEmoji(buttonData.emoji.trim());
+              } catch (err) {
+                console.warn('Ошибка установки эмодзи для кнопки:', err.message);
+              }
+            }
+            
+            currentRow.addComponents(button);
+          } catch (err) {
+            console.error('Ошибка создания кнопки:', err);
+            continue;
+          }
+        }
+        
+        if (currentRow.components.length > 0) {
           components.push(currentRow);
-          currentRow = new ActionRowBuilder();
-          rowCount++;
         }
         
-        const button = new ButtonBuilder()
-          .setCustomId(`role_select_${buttonData.roleId}`)
-          .setLabel(buttonData.label || 'Роль')
-          .setStyle(ButtonStyle.Primary);
-        
-        if (buttonData.emoji) {
-          button.setEmoji(buttonData.emoji);
-        }
-        
-        currentRow.addComponents(button);
-      }
-      
-      if (currentRow.components.length > 0) {
-        components.push(currentRow);
+        console.log('✅ Создано компонентов с кнопками:', components.length);
+      } catch (error) {
+        console.error('❌ Ошибка создания компонентов кнопок:', error);
+        console.error('Stack:', error.stack);
+        // Продолжаем без кнопок, если есть ошибка
       }
     }
     
     // Если есть кнопки и указан индекс сообщения, отправляем несколько сообщений
     let sentMessage;
-    if (roleButtons && roleButtons.length > 0 && messageIndex !== undefined && messageIndex !== null) {
-      const messageIndexNum = parseInt(messageIndex);
-      
-      // Отправляем embeds до выбранного сообщения
-      if (messageIndexNum > 0) {
-        await channel.send({ embeds: validatedEmbeds.slice(0, messageIndexNum) });
-      }
-      
-      // Отправляем выбранное сообщение с кнопками
-      const targetEmbed = validatedEmbeds[messageIndexNum];
-      if (targetEmbed) {
-        sentMessage = await channel.send({ 
-          embeds: [targetEmbed],
-          components: components
+    try {
+      if (roleButtons && roleButtons.length > 0 && components.length > 0 && messageIndex !== undefined && messageIndex !== null && !isNaN(messageIndex)) {
+        const messageIndexNum = parseInt(messageIndex);
+        console.log('🔘 Отправка с кнопками для сообщения с индексом:', messageIndexNum);
+        
+        // Проверяем, что индекс валидный
+        if (messageIndexNum >= 0 && messageIndexNum < validatedEmbedsFinal.length) {
+          // Отправляем embeds до выбранного сообщения
+          if (messageIndexNum > 0) {
+            console.log('📤 Отправка embeds до выбранного:', messageIndexNum);
+            await channel.send({ embeds: validatedEmbedsFinal.slice(0, messageIndexNum) });
+          }
+          
+          // Отправляем выбранное сообщение с кнопками
+          const targetEmbed = validatedEmbedsFinal[messageIndexNum];
+          if (targetEmbed && components.length > 0) {
+            console.log('📤 Отправка выбранного сообщения с кнопками');
+            sentMessage = await channel.send({ 
+              embeds: [targetEmbed],
+              components: components
+            });
+          } else if (targetEmbed) {
+            // Если нет компонентов, отправляем без них
+            console.log('📤 Отправка выбранного сообщения без кнопок');
+            sentMessage = await channel.send({ 
+              embeds: [targetEmbed]
+            });
+          }
+          
+          // Отправляем остальные embeds
+          if (messageIndexNum < validatedEmbedsFinal.length - 1) {
+            console.log('📤 Отправка остальных embeds');
+            await channel.send({ embeds: validatedEmbedsFinal.slice(messageIndexNum + 1) });
+          }
+        } else {
+          // Если индекс невалидный, отправляем все embeds одним сообщением с кнопками
+          console.log('⚠️ Индекс невалидный, отправляем все embeds одним сообщением');
+          const messageOptions = { embeds: validatedEmbedsFinal };
+          if (components.length > 0) {
+            messageOptions.components = components;
+          }
+          sentMessage = await channel.send(messageOptions);
+        }
+      } else {
+        // Отправляем все embeds одним сообщением (с кнопками в конце, если они есть)
+        console.log('📤 Отправка всех embeds одним сообщением');
+        const messageOptions = { embeds: validatedEmbedsFinal };
+        if (components.length > 0) {
+          messageOptions.components = components;
+          console.log('✅ Добавлены компоненты с кнопками:', components.length, 'рядов');
+        }
+        console.log('📤 Параметры отправки:', {
+          embedsCount: validatedEmbeds.length,
+          hasComponents: components.length > 0
         });
+        sentMessage = await channel.send(messageOptions);
+        console.log('✅ Сообщение отправлено, ID:', sentMessage.id);
       }
-      
-      // Отправляем остальные embeds
-      if (messageIndexNum < validatedEmbeds.length - 1) {
-        await channel.send({ embeds: validatedEmbeds.slice(messageIndexNum + 1) });
-      }
-    } else {
-      // Отправляем все embeds одним сообщением (с кнопками в конце, если они есть)
-      const messageOptions = { embeds: validatedEmbeds };
-      if (components.length > 0) {
-        messageOptions.components = components;
-      }
-      sentMessage = await channel.send(messageOptions);
+    } catch (sendError) {
+      console.error('❌ Ошибка отправки сообщения в Discord:', sendError);
+      console.error('Stack:', sendError.stack);
+      console.error('Данные embeds:', JSON.stringify(validatedEmbeds.slice(0, 1), null, 2)); // Первый embed для отладки
+      console.error('Компоненты:', components.length);
+      throw sendError; // Пробрасываем ошибку дальше
     }
     
     // Сохраняем информацию о кнопках в базу данных, если они есть
@@ -611,6 +719,13 @@ app.post('/api/send-embed', async (req, res) => {
       console.log('💾 Сохранены кнопки ролей для сообщения', sentMessage.id);
     }
     
+    if (!sentMessage) {
+      return res.status(500).json({ 
+        success: false, 
+        message: 'Не удалось отправить сообщение' 
+      });
+    }
+    
     res.json({ 
       success: true, 
       message: 'Сообщение успешно отправлено!',
@@ -618,10 +733,13 @@ app.post('/api/send-embed', async (req, res) => {
       channelId: channelId
     });
   } catch (error) {
-    console.error('Ошибка отправки embed:', error);
+    console.error('❌ Ошибка отправки embed:', error);
+    console.error('Stack:', error.stack);
+    console.error('Request body:', JSON.stringify(req.body, null, 2));
     res.status(500).json({ 
       success: false, 
-      message: error.message || 'Ошибка отправки сообщения' 
+      message: error.message || 'Ошибка отправки сообщения',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
