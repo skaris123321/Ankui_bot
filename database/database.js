@@ -14,6 +14,10 @@ class BotDatabase {
   }
 
   initialize() {
+    this.load();
+  }
+  
+  load() {
     // Загружаем данные из файла, если он существует
     if (fs.existsSync(this.dbPath)) {
       try {
@@ -21,9 +25,22 @@ class BotDatabase {
         this.data = JSON.parse(rawData);
         console.log('✅ База данных загружена из файла');
       } catch (error) {
-        console.error('⚠️  Ошибка загрузки базы данных, создаем новую');
+        console.error('⚠️  Ошибка загрузки базы данных, создаем новую:', error);
+        this.data = {
+          guilds: {},
+          warnings: [],
+          modLogs: [],
+          userLevels: {}
+        };
+        this.save();
       }
     } else {
+      this.data = {
+        guilds: {},
+        warnings: [],
+        modLogs: [],
+        userLevels: {}
+      };
       this.save();
       console.log('✅ База данных инициализирована');
     }
@@ -39,10 +56,15 @@ class BotDatabase {
 
   // Методы для настроек сервера
   getGuildSettings(guildId) {
+    // Перезагружаем данные перед чтением, чтобы всегда иметь актуальные данные
+    this.load();
     return this.data.guilds[guildId] || null;
   }
 
   setGuildSettings(guildId, settings) {
+    // Перезагружаем данные из файла перед записью
+    this.load();
+    
     if (!this.data.guilds[guildId]) {
       this.data.guilds[guildId] = {
         guild_id: guildId,

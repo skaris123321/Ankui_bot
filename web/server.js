@@ -316,13 +316,13 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
     // Получаем текущие настройки, чтобы не перезаписать другие
     const currentSettings = db.getGuildSettings(guildId) || {};
     
-    // Обновляем настройки в базе данных
+    // Обновляем настройки в базе данных - ПЕРЕЗАПИСЫВАЕМ все настройки из запроса
     const updatedSettings = {
-      ...currentSettings,
-      welcome_enabled: settings.welcome_enabled !== undefined ? Number(settings.welcome_enabled) : (currentSettings.welcome_enabled !== undefined ? Number(currentSettings.welcome_enabled) : 0),
-      welcome_channel_id: settings.welcome_channel_id !== undefined ? settings.welcome_channel_id : (currentSettings.welcome_channel_id || ''),
-      welcome_message: settings.welcome_message !== undefined ? settings.welcome_message : (currentSettings.welcome_message || ''),
-      welcome_image_enabled: settings.welcome_image_enabled !== undefined ? Number(settings.welcome_image_enabled) : (currentSettings.welcome_image_enabled !== undefined ? Number(currentSettings.welcome_image_enabled) : 0),
+      ...currentSettings, // Сохраняем другие настройки
+      welcome_enabled: Number(settings.welcome_enabled) || 0,
+      welcome_channel_id: settings.welcome_channel_id || '',
+      welcome_message: settings.welcome_message || '',
+      welcome_image_enabled: Number(settings.welcome_image_enabled) || 0,
       welcome_image_send_type: settings.welcome_image_send_type || 'channel',
       welcome_image_background_type: settings.welcome_image_background_type || 'image',
       welcome_image_background: settings.welcome_image_background || '',
@@ -331,14 +331,20 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
       welcome_image_username_color: settings.welcome_image_username_color || '',
       welcome_image_text: settings.welcome_image_text || '',
       welcome_image_text_color: settings.welcome_image_text_color || '',
-      goodbye_enabled: settings.goodbye_enabled !== undefined ? settings.goodbye_enabled : (currentSettings.goodbye_enabled || 0),
-      goodbye_channel_id: settings.goodbye_channel_id !== undefined ? settings.goodbye_channel_id : (currentSettings.goodbye_channel_id || ''),
-      goodbye_message: settings.goodbye_message !== undefined ? settings.goodbye_message : (currentSettings.goodbye_message || '')
+      goodbye_enabled: Number(settings.goodbye_enabled) || 0,
+      goodbye_channel_id: settings.goodbye_channel_id || '',
+      goodbye_message: settings.goodbye_message || ''
     };
+    
+    console.log('📥 Получены настройки для сохранения:', JSON.stringify(settings, null, 2));
+    console.log('📋 Текущие настройки в БД:', JSON.stringify(currentSettings, null, 2));
     
     db.setGuildSettings(guildId, updatedSettings);
     
-    console.log('💾 Сохранены настройки приветствия для сервера', guildId, ':', JSON.stringify(updatedSettings, null, 2));
+    // Проверяем, что настройки действительно сохранились
+    const savedSettings = db.getGuildSettings(guildId);
+    console.log('💾 Сохранены настройки приветствия для сервера', guildId);
+    console.log('✅ Проверка сохраненных настроек:', JSON.stringify(savedSettings, null, 2));
     
     res.json({
       success: true,

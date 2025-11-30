@@ -17,8 +17,8 @@ module.exports = {
       }
       
       // Обработка приветственного сообщения
-      const welcomeEnabled = settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1';
-      console.log(`✅ Приветствие включено: ${welcomeEnabled}, Канал: ${settings.welcome_channel_id}`);
+      const welcomeEnabled = settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1' || Number(settings.welcome_enabled) === 1;
+      console.log(`✅ Приветствие включено: ${welcomeEnabled} (значение: ${settings.welcome_enabled}), Канал: ${settings.welcome_channel_id}`);
       
       if (welcomeEnabled && settings.welcome_channel_id) {
         const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
