@@ -5,9 +5,9 @@ const path = require('path');
 const fs = require('fs');
 const url = require('url');
 
-// Защита от двойной отправки - используем глобальный Set для всех экземпляров
+// Защита от двойной отправки - используем глобальный Map с timestamp
 if (!global.processingWelcomeMembers) {
-  global.processingWelcomeMembers = new Set();
+  global.processingWelcomeMembers = new Map();
 }
 
 module.exports = {
@@ -19,21 +19,26 @@ module.exports = {
     const key = `${guildId}-${userId}`;
     const timestamp = Date.now();
     
-    // НЕМЕДЛЕННО проверяем и блокируем ПЕРЕД любой асинхронной логикой
+    // Проверяем, обрабатывался ли этот пользователь недавно (последние 10 секунд)
     if (global.processingWelcomeMembers.has(key)) {
-      console.log(`⚠️ Пользователь ${member.user.tag} (${userId}) уже обрабатывается, пропускаем дубликат`);
-      return;
+      const lastProcessed = global.processingWelcomeMembers.get(key);
+      const timeSince = timestamp - lastProcessed;
+      
+      if (timeSince < 10000) {
+        console.log(`⚠️ Пользователь ${member.user.tag} (${userId}) уже обрабатывался ${timeSince}ms назад, пропускаем дубликат`);
+        return;
+      }
     }
     
-    // НЕМЕДЛЕННО добавляем в Set
-    global.processingWelcomeMembers.add(key);
+    // Отмечаем время обработки
+    global.processingWelcomeMembers.set(key, timestamp);
     console.log(`🔄 [${timestamp}] Начинаем обработку пользователя ${member.user.tag} (${key})`);
     
-    // Удаляем через 30 секунд (более длительный период)
+    // Удаляем через 10 секунд
     setTimeout(() => {
       global.processingWelcomeMembers.delete(key);
       console.log(`✅ Завершена обработка пользователя ${member.user.tag} (${key})`);
-    }, 30000);
+    }, 10000);
     
     try {
       const settings = client.db.getGuildSettings(guildId);
@@ -95,17 +100,15 @@ module.exports = {
             
             if (welcomeImageUrl) {
               // Получаем круглый аватар пользователя (Discord автоматически делает thumbnail круглым)
-              const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256, forceStatic: false });
+              const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256, dynamic: true });
               
-              // Создаем embed с изображением и аватаром пользователя в thumbnail (круглым)
+              console.log(`👤 URL аватара пользователя: ${avatarUrl}`);
+              
+              // Создаем embed с изображением и аватаром пользователя в thumbnail (Discord делает его круглым)
               const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
                 .setImage(welcomeImageUrl)
-                .setThumbnail(avatarUrl)
-                .setAuthor({ 
-                  name: member.user.username, 
-                  iconURL: avatarUrl 
-                });
+                .setThumbnail(avatarUrl); // Thumbnail автоматически круглый в Discord
               
               // Отправляем в зависимости от типа - ТОЛЬКО ОДИН РАЗ
               let sent = false;

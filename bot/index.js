@@ -58,7 +58,7 @@ if (fs.existsSync(eventsPath)) {
     }
     
     // Удаляем все предыдущие обработчики этого события перед регистрацией нового (только для GuildMemberAdd)
-    if (event.name === 'guildMemberAdd') {
+    if (event.name === Events.GuildMemberAdd) {
       const listenerCount = client.listenerCount(event.name);
       if (listenerCount > 0) {
         console.log(`⚠️ Удаляем ${listenerCount} предыдущих обработчиков события ${event.name}`);
