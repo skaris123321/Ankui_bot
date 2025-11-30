@@ -27,12 +27,25 @@ if (!global.welcomeMessageLock) {
   global.welcomeMessageLock = {
     locks: new Map(), // Map<key, lockObject>
     lock(key) {
-      // Синхронная проверка и установка блокировки
+      // Проверяем has() ПЕРЕД set()
       if (this.locks.has(key)) {
         return false; // Уже заблокировано
       }
-      const lockObj = { locked: true, timestamp: Date.now() };
+      
+      // Создаем уникальный объект блокировки
+      const lockObj = { locked: true, timestamp: Date.now(), _id: Math.random() };
       this.locks.set(key, lockObj);
+      
+      // НЕМЕДЛЕННАЯ проверка - если кто-то успел заменить наш объект
+      const checkObj = this.locks.get(key);
+      if (checkObj !== lockObj) {
+        // Кто-то успел заменить - удаляем наш и возвращаем false
+        if (this.locks.get(key) === lockObj) {
+          this.locks.delete(key);
+        }
+        return false;
+      }
+      
       return true; // Успешно заблокировано
     },
     unlock(key) {
@@ -72,7 +85,35 @@ module.exports = {
     // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - ИСПОЛЬЗУЕМ СИНХРОННУЮ БЛОКИРОВКУ
     // Используем глобальный блокировщик для атомарной проверки и установки
     
-    // Шаг 1: Пытаемся заблокировать ключ СИНХРОННО
+    // КРИТИЧЕСКАЯ ЗАЩИТА - ПРОВЕРЯЕМ И УСТАНАВЛИВАЕМ В ОДНОЙ ОПЕРАЦИИ
+    // Используем проверку has() и set() с немедленной проверкой результата
+    
+    // Шаг 1: Проверяем has() ПЕРЕД set()
+    if (global.welcomeMessagePromises.has(key)) {
+      console.log(`⚠️ [${key}] Ключ уже в Map, ждем завершения предыдущей обработки...`);
+      
+      // Ждем завершения обработки
+      let waitCount = 0;
+      while (global.welcomeMessagePromises.has(key) && waitCount < 200) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+        waitCount++;
+      }
+      
+      // Проверяем Promise еще раз
+      const finalPromise = global.welcomeMessagePromises.get(key);
+      if (finalPromise && finalPromise._resolve) {
+        try {
+          await finalPromise;
+        } catch (e) {
+          // Игнорируем ошибки
+        }
+      }
+      
+      console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
+      return;
+    }
+    
+    // Шаг 2: Пытаемся заблокировать ключ СИНХРОННО
     const lockAcquired = global.welcomeMessageLock.lock(key);
     if (!lockAcquired) {
       // Ключ уже заблокирован другим обработчиком - ждем
@@ -99,12 +140,12 @@ module.exports = {
       return;
     }
     
-    // Шаг 2: Проверяем Map - если Promise уже есть, разблокируем и ждем
+    // Шаг 3: Двойная проверка Map после блокировки
     const existingPromise = global.welcomeMessagePromises.get(key);
     if (existingPromise) {
       // Разблокируем и ждем
       global.welcomeMessageLock.unlock(key);
-      console.log(`⚠️ [${key}] Promise уже в Map, ждем...`);
+      console.log(`⚠️ [${key}] Promise уже в Map после блокировки, ждем...`);
       try {
         await existingPromise;
         console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
@@ -114,7 +155,7 @@ module.exports = {
       return;
     }
     
-    // Шаг 3: Создаем Promise и СИНХРОННО добавляем в Map
+    // Шаг 4: Создаем Promise и СИНХРОННО добавляем в Map
     let resolvePromise;
     const newPromise = new Promise(resolve => {
       resolvePromise = resolve;
