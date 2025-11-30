@@ -1,9 +1,15 @@
 const { Events, EmbedBuilder } = require('discord.js');
 
+// КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - модуль загружается
+console.log(`\n🔵🔵🔵 МОДУЛЬ guildMemberAdd.js ЗАГРУЖЕН 🔵🔵🔵\n`);
+
 // Глобальная защита от двойной отправки - используем глобальный Set с уникальным ключом
 // Это гарантирует, что защита работает даже если модуль загружается несколько раз
 if (!global.welcomeMessageSent) {
   global.welcomeMessageSent = new Set();
+  console.log(`✅ Глобальный Set welcomeMessageSent создан`);
+} else {
+  console.log(`⚠️ Глобальный Set welcomeMessageSent уже существует! Размер: ${global.welcomeMessageSent.size}`);
 }
 
 // Map для отслеживания времени последней обработки (дополнительная защита)
@@ -15,10 +21,17 @@ module.exports = {
   name: Events.GuildMemberAdd,
   once: false,
   async execute(member, client) {
+    // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - выводим СРАЗУ при вызове обработчика
+    console.log(`\n🔥🔥🔥 ОБРАБОТЧИК ВЫЗВАН! Пользователь: ${member.user.tag} (${member.user.id}) на сервере ${member.guild.id} 🔥🔥🔥\n`);
+    
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
     const now = Date.now();
+    
+    console.log(`🔑 Уникальный ключ: ${key}`);
+    console.log(`📋 Размер Set: ${global.welcomeMessageSent.size}`);
+    console.log(`📋 Ключ в Set: ${global.welcomeMessageSent.has(key)}`);
     
     // Двойная проверка: проверяем и Set, и время последней обработки
     if (global.welcomeMessageSent.has(key)) {
@@ -126,35 +139,27 @@ module.exports = {
             .setImage(welcomeImageUrl)
             .setThumbnail(avatarUrl);
           
-          // ФИНАЛЬНАЯ проверка перед отправкой - убеждаемся, что не отправили уже
-          if (global.welcomeMessageSent.has(key)) {
-            if (sendType === 'channel') {
-              await channel.send({ embeds: [embed] });
-              console.log(`✅ [${key}] Изображение отправлено`);
-            } else if (sendType === 'with') {
-              await channel.send({ content: welcomeMessage, embeds: [embed] });
-              console.log(`✅ [${key}] Изображение и текст отправлены вместе`);
-            } else if (sendType === 'before') {
-              await channel.send({ embeds: [embed] });
-              await channel.send({ content: welcomeMessage });
-              console.log(`✅ [${key}] Изображение и текст отправлены отдельно`);
-            }
-          } else {
-            console.log(`⚠️ [${key}] Ключ был удален до отправки, пропускаем`);
+          // Отправляем сообщение - ключ уже добавлен в Set выше
+          if (sendType === 'channel') {
+            await channel.send({ embeds: [embed] });
+            console.log(`✅ [${key}] Изображение отправлено`);
+          } else if (sendType === 'with') {
+            await channel.send({ content: welcomeMessage, embeds: [embed] });
+            console.log(`✅ [${key}] Изображение и текст отправлены вместе`);
+          } else if (sendType === 'before') {
+            await channel.send({ embeds: [embed] });
+            await channel.send({ content: welcomeMessage });
+            console.log(`✅ [${key}] Изображение и текст отправлены отдельно`);
           }
         } else {
-          // ФИНАЛЬНАЯ проверка перед отправкой
-          if (global.welcomeMessageSent.has(key)) {
-            await channel.send({ content: welcomeMessage });
-            console.log(`✅ [${key}] Текстовое сообщение отправлено (без изображения)`);
-          }
+          // Отправляем текстовое сообщение
+          await channel.send({ content: welcomeMessage });
+          console.log(`✅ [${key}] Текстовое сообщение отправлено (без изображения)`);
         }
       } else {
-        // ФИНАЛЬНАЯ проверка перед отправкой
-        if (global.welcomeMessageSent.has(key)) {
-          await channel.send({ content: welcomeMessage });
-          console.log(`✅ [${key}] Текстовое сообщение отправлено`);
-        }
+        // Отправляем текстовое сообщение
+        await channel.send({ content: welcomeMessage });
+        console.log(`✅ [${key}] Текстовое сообщение отправлено`);
       }
       
       // Выдача авто-роли

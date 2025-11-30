@@ -3,7 +3,11 @@ const fs = require('fs');
 const path = require('path');
 const Database = require('../database/database');
 
+// КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - начало инициализации бота
+console.log(`\n🚀🚀🚀 ===== ИНИЦИАЛИЗАЦИЯ БОТА - bot/index.js загружен ===== 🚀🚀🚀\n`);
+
 // Создаем клиента Discord
+console.log(`📦 Создание клиента Discord...`);
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -14,6 +18,7 @@ const client = new Client({
     GatewayIntentBits.GuildPresences
   ]
 });
+console.log(`✅ Клиент Discord создан\n`);
 
 // Инициализация базы данных
 const db = new Database();
@@ -40,14 +45,19 @@ if (fs.existsSync(commandsPath)) {
 
 // Загрузка событий
 const eventsPath = path.join(__dirname, 'events');
+console.log(`\n📂 Загрузка событий из: ${eventsPath}\n`);
 if (fs.existsSync(eventsPath)) {
   const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
+  console.log(`📄 Найдено файлов событий: ${eventFiles.length}`);
+  console.log(`📄 Файлы: ${eventFiles.join(', ')}\n`);
   
   // ВСЕГДА удаляем все обработчики GuildMemberAdd перед загрузкой
   const listenerCount = client.listenerCount(Events.GuildMemberAdd);
+  console.log(`🔍 Количество обработчиков GuildMemberAdd ПЕРЕД загрузкой: ${listenerCount}`);
   if (listenerCount > 0) {
     console.log(`⚠️ УДАЛЯЕМ ${listenerCount} предыдущих обработчиков события GuildMemberAdd`);
     client.removeAllListeners(Events.GuildMemberAdd);
+    console.log(`✅ Обработчики удалены. Новое количество: ${client.listenerCount(Events.GuildMemberAdd)}`);
   }
   
   // Отслеживаем уже зарегистрированные события, чтобы избежать дубликатов
