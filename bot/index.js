@@ -64,10 +64,28 @@ if (fs.existsSync(eventsPath)) {
       continue;
     }
     
+    // Для GuildMemberAdd - проверяем количество обработчиков ДО регистрации
+    if (event.name === Events.GuildMemberAdd) {
+      const beforeCount = client.listenerCount(Events.GuildMemberAdd);
+      console.log(`📊 Количество обработчиков GuildMemberAdd ДО регистрации: ${beforeCount}`);
+    }
+    
     if (event.once) {
       client.once(event.name, (...args) => event.execute(...args, client));
     } else {
       client.on(event.name, (...args) => event.execute(...args, client));
+    }
+    
+    // Для GuildMemberAdd - проверяем количество обработчиков ПОСЛЕ регистрации
+    if (event.name === Events.GuildMemberAdd) {
+      const afterCount = client.listenerCount(Events.GuildMemberAdd);
+      console.log(`📊 Количество обработчиков GuildMemberAdd ПОСЛЕ регистрации: ${afterCount}`);
+      if (afterCount > 1) {
+        console.error(`❌ ОШИБКА: Зарегистрировано ${afterCount} обработчиков GuildMemberAdd! Удаляем все и регистрируем заново`);
+        client.removeAllListeners(Events.GuildMemberAdd);
+        client.on(event.name, (...args) => event.execute(...args, client));
+        console.log(`✅ Повторно зарегистрирован 1 обработчик GuildMemberAdd`);
+      }
     }
     
     registeredEvents.add(eventKey);
