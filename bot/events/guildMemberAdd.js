@@ -5,37 +5,43 @@ const path = require('path');
 const fs = require('fs');
 const url = require('url');
 
-// Защита от двойной отправки - используем синхронную блокировку
-if (!global.processingWelcomeMembers) {
-  global.processingWelcomeMembers = new Set();
+// Защита от двойной отправки - используем Map для отслеживания промисов отправки
+if (!global.welcomeMessagePromises) {
+  global.welcomeMessagePromises = new Map();
 }
 
 module.exports = {
   name: Events.GuildMemberAdd,
   once: false,
   async execute(member, client) {
-    // СИНХРОННАЯ проверка БЕЗ любых асинхронных операций
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
     
-    // МГНОВЕННАЯ проверка - если уже обрабатывается, сразу выходим
-    if (global.processingWelcomeMembers.has(key)) {
-      console.log(`⚠️ ПРОПУСК: Пользователь ${member.user.tag} (${userId}) уже обрабатывается`);
+    // Если уже обрабатывается, пропускаем
+    if (global.welcomeMessagePromises.has(key)) {
+      console.log(`⚠️ Пользователь ${member.user.tag} уже обрабатывается, пропускаем дубликат`);
       return;
     }
     
-    // МГНОВЕННО добавляем в Set - ДО любой асинхронной логики
-    global.processingWelcomeMembers.add(key);
+    // Создаем промис и СРАЗУ добавляем в Map (синхронно) для предотвращения race condition
+    let resolvePromise;
+    const sendPromise = new Promise(resolve => {
+      resolvePromise = resolve;
+    });
     
-    console.log(`🔄 Начинаем обработку пользователя ${member.user.tag} (${key})`);
+    // Добавляем в Map СИНХРОННО перед любыми асинхронными операциями
+    global.welcomeMessagePromises.set(key, sendPromise);
     
-    // Удаляем через 30 секунд
+    // Удаляем через 10 секунд
     setTimeout(() => {
-      global.processingWelcomeMembers.delete(key);
-    }, 30000);
+      global.welcomeMessagePromises.delete(key);
+    }, 10000);
     
-    try {
+    // Асинхронная обработка
+    (async () => {
+      try {
+        console.log(`🔄 Обработка пользователя ${member.user.tag} (${key})`);
       const settings = client.db.getGuildSettings(guildId);
       
       console.log(`👤 Новый участник присоединился к серверу ${guildId}: ${member.user.tag}`);
@@ -106,41 +112,30 @@ module.exports = {
                 .setThumbnail(avatarUrl); // Thumbnail автоматически круглый в Discord
               
               // Отправляем в зависимости от типа - ТОЛЬКО ОДИН РАЗ
-              // Дополнительная проверка - если уже обрабатывается, не отправляем
-              if (global.processingWelcomeMembers.has(key)) {
-                console.log(`⚠️ ДВОЙНАЯ ПРОВЕРКА: Пропускаем отправку для ${key}`);
-                return;
-              }
-              
-              let sent = false;
-              
               if (sendType === 'channel') {
                 // Отправляем только изображение
                 await channel.send({ embeds: [embed] });
-                sent = true;
                 console.log('✅ Изображение отправлено (channel)');
               } else if (sendType === 'with') {
                 // Отправляем изображение вместе с текстовым сообщением
                 await channel.send({ content: welcomeMessage, embeds: [embed] });
-                sent = true;
                 console.log('✅ Изображение и текст отправлены вместе (with)');
               } else if (sendType === 'before') {
                 // Отправляем изображение перед текстовым сообщением
                 await channel.send({ embeds: [embed] });
                 await channel.send({ content: welcomeMessage });
-                sent = true;
                 console.log('✅ Изображение и текст отправлены отдельно (before)');
-              }
-              
-              if (!sent) {
+              } else {
                 console.log('⚠️ Неизвестный тип отправки, отправляем только текст');
                 await channel.send({ content: welcomeMessage });
               }
+              
             } else {
               // Если нет изображения, отправляем только текстовое сообщение
               console.log('⚠️ URL изображения не найден, отправляем только текст');
               await channel.send({ content: welcomeMessage });
               console.log('✅ Текстовое сообщение отправлено');
+              
             }
           } catch (error) {
             console.error('❌ Ошибка отправки приветствия:', error);
@@ -156,6 +151,7 @@ module.exports = {
           console.log('📝 Изображение отключено, отправляем только текст');
           await channel.send({ content: welcomeMessage });
           console.log('✅ Текстовое сообщение отправлено');
+          
         }
       }
       
@@ -168,12 +164,18 @@ module.exports = {
           });
         }
       }
-    } catch (error) {
-      console.error('❌ Ошибка обработки присоединения пользователя:', error);
-    } finally {
-      // Удаляем из Set после завершения обработки (но таймер тоже удалит через 30 секунд)
-      // Это нужно на случай раннего выхода
-    }
+      } catch (error) {
+        console.error('❌ Ошибка обработки присоединения пользователя:', error);
+      } finally {
+        // Разрешаем промис после завершения обработки
+        if (resolvePromise) {
+          resolvePromise();
+        }
+      }
+    })();
+    
+    // Ждем выполнения промиса
+    await sendPromise;
   },
 };
 
