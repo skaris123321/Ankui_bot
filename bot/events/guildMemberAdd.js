@@ -21,34 +21,43 @@ module.exports = {
   name: Events.GuildMemberAdd,
   once: false,
   async execute(member, client) {
-    // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - выводим СРАЗУ при вызове обработчика
-    console.log(`\n🔥🔥🔥 ОБРАБОТЧИК ВЫЗВАН! Пользователь: ${member.user.tag} (${member.user.id}) на сервере ${member.guild.id} 🔥🔥🔥\n`);
-    
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
     const now = Date.now();
     
+    // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - выводим СРАЗУ при вызове обработчика
+    console.log(`\n🔥🔥🔥 ОБРАБОТЧИК ВЫЗВАН! Пользователь: ${member.user.tag} (${member.user.id}) на сервере ${guildId} 🔥🔥🔥`);
     console.log(`🔑 Уникальный ключ: ${key}`);
-    console.log(`📋 Размер Set: ${global.welcomeMessageSent.size}`);
-    console.log(`📋 Ключ в Set: ${global.welcomeMessageSent.has(key)}`);
+    console.log(`📋 Размер Set ДО проверки: ${global.welcomeMessageSent.size}`);
+    console.log(`📋 Ключ в Set ДО проверки: ${global.welcomeMessageSent.has(key)}`);
     
-    // Двойная проверка: проверяем и Set, и время последней обработки
-    if (global.welcomeMessageSent.has(key)) {
-      console.log(`⚠️ [${key}] Сообщение для ${member.user.tag} уже отправлено, пропускаем (Set)`);
-      return;
+    // АТОМАРНАЯ проверка и добавление - делаем все в одном синхронном блоке
+    // Это предотвращает race condition между несколькими одновременными вызовами
+    let shouldProcess = false;
+    
+    // СИНХРОННАЯ проверка и добавление без разрыва
+    if (!global.welcomeMessageSent.has(key)) {
+      const lastProcessed = global.welcomeMessageTimestamps.get(key);
+      if (!lastProcessed || (now - lastProcessed) >= 10000) {
+        // СРАЗУ добавляем в оба Set/Map синхронно
+        global.welcomeMessageSent.add(key);
+        global.welcomeMessageTimestamps.set(key, now);
+        shouldProcess = true;
+        console.log(`✅ [${key}] Ключ добавлен в Set, начинаем обработку`);
+      } else {
+        const secondsAgo = Math.round((now - lastProcessed) / 1000);
+        console.log(`⚠️ [${key}] Пользователь ${member.user.tag} обрабатывался ${secondsAgo} сек назад, пропускаем`);
+      }
+    } else {
+      console.log(`⚠️ [${key}] Ключ уже в Set, пропускаем обработку`);
     }
     
-    // Проверяем, не обрабатывался ли этот пользователь недавно (в последние 10 секунд)
-    const lastProcessed = global.welcomeMessageTimestamps.get(key);
-    if (lastProcessed && (now - lastProcessed) < 10000) {
-      console.log(`⚠️ [${key}] Пользователь ${member.user.tag} обрабатывался недавно (${Math.round((now - lastProcessed) / 1000)} сек назад), пропускаем`);
+    // Если не должны обрабатывать, выходим
+    if (!shouldProcess) {
+      console.log(`🚫 [${key}] Выход из обработчика - обработка не требуется\n`);
       return;
     }
-    
-    // СРАЗУ отмечаем как отправленное (до любых операций) - СИНХРОННО
-    global.welcomeMessageSent.add(key);
-    global.welcomeMessageTimestamps.set(key, now);
     
     console.log(`🔄 [${key}] Начало обработки приветствия для ${member.user.tag}`);
     
@@ -67,6 +76,7 @@ module.exports = {
       const settings = client.db.getGuildSettings(guildId);
       
       if (!settings) {
+        console.log(`⚠️ [${key}] Настройки для сервера не найдены`);
         global.welcomeMessageSent.delete(key);
         global.welcomeMessageTimestamps.delete(key);
         return;
@@ -75,6 +85,7 @@ module.exports = {
       const welcomeEnabled = settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1' || Number(settings.welcome_enabled) === 1;
       
       if (!welcomeEnabled || !settings.welcome_channel_id) {
+        console.log(`⚠️ [${key}] Приветствие отключено или канал не указан`);
         global.welcomeMessageSent.delete(key);
         global.welcomeMessageTimestamps.delete(key);
         return;
@@ -83,6 +94,7 @@ module.exports = {
       const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
       
       if (!channel || !channel.isTextBased()) {
+        console.error(`❌ [${key}] Канал не найден или не текстовый`);
         global.welcomeMessageSent.delete(key);
         global.welcomeMessageTimestamps.delete(key);
         return;
@@ -127,8 +139,7 @@ module.exports = {
           baseUrl = baseUrl.replace(/\/$/, '');
           welcomeImageUrl = baseUrl + welcomeImageUrl;
           
-          console.log(`🔗 Преобразован URL изображения: ${welcomeImageUrl}`);
-          console.log(`🔍 Переменные окружения: RENDER=${process.env.RENDER}, RENDER_SERVICE_NAME=${process.env.RENDER_SERVICE_NAME}, WEB_SERVER_URL=${process.env.WEB_SERVER_URL}`);
+          console.log(`🔗 [${key}] Преобразован URL изображения: ${welcomeImageUrl}`);
         }
         
         if (welcomeImageUrl) {
@@ -169,6 +180,8 @@ module.exports = {
           await member.roles.add(role).catch(() => {});
         }
       }
+      
+      console.log(`✅✅✅ [${key}] Обработка завершена успешно ✅✅✅\n`);
     } catch (error) {
       console.error(`❌ [${key}] Ошибка обработки приветствия:`, error);
       // Не удаляем из Set при ошибке - пусть остается защита от повторной попытки
