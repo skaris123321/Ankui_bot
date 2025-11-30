@@ -1365,6 +1365,22 @@
             </div>
           </div>
           
+          <!-- Кнопки выбора роли -->
+          <div class="editor-section" style="background: rgba(87, 242, 135, 0.1); border: 2px solid rgba(87, 242, 135, 0.3); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="margin-top: 0; margin-bottom: 1rem;">🔘 Кнопки выбора роли</h3>
+            <div style="margin-bottom: 1rem;">
+              <label>Выберите блок embed для добавления кнопок:</label>
+              <select id="roleButtonsBlockSelect" class="input-field" onchange="updateRoleButtonsBlock()">
+                <option value="-1">Первый блок с картинкой</option>
+              </select>
+              <small style="color: var(--text-secondary); font-size: 0.75rem;">Кнопки будут добавлены под выбранным сообщением. Можно выбрать только одну роль из группы.</small>
+            </div>
+            <div id="roleButtonsContainer" style="margin-top: 1rem;">
+              <div id="roleButtonsList"></div>
+              <button type="button" class="btn btn-success" onclick="addRoleButton()" style="margin-top: 1rem; width: 100%;">+ Добавить кнопку с ролью</button>
+            </div>
+          </div>
+          
           <div class="editor-section">
             <label>Цвет</label>
             <div class="color-picker">
@@ -1659,6 +1675,101 @@
       image: ''
     };
     
+    // Система кнопок выбора роли
+    let roleButtons = [];
+    let selectedBlockForButtons = -1; // -1 = первый блок с картинкой, 0+ = индекс блока embed
+    
+    function updateRoleButtonsBlock() {
+      const select = document.getElementById('roleButtonsBlockSelect');
+      if (select) {
+        selectedBlockForButtons = parseInt(select.value);
+      }
+    }
+    
+    function addRoleButton() {
+      const buttonId = Date.now();
+      roleButtons.push({
+        id: buttonId,
+        label: '',
+        roleId: '',
+        emoji: ''
+      });
+      renderRoleButtons();
+    }
+    
+    function removeRoleButton(buttonId) {
+      roleButtons = roleButtons.filter(b => b.id !== buttonId);
+      renderRoleButtons();
+    }
+    
+    function updateRoleButton(buttonId, field, value) {
+      const button = roleButtons.find(b => b.id === buttonId);
+      if (button) {
+        button[field] = value;
+      }
+    }
+    
+    function renderRoleButtons() {
+      const container = document.getElementById('roleButtonsList');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (roleButtons.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 1rem;">Кнопки не добавлены. Нажмите "Добавить кнопку с ролью" для создания.</p>';
+        return;
+      }
+      
+      roleButtons.forEach((button, index) => {
+        const buttonHtml = `
+          <div class="role-button-item" style="background: var(--background-light); border: 2px solid var(--background-dark); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h4 style="margin: 0;">Кнопка ${index + 1}</h4>
+              <button type="button" class="btn btn-danger" onclick="removeRoleButton(${button.id})" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">Удалить</button>
+            </div>
+            <div style="display: grid; gap: 1rem;">
+              <div>
+                <label>Текст кнопки</label>
+                <input type="text" class="input-field" data-button="${button.id}" data-field="label" value="${escapeHtml(button.label)}" placeholder="Название роли" maxlength="80" oninput="updateRoleButton(${button.id}, 'label', this.value)">
+              </div>
+              <div>
+                <label>ID роли *</label>
+                <input type="text" class="input-field" data-button="${button.id}" data-field="roleId" value="${escapeHtml(button.roleId)}" placeholder="123456789012345678" oninput="updateRoleButton(${button.id}, 'roleId', this.value)">
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">Скопируйте ID роли из Discord (ПКМ на роли → Копировать ID)</small>
+              </div>
+              <div>
+                <label>Эмодзи (опционально)</label>
+                <input type="text" class="input-field" data-button="${button.id}" data-field="emoji" value="${escapeHtml(button.emoji)}" placeholder="🎮 или :emoji:" maxlength="50" oninput="updateRoleButton(${button.id}, 'emoji', this.value)">
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">Можно использовать обычный эмодзи или Discord формат :emoji:</small>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', buttonHtml);
+      });
+      
+      // Обновляем select с блоками
+      updateRoleButtonsBlockSelect();
+    }
+    
+    function updateRoleButtonsBlockSelect() {
+      const select = document.getElementById('roleButtonsBlockSelect');
+      if (!select) return;
+      
+      const currentValue = select.value;
+      select.innerHTML = '<option value="-1">Первый блок с картинкой</option>';
+      
+      embedBlocks.forEach((block, index) => {
+        const option = document.createElement('option');
+        option.value = index;
+        option.textContent = `Блок ${index + 1}${block.title ? ': ' + block.title : ''}`;
+        select.appendChild(option);
+      });
+      
+      select.value = currentValue || '-1';
+      selectedBlockForButtons = parseInt(select.value);
+    }
+    
     function updateEmbedImageBlock() {
       const titleEl = document.getElementById('embedImageBlockTitle');
       const imageEl = document.getElementById('embedImageBlockImage');
@@ -1697,11 +1808,13 @@
         timestamp: true
       });
       renderEmbedBlocks();
+      updateRoleButtonsBlockSelect();
     }
     
     function removeEmbedBlock(blockId) {
       embedBlocks = embedBlocks.filter(b => b.id !== blockId);
       renderEmbedBlocks();
+      updateRoleButtonsBlockSelect();
     }
     
     function renderEmbedBlocks() {
@@ -1951,9 +2064,10 @@
             }));
           }
           
-          renderEmbedBlocks();
-          updateEmbedPreview();
-        })
+      renderEmbedBlocks();
+      updateEmbedPreview();
+      updateRoleButtonsBlockSelect();
+    })
         .catch(err => console.error('Ошибка загрузки блоков embed:', err));
     }
     
@@ -2038,18 +2152,52 @@
           embeds.push(embed);
         });
         
+        // Подготавливаем кнопки, если они есть и выбраны для определенного блока
+        let buttonsToSend = null;
+        let messageIndexForButtons = null;
+        
+        if (roleButtons.length > 0 && selectedBlockForButtons !== null) {
+          // Вычисляем индекс сообщения для кнопок
+          let targetIndex;
+          if (selectedBlockForButtons === -1) {
+            // Первый блок с картинкой
+            targetIndex = 0;
+          } else {
+            // Блок embed: если есть первый блок с картинкой, добавляем 1
+            targetIndex = embedImageBlock.image ? selectedBlockForButtons + 1 : selectedBlockForButtons;
+          }
+          
+          // Проверяем, что выбранный блок существует
+          const totalBlocks = (embedImageBlock.image ? 1 : 0) + embedBlocks.length;
+          
+          if (targetIndex >= 0 && targetIndex < totalBlocks) {
+            buttonsToSend = roleButtons.filter(b => b.roleId && b.label).map(b => ({
+              label: b.label,
+              roleId: b.roleId,
+              emoji: b.emoji || undefined
+            }));
+            messageIndexForButtons = targetIndex;
+          }
+        }
+        
         // Отправляем все embeds одним сообщением
         try {
+          const requestBody = { channelId, embeds };
+          if (buttonsToSend && buttonsToSend.length > 0) {
+            requestBody.roleButtons = buttonsToSend;
+            requestBody.messageIndex = messageIndexForButtons;
+          }
+          
           const response = await fetch('/api/send-embed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ channelId, embeds })
+            body: JSON.stringify(requestBody)
           });
           
           const result = await response.json();
           
           if (result.success) {
-            showMessage('success', '✅ Embed сообщение отправлено в Discord!');
+            showMessage('success', '✅ Embed сообщение отправлено в Discord!' + (buttonsToSend && buttonsToSend.length > 0 ? ' Кнопки добавлены.' : ''));
           } else {
             showMessage('error', `❌ Ошибка: ${result.message}`);
           }

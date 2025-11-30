@@ -129,8 +129,85 @@ if (fs.existsSync(eventsPath)) {
   }
 }
 
-// Обработка взаимодействий (slash команды)
+// Обработка взаимодействий (slash команды и кнопки)
 client.on(Events.InteractionCreate, async interaction => {
+  // Обработка кнопок выбора роли
+  if (interaction.isButton()) {
+    try {
+      const customId = interaction.customId;
+      
+      // Проверяем, что это кнопка выбора роли (начинается с "role_select_")
+      if (customId.startsWith('role_select_')) {
+        const roleId = customId.replace('role_select_', '');
+        const member = interaction.member;
+        const guild = interaction.guild;
+        
+        if (!member || !guild) {
+          await interaction.reply({ content: '❌ Ошибка: не удалось получить информацию о пользователе или сервере.', ephemeral: true });
+          return;
+        }
+        
+        // Получаем информацию о группе ролей из базы данных
+        const settings = client.db.getGuildSettings(guild.id) || {};
+        const roleButtons = settings.role_buttons || {};
+        
+        // Находим группу, к которой принадлежит эта роль
+        let roleGroup = null;
+        let messageId = null;
+        
+        for (const [msgId, group] of Object.entries(roleButtons)) {
+          if (group.roles && group.roles.some(r => r.roleId === roleId)) {
+            roleGroup = group;
+            messageId = msgId;
+            break;
+          }
+        }
+        
+        if (!roleGroup || !roleGroup.roles) {
+          await interaction.reply({ content: '❌ Ошибка: группа ролей не найдена.', ephemeral: true });
+          return;
+        }
+        
+        // Получаем роль
+        const role = await guild.roles.fetch(roleId).catch(() => null);
+        if (!role) {
+          await interaction.reply({ content: '❌ Ошибка: роль не найдена на сервере.', ephemeral: true });
+          return;
+        }
+        
+        // Проверяем, есть ли у пользователя уже эта роль
+        const hasRole = member.roles.cache.has(roleId);
+        
+        if (hasRole) {
+          // Убираем роль
+          await member.roles.remove(role);
+          await interaction.reply({ content: `✅ Роль ${role.name} удалена.`, ephemeral: true });
+        } else {
+          // Убираем все роли из группы (взаимоисключающий выбор)
+          for (const roleData of roleGroup.roles) {
+            if (member.roles.cache.has(roleData.roleId)) {
+              const otherRole = await guild.roles.fetch(roleData.roleId).catch(() => null);
+              if (otherRole) {
+                await member.roles.remove(otherRole);
+              }
+            }
+          }
+          
+          // Выдаем выбранную роль
+          await member.roles.add(role);
+          await interaction.reply({ content: `✅ Роль ${role.name} выдана.`, ephemeral: true });
+        }
+      }
+    } catch (error) {
+      console.error('❌ Ошибка обработки кнопки:', error);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: '❌ Произошла ошибка при обработке кнопки.', ephemeral: true });
+      }
+    }
+    return;
+  }
+  
+  // Обработка slash команд
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);

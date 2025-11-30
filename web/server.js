@@ -416,7 +416,7 @@ app.post('/api/upload-image-base64', (req, res) => {
 
 // API для отправки Embed в Discord
 app.post('/api/send-embed', async (req, res) => {
-  const { channelId, embed, embeds } = req.body;
+  const { channelId, embed, embeds, roleButtons, messageIndex } = req.body;
   
   if (!channelId || (!embed && !embeds)) {
     return res.status(400).json({ 
@@ -523,8 +523,93 @@ app.post('/api/send-embed', async (req, res) => {
     
     console.log('📤 Отправка embeds в Discord:', JSON.stringify(validatedEmbeds, null, 2));
     
-    // Отправляем все embeds в одном сообщении (обычная отправка)
-    const sentMessage = await channel.send({ embeds: validatedEmbeds });
+    // Создаем компоненты с кнопками, если они есть
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const components = [];
+    
+    if (roleButtons && roleButtons.length > 0) {
+      // Максимум 5 кнопок в одном ряду, максимум 5 рядов
+      const maxButtonsPerRow = 5;
+      const maxRows = 5;
+      let currentRow = new ActionRowBuilder();
+      let rowCount = 0;
+      
+      for (let i = 0; i < roleButtons.length && rowCount < maxRows; i++) {
+        const buttonData = roleButtons[i];
+        
+        if (currentRow.components.length >= maxButtonsPerRow) {
+          components.push(currentRow);
+          currentRow = new ActionRowBuilder();
+          rowCount++;
+        }
+        
+        const button = new ButtonBuilder()
+          .setCustomId(`role_select_${buttonData.roleId}`)
+          .setLabel(buttonData.label || 'Роль')
+          .setStyle(ButtonStyle.Primary);
+        
+        if (buttonData.emoji) {
+          button.setEmoji(buttonData.emoji);
+        }
+        
+        currentRow.addComponents(button);
+      }
+      
+      if (currentRow.components.length > 0) {
+        components.push(currentRow);
+      }
+    }
+    
+    // Если есть кнопки и указан индекс сообщения, отправляем несколько сообщений
+    let sentMessage;
+    if (roleButtons && roleButtons.length > 0 && messageIndex !== undefined && messageIndex !== null) {
+      const messageIndexNum = parseInt(messageIndex);
+      
+      // Отправляем embeds до выбранного сообщения
+      if (messageIndexNum > 0) {
+        await channel.send({ embeds: validatedEmbeds.slice(0, messageIndexNum) });
+      }
+      
+      // Отправляем выбранное сообщение с кнопками
+      const targetEmbed = validatedEmbeds[messageIndexNum];
+      if (targetEmbed) {
+        sentMessage = await channel.send({ 
+          embeds: [targetEmbed],
+          components: components
+        });
+      }
+      
+      // Отправляем остальные embeds
+      if (messageIndexNum < validatedEmbeds.length - 1) {
+        await channel.send({ embeds: validatedEmbeds.slice(messageIndexNum + 1) });
+      }
+    } else {
+      // Отправляем все embeds одним сообщением (с кнопками в конце, если они есть)
+      const messageOptions = { embeds: validatedEmbeds };
+      if (components.length > 0) {
+        messageOptions.components = components;
+      }
+      sentMessage = await channel.send(messageOptions);
+    }
+    
+    // Сохраняем информацию о кнопках в базу данных, если они есть
+    if (roleButtons && roleButtons.length > 0 && sentMessage) {
+      const guildId = channel.guild.id;
+      const currentSettings = db.getGuildSettings(guildId) || {};
+      const roleButtonsData = currentSettings.role_buttons || {};
+      
+      roleButtonsData[sentMessage.id] = {
+        roles: roleButtons,
+        messageIndex: messageIndex || 0
+      };
+      
+      db.setGuildSettings(guildId, {
+        ...currentSettings,
+        role_buttons: roleButtonsData
+      });
+      
+      console.log('💾 Сохранены кнопки ролей для сообщения', sentMessage.id);
+    }
     
     res.json({ 
       success: true, 
