@@ -1329,6 +1329,27 @@
             <textarea id="embedDescription" class="textarea-field" rows="6" placeholder="Введите основной текст..." maxlength="4096"></textarea>
           </div>
           
+          <!-- Первый блок с картинкой -->
+          <div class="editor-section" style="background: rgba(88, 101, 242, 0.1); border: 2px solid rgba(88, 101, 242, 0.3); border-radius: 10px; padding: 1.5rem; margin-bottom: 1.5rem;">
+            <h3 style="margin-top: 0; margin-bottom: 1rem;">🖼️ Блок с картинкой (первый блок)</h3>
+            
+            <div style="margin-bottom: 1rem;">
+              <label>📝 Заголовок (опционально)</label>
+              <input type="text" id="embedImageBlockTitle" class="input-field" placeholder="Например: РОЛИ СЕРВЕРА" maxlength="256" oninput="updateEmbedImageBlock()">
+            </div>
+            
+            <div>
+              <label>🖼️ Картинка</label>
+              <div class="image-upload-group">
+                <input type="hidden" id="embedImageBlockImage" value="">
+                <label for="embedImageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                <input type="file" id="embedImageBlockImageFile" accept="image/*" style="display: none;">
+                <span id="embedImageBlockImageFileName" class="file-name"></span>
+                <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+              </div>
+            </div>
+          </div>
+          
           <!-- Блоки embed -->
           <div class="editor-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
@@ -1633,6 +1654,20 @@
     
     // Система блоков embed
     let embedBlocks = [];
+    let embedImageBlock = {
+      title: '',
+      image: ''
+    };
+    
+    function updateEmbedImageBlock() {
+      const titleEl = document.getElementById('embedImageBlockTitle');
+      const imageEl = document.getElementById('embedImageBlockImage');
+      
+      if (titleEl) embedImageBlock.title = titleEl.value;
+      if (imageEl) embedImageBlock.image = imageEl.value;
+      
+      updateEmbedPreview();
+    }
     
     function toggleEmbedBlocks() {
       const container = document.getElementById('embedBlocksContainer');
@@ -1739,8 +1774,8 @@
       const preview = document.getElementById('embedPreview');
       if (!preview) return;
       
-      if (embedBlocks.length === 0) {
-        // Если нет блоков, используем обычный предпросмотр
+      // Если нет первого блока с картинкой и нет других блоков, используем обычный предпросмотр
+      if (!embedImageBlock.image && embedBlocks.length === 0) {
         if (typeof updatePreview === 'function') {
           updatePreview();
         }
@@ -1750,11 +1785,35 @@
       preview.innerHTML = '';
       preview.classList.remove('empty');
       
+      let blockIndex = 0;
+      
+      // Показываем первый блок с картинкой, если он есть
+      if (embedImageBlock.image) {
+        const embedDiv = document.createElement('div');
+        embedDiv.className = 'embed';
+        const colorEl = document.getElementById('embedColor');
+        embedDiv.style.borderLeftColor = colorEl ? colorEl.value : '#5865F2';
+        embedDiv.style.marginTop = '0';
+        
+        let html = '';
+        
+        if (embedImageBlock.title) {
+          html += `<div class="embed-title">${formatMarkdown(escapeHtml(embedImageBlock.title))}</div>`;
+        }
+        
+        html += `<img src="${embedImageBlock.image}" class="embed-image" onerror="this.style.display='none'; this.parentElement.innerHTML='<div style=\\'color: #ED4245; padding: 1rem;\\'>❌ Не удалось загрузить изображение</div>';" style="max-width: 100%; border-radius: 4px;">`;
+        
+        embedDiv.innerHTML = html;
+        preview.appendChild(embedDiv);
+        blockIndex++;
+      }
+      
+      // Показываем остальные блоки
       embedBlocks.forEach((block, index) => {
         const embedDiv = document.createElement('div');
         embedDiv.className = 'embed';
         embedDiv.style.borderLeftColor = block.color || '#5865F2';
-        embedDiv.style.marginTop = index > 0 ? '1rem' : '0';
+        embedDiv.style.marginTop = (blockIndex + index) > 0 ? '1rem' : '0';
         
         let html = '';
         
@@ -1858,6 +1917,25 @@
       fetch(`/api/guild/${selectedGuildId}/settings`)
         .then(res => res.json())
         .then(settings => {
+          // Загружаем первый блок с картинкой
+          if (settings.embed_image_block) {
+            embedImageBlock = {
+              title: settings.embed_image_block.title || '',
+              image: settings.embed_image_block.image || ''
+            };
+            
+            const titleEl = document.getElementById('embedImageBlockTitle');
+            const imageEl = document.getElementById('embedImageBlockImage');
+            const fileNameEl = document.getElementById('embedImageBlockImageFileName');
+            
+            if (titleEl) titleEl.value = embedImageBlock.title;
+            if (imageEl) imageEl.value = embedImageBlock.image;
+            if (fileNameEl && embedImageBlock.image) {
+              fileNameEl.textContent = '✅ Изображение загружено';
+            }
+          }
+          
+          // Загружаем остальные блоки
           if (settings.embed_data && Array.isArray(settings.embed_data)) {
             embedBlocks = settings.embed_data.map(block => ({
               id: block.id || Date.now() + Math.random(),
@@ -1871,8 +1949,10 @@
               fields: block.fields || [],
               timestamp: block.timestamp !== false
             }));
-            renderEmbedBlocks();
           }
+          
+          renderEmbedBlocks();
+          updateEmbedPreview();
         })
         .catch(err => console.error('Ошибка загрузки блоков embed:', err));
     }
@@ -1903,7 +1983,10 @@
             await fetch(`/api/guild/${selectedGuildId}/embed-data`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ embed_data: embedBlocks })
+              body: JSON.stringify({ 
+                embed_data: embedBlocks,
+                embed_image_block: embedImageBlock
+              })
             });
           } catch (err) {
             console.error('Ошибка сохранения блоков:', err);
@@ -1911,7 +1994,25 @@
         }
         
         // Преобразуем блоки в embeds для Discord
-        const embeds = embedBlocks.map(block => {
+        const embeds = [];
+        
+        // Добавляем первый блок с картинкой, если он есть
+        if (embedImageBlock.image) {
+          const imageEmbed = {
+            color: parseInt(document.getElementById('embedColor')?.value.replace('#', '') || '5865F2', 16) || 0x5865F2
+          };
+          
+          if (embedImageBlock.title) {
+            imageEmbed.title = embedImageBlock.title;
+          }
+          
+          imageEmbed.image = { url: embedImageBlock.image };
+          
+          embeds.push(imageEmbed);
+        }
+        
+        // Добавляем остальные блоки
+        embedBlocks.forEach(block => {
           const embed = {
             color: parseInt(block.color.replace('#', ''), 16) || 0x5865F2
           };
@@ -1934,7 +2035,7 @@
             embed.fields = block.fields;
           }
           
-          return embed;
+          embeds.push(embed);
         });
         
         // Отправляем все embeds одним сообщением
@@ -2066,6 +2167,47 @@
       } catch (error) {
         console.error('❌ Ошибка загрузки файла:', error);
         document.getElementById('thumbnailFileName').textContent = `❌ Ошибка: ${error.message}`;
+        showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
+        e.target.value = '';
+      }
+    });
+    
+    // Обработчик загрузки картинки для первого блока
+    document.getElementById('embedImageBlockImageFile')?.addEventListener('change', async function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      if (!file.type.startsWith('image/')) {
+        showMessage('error', '❌ Выберите файл изображения (JPG, PNG, GIF и т.д.)');
+        e.target.value = '';
+        return;
+      }
+      
+      document.getElementById('embedImageBlockImageFileName').textContent = `⏳ Загрузка ${file.name}...`;
+      
+      try {
+        const url = await uploadFile(file);
+        console.log('✅ Файл загружен, URL получен:', url);
+        
+        // Обновляем скрытое поле
+        const imageInput = document.getElementById('embedImageBlockImage');
+        if (imageInput) {
+          imageInput.value = url;
+          embedImageBlock.image = url;
+          console.log('✅ Скрытое поле embedImageBlockImage обновлено:', imageInput.value);
+        } else {
+          console.error('❌ Не найдено поле embedImageBlockImage!');
+        }
+        
+        document.getElementById('embedImageBlockImageFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
+        
+        // Обновляем предпросмотр
+        updateEmbedPreview();
+        
+        showMessage('success', '✅ Изображение для первого блока загружено!');
+      } catch (error) {
+        console.error('❌ Ошибка загрузки файла:', error);
+        document.getElementById('embedImageBlockImageFileName').textContent = `❌ Ошибка: ${error.message}`;
         showMessage('error', `❌ Ошибка загрузки: ${error.message}`);
         e.target.value = '';
       }

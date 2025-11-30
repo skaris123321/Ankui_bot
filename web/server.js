@@ -544,17 +544,22 @@ app.post('/api/send-embed', async (req, res) => {
 // API для сохранения embed блоков в базу данных
 app.post('/api/guild/:guildId/embed-data', (req, res) => {
   const { guildId } = req.params;
-  const { embed_data } = req.body;
+  const { embed_data, embed_image_block } = req.body;
   
   try {
     // Получаем текущие настройки
     const currentSettings = db.getGuildSettings(guildId) || {};
     
-    // Обновляем embed_data
+    // Обновляем embed_data и embed_image_block
     const updatedSettings = {
       ...currentSettings,
       embed_data: embed_data || []
     };
+    
+    // Сохраняем первый блок с картинкой, если он есть
+    if (embed_image_block) {
+      updatedSettings.embed_image_block = embed_image_block;
+    }
     
     db.setGuildSettings(guildId, updatedSettings);
     

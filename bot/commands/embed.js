@@ -17,11 +17,26 @@ module.exports = {
     // Получаем настройки из базы данных
     const settings = client.db.getGuildSettings(guildId) || {};
     const blocksData = settings.embed_data || [];
+    const imageBlock = settings.embed_image_block || null;
     
     try {
-      // Если есть блоки embed
-      if (blocksData && blocksData.length > 0) {
+      // Если есть блоки embed или первый блок с картинкой
+      if (blocksData && blocksData.length > 0 || imageBlock) {
         const embeds = [];
+        
+        // Добавляем первый блок с картинкой, если он есть
+        if (imageBlock && imageBlock.image) {
+          const imageEmbed = new EmbedBuilder()
+            .setColor('#5865F2');
+          
+          if (imageBlock.title) {
+            imageEmbed.setTitle(imageBlock.title);
+          }
+          
+          imageEmbed.setImage(imageBlock.image);
+          
+          embeds.push(imageEmbed);
+        }
         
         // Создаем embeds для каждого блока
         for (let i = 0; i < blocksData.length; i++) {
