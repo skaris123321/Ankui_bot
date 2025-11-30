@@ -156,7 +156,6 @@ module.exports = {
       const imageEnabled = settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1';
       
       if (imageEnabled) {
-        const sendType = settings.welcome_image_send_type || 'channel';
         let welcomeImageUrl = settings.welcome_image_background || '';
         
         if (welcomeImageUrl && welcomeImageUrl.startsWith('/uploads/')) {
@@ -189,25 +188,19 @@ module.exports = {
         if (welcomeImageUrl) {
           const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256, dynamic: true });
           
+          // Отправляем текст ПЕРЕД изображением
+          await channel.send({ content: welcomeMessage });
+          
+          // Отправляем изображение с круглым аватаром (thumbnail в Discord уже круглый)
           const embed = new EmbedBuilder()
             .setColor(0x5865F2)
             .setImage(welcomeImageUrl)
             .setThumbnail(avatarUrl);
           
-          // Отправляем сообщение
-          if (sendType === 'channel') {
-            await channel.send({ embeds: [embed] });
-            console.log(`✅ [${key}] Изображение отправлено`);
-          } else if (sendType === 'with') {
-            await channel.send({ content: welcomeMessage, embeds: [embed] });
-            console.log(`✅ [${key}] Изображение и текст отправлены вместе`);
-          } else if (sendType === 'before') {
-            await channel.send({ embeds: [embed] });
-            await channel.send({ content: welcomeMessage });
-            console.log(`✅ [${key}] Изображение и текст отправлены отдельно`);
-          }
+          await channel.send({ embeds: [embed] });
+          console.log(`✅ [${key}] Текст и изображение отправлены (текст перед изображением)`);
         } else {
-          // Отправляем текстовое сообщение
+          // Отправляем только текстовое сообщение
           await channel.send({ content: welcomeMessage });
           console.log(`✅ [${key}] Текстовое сообщение отправлено (без изображения)`);
         }

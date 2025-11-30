@@ -296,17 +296,7 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
       welcome_channel_id: settings.welcome_channel_id || '',
       welcome_message: settings.welcome_message || '',
       welcome_image_enabled: (settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1') ? 1 : 0,
-      welcome_image_send_type: settings.welcome_image_send_type || 'channel',
-      welcome_image_background_type: settings.welcome_image_background_type || 'image',
-      welcome_image_background: settings.welcome_image_background || '',
-      welcome_image_background_color: settings.welcome_image_background_color || '',
-      welcome_image_username_text: settings.welcome_image_username_text || '',
-      welcome_image_username_color: settings.welcome_image_username_color || '',
-      welcome_image_text: settings.welcome_image_text || '',
-      welcome_image_text_color: settings.welcome_image_text_color || '',
-      goodbye_enabled: Number(settings.goodbye_enabled) || 0,
-      goodbye_channel_id: settings.goodbye_channel_id || '',
-      goodbye_message: settings.goodbye_message || ''
+      welcome_image_background: settings.welcome_image_background || ''
     };
     
     console.log('📥 Получены настройки для сохранения:', JSON.stringify(settings, null, 2));
