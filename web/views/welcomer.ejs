@@ -502,15 +502,15 @@
           <div class="settings-card-header">
             <h2>Отправить изображение при подключении пользователя к серверу</h2>
             <label class="toggle-switch">
-              <input type="checkbox" id="welcomeImageEnabled" <%= settings && settings.welcome_image_enabled ? 'checked' : '' %>>
+              <input type="checkbox" id="welcomeImageEnabled" <%= settings && (settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1') ? 'checked' : '' %>>
               <span class="toggle-slider"></span>
             </label>
           </div>
           
-          <div id="welcomeImageSettings" style="display: <%= settings && settings.welcome_image_enabled ? 'block' : 'none' %>;">
+            <div id="welcomeImageSettings" style="display: <%= settings && (settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1') ? 'block' : 'none' %>; padding-top: 1.5rem; margin-top: 1rem;">
               <div class="form-group" style="margin-bottom: 1.5rem;">
                 <label style="margin-bottom: 0.75rem; display: block; color: var(--text-primary); font-weight: 600; font-size: 0.9rem;">Отправить:</label>
-                <div style="display: flex; flex-direction: column; gap: 0.75rem; background: rgba(255, 255, 255, 0.02); border-radius: 6px; padding: 1rem;">
+                <div style="display: flex; flex-direction: column; gap: 0.5rem; background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 6px; padding: 1rem;">
                   <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; padding: 0.75rem; border-radius: 4px; transition: background 0.2s;" onmouseover="this.style.background='rgba(88, 101, 242, 0.1)'" onmouseout="this.style.background='transparent'">
                     <input type="radio" name="welcomeImageSendType" value="with" <%= settings && settings.welcome_image_send_type === 'with' ? 'checked' : '' %> style="cursor: pointer; width: 18px; height: 18px;">
                     <span style="color: var(--text-primary); font-size: 0.9rem;">С ТЕКСТОВЫМ СООБЩЕНИЕМ</span>
@@ -673,10 +673,16 @@
       if (welcomeImageEnabled && welcomeImageSettings) {
         welcomeImageEnabled.addEventListener('change', function() {
           welcomeImageSettings.style.display = this.checked ? 'block' : 'none';
+          if (this.checked) {
+            welcomeImageSettings.style.paddingTop = '1.5rem';
+          }
         });
         
         // Инициализация
         welcomeImageSettings.style.display = welcomeImageEnabled.checked ? 'block' : 'none';
+        if (welcomeImageEnabled.checked) {
+          welcomeImageSettings.style.paddingTop = '1.5rem';
+        }
       }
       
       // Инициализация типа фона
@@ -894,23 +900,41 @@
         }
       });
       
+      // Получаем все элементы формы
+      const welcomeEnabledEl = document.getElementById('welcomeEnabled');
+      const welcomeChannelEl = document.getElementById('welcomeChannel');
+      const welcomeMessageEl = document.getElementById('welcomeMessage');
+      const welcomeImageEnabledEl = document.getElementById('welcomeImageEnabled');
+      const backgroundTypeEl = document.getElementById('backgroundType');
+      const backgroundImageUrlEl = document.getElementById('backgroundImageUrl');
+      const backgroundColorEl = document.getElementById('backgroundColor');
+      const usernameTextEl = document.getElementById('usernameText');
+      const usernameColorEl = document.getElementById('usernameColor');
+      const welcomeTextEl = document.getElementById('welcomeText');
+      const textColorEl = document.getElementById('textColor');
+      const goodbyeEnabledEl = document.getElementById('goodbyeEnabled');
+      const goodbyeChannelEl = document.getElementById('goodbyeChannel');
+      const goodbyeMessageEl = document.getElementById('goodbyeMessage');
+      
       const settings = {
-        welcome_enabled: document.getElementById('welcomeEnabled').checked ? 1 : 0,
-        welcome_channel_id: document.getElementById('welcomeChannel').value,
-        welcome_message: document.getElementById('welcomeMessage').value,
-        welcome_image_enabled: document.getElementById('welcomeImageEnabled').checked ? 1 : 0,
+        welcome_enabled: welcomeEnabledEl && welcomeEnabledEl.checked ? 1 : 0,
+        welcome_channel_id: welcomeChannelEl ? welcomeChannelEl.value : '',
+        welcome_message: welcomeMessageEl ? welcomeMessageEl.value : '',
+        welcome_image_enabled: welcomeImageEnabledEl && welcomeImageEnabledEl.checked ? 1 : 0,
         welcome_image_send_type: sendType,
-        welcome_image_background_type: document.getElementById('backgroundType')?.value || 'image',
-        welcome_image_background: document.getElementById('backgroundImageUrl')?.value || '',
-        welcome_image_background_color: document.getElementById('backgroundColor')?.value || '',
-        welcome_image_username_text: document.getElementById('usernameText')?.value || '',
-        welcome_image_username_color: document.getElementById('usernameColor')?.value || '',
-        welcome_image_text: document.getElementById('welcomeText')?.value || '',
-        welcome_image_text_color: document.getElementById('textColor')?.value || '',
-        goodbye_enabled: document.getElementById('goodbyeEnabled').checked ? 1 : 0,
-        goodbye_channel_id: document.getElementById('goodbyeChannel').value,
-        goodbye_message: document.getElementById('goodbyeMessage').value
+        welcome_image_background_type: backgroundTypeEl ? (backgroundTypeEl.value || 'image') : 'image',
+        welcome_image_background: backgroundImageUrlEl ? backgroundImageUrlEl.value : '',
+        welcome_image_background_color: backgroundColorEl ? backgroundColorEl.value : '',
+        welcome_image_username_text: usernameTextEl ? usernameTextEl.value : '',
+        welcome_image_username_color: usernameColorEl ? usernameColorEl.value : '',
+        welcome_image_text: welcomeTextEl ? welcomeTextEl.value : '',
+        welcome_image_text_color: textColorEl ? textColorEl.value : '',
+        goodbye_enabled: goodbyeEnabledEl && goodbyeEnabledEl.checked ? 1 : 0,
+        goodbye_channel_id: goodbyeChannelEl ? goodbyeChannelEl.value : '',
+        goodbye_message: goodbyeMessageEl ? goodbyeMessageEl.value : ''
       };
+      
+      console.log('💾 Сохраняемые настройки:', settings);
       
       try {
         const response = await fetch(`/api/guild/${selectedGuildId}/welcomer`, {

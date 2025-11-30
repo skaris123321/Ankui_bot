@@ -319,10 +319,10 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
     // Обновляем настройки в базе данных
     const updatedSettings = {
       ...currentSettings,
-      welcome_enabled: settings.welcome_enabled !== undefined ? settings.welcome_enabled : (currentSettings.welcome_enabled || 0),
+      welcome_enabled: settings.welcome_enabled !== undefined ? Number(settings.welcome_enabled) : (currentSettings.welcome_enabled !== undefined ? Number(currentSettings.welcome_enabled) : 0),
       welcome_channel_id: settings.welcome_channel_id !== undefined ? settings.welcome_channel_id : (currentSettings.welcome_channel_id || ''),
       welcome_message: settings.welcome_message !== undefined ? settings.welcome_message : (currentSettings.welcome_message || ''),
-      welcome_image_enabled: settings.welcome_image_enabled !== undefined ? settings.welcome_image_enabled : (currentSettings.welcome_image_enabled || 0),
+      welcome_image_enabled: settings.welcome_image_enabled !== undefined ? Number(settings.welcome_image_enabled) : (currentSettings.welcome_image_enabled !== undefined ? Number(currentSettings.welcome_image_enabled) : 0),
       welcome_image_send_type: settings.welcome_image_send_type || 'channel',
       welcome_image_background_type: settings.welcome_image_background_type || 'image',
       welcome_image_background: settings.welcome_image_background || '',
