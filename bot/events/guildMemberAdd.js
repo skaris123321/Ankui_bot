@@ -70,6 +70,9 @@ module.exports = {
   name: Events.GuildMemberAdd,
   once: false,
   async execute(member, client) {
+    // Функционал приветствия отключен
+    return;
+    
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;

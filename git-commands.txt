@@ -1,3 +1,3 @@
-git add .
-git commit -m "Fix: remove duplicate sending - remove separate rule blocks sending from dashboard.ejs"
+git add -A
+git commit -m "Remove welcome message feature completely"
 git push origin main
