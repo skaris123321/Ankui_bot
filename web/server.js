@@ -138,6 +138,63 @@ app.get('/dashboard/overview', async (req, res) => {
   }
 });
 
+// Маршрут для страницы Добро пожаловать
+app.get('/dashboard/welcomer', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    const guildId = req.query.guild || req.query.server;
+    
+    let guilds = [];
+    let channels = [];
+    let settings = null;
+    
+    if (client && client.isReady()) {
+      guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+        memberCount: guild.memberCount
+      }));
+      
+      if (guildId) {
+        const guild = await client.guilds.fetch(guildId).catch(() => null);
+        if (guild) {
+          channels = Array.from(guild.channels.cache.values())
+            .filter(ch => ch.isTextBased())
+            .map(ch => ({
+              id: ch.id,
+              name: ch.name,
+              type: ch.type
+            }));
+          
+          settings = db.getGuildSettings(guildId) || {};
+        }
+      }
+    }
+    
+    res.render('welcomer', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'welcomer',
+      guilds: guilds,
+      channels: channels,
+      selectedGuildId: guildId || null,
+      settings: settings
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки настроек приветствия:', error);
+    res.render('welcomer', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'welcomer',
+      guilds: [],
+      channels: [],
+      selectedGuildId: null,
+      settings: null
+    });
+  }
+});
+
 app.get('/rules-editor', async (req, res) => {
   try {
     const client = require('../bot/client');
@@ -173,6 +230,35 @@ app.get('/guild/:guildId', (req, res) => {
     guildId: guildId,
     settings: settings
   });
+});
+
+// API для сохранения настроек приветствия
+app.post('/api/guild/:guildId/welcomer', (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const settings = req.body;
+    
+    // Обновляем настройки в базе данных
+    db.setGuildSettings(guildId, {
+      welcome_enabled: settings.welcome_enabled || 0,
+      welcome_channel_id: settings.welcome_channel_id || '',
+      welcome_message: settings.welcome_message || '',
+      goodbye_enabled: settings.goodbye_enabled || 0,
+      goodbye_channel_id: settings.goodbye_channel_id || '',
+      goodbye_message: settings.goodbye_message || ''
+    });
+    
+    res.json({
+      success: true,
+      message: 'Настройки приветствия успешно сохранены'
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения настроек приветствия:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Ошибка сохранения настроек'
+    });
+  }
 });
 
 // API для получения списка серверов
@@ -221,6 +307,35 @@ app.get('/api/guild/:guildId/settings', (req, res) => {
 });
 
 // API для получения предупреждений
+// API для сохранения настроек приветствия
+app.post('/api/guild/:guildId/welcomer', (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const settings = req.body;
+    
+    // Обновляем настройки в базе данных
+    db.setGuildSettings(guildId, {
+      welcome_enabled: settings.welcome_enabled || 0,
+      welcome_channel_id: settings.welcome_channel_id || '',
+      welcome_message: settings.welcome_message || '',
+      goodbye_enabled: settings.goodbye_enabled || 0,
+      goodbye_channel_id: settings.goodbye_channel_id || '',
+      goodbye_message: settings.goodbye_message || ''
+    });
+    
+    res.json({
+      success: true,
+      message: 'Настройки приветствия успешно сохранены'
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения настроек приветствия:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Ошибка сохранения настроек'
+    });
+  }
+});
+
 app.get('/api/guild/:guildId/warnings/:userId', (req, res) => {
   const { guildId, userId } = req.params;
   const warnings = db.getWarnings(guildId, userId);

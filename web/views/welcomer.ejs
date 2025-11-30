@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Добро пожаловать - Панель управления</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    :root {
+      --sidebar-width: 180px;
+      --border-radius: 12px;
+      --transition: all 0.2s ease;
+    }
+    
+    .dashboard-container {
+      display: flex;
+      height: calc(100vh - 80px);
+      overflow: hidden;
+    }
+    
+    .sidebar {
+      width: var(--sidebar-width);
+      background: #2F3136;
+      border-right: 1px solid #202225;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .sidebar-user-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-bottom: 1px solid #202225;
+    }
+    
+    .sidebar-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-user-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .sidebar-user-name {
+      flex: 1;
+      min-width: 0;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .sidebar-nav-category {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0;
+    }
+    
+    .sidebar-nav-category-title {
+      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #8E9297;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      color: #B9BBBE;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+      border-radius: 4px;
+      margin: 0.125rem 0.5rem;
+      text-decoration: none;
+    }
+    
+    .sidebar-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item.active {
+      background: rgba(88, 101, 242, 0.15);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+    
+    .sidebar-nav-item.active .sidebar-nav-item-icon {
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item-text {
+      flex: 1;
+    }
+    
+    .sidebar-content {
+      flex: 1;
+      padding: 0;
+    }
+    
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      background: #36393F;
+      padding: 2rem;
+    }
+    
+    .welcomer-header {
+      margin-bottom: 2rem;
+    }
+    
+    .welcomer-header h1 {
+      color: var(--text-primary);
+      font-size: 1.75rem;
+      margin: 0 0 0.5rem 0;
+    }
+    
+    .welcomer-header p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    
+    .settings-container {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    
+    .settings-card {
+      background: #2F3136;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+    }
+    
+    .settings-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid #202225;
+    }
+    
+    .settings-card-header h2 {
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      margin: 0;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 50px;
+      height: 24px;
+    }
+    
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #72767D;
+      transition: 0.3s;
+      border-radius: 24px;
+    }
+    
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 18px;
+      width: 18px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.3s;
+      border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+      background-color: #57F287;
+    }
+    
+    input:checked + .toggle-slider:before {
+      transform: translateX(26px);
+    }
+    
+    .form-group {
+      margin-bottom: 1.5rem;
+    }
+    
+    .form-group label {
+      display: block;
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .form-group select,
+    .form-group input,
+    .form-group textarea {
+      width: 100%;
+      padding: 0.75rem;
+      background: #202225;
+      border: 1px solid #202225;
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      transition: var(--transition);
+    }
+    
+    .form-group select:focus,
+    .form-group input:focus,
+    .form-group textarea:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    
+    .form-group textarea {
+      min-height: 100px;
+      resize: vertical;
+      font-family: inherit;
+    }
+    
+    .form-group small {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+    
+    .variables-list {
+      background: #202225;
+      border-radius: 4px;
+      padding: 1rem;
+      margin-top: 0.5rem;
+    }
+    
+    .variables-list h4 {
+      color: var(--text-primary);
+      font-size: 0.85rem;
+      margin: 0 0 0.5rem 0;
+    }
+    
+    .variables-list code {
+      display: inline-block;
+      background: #36393F;
+      padding: 0.25rem 0.5rem;
+      border-radius: 3px;
+      color: #57F287;
+      font-size: 0.75rem;
+      margin: 0.25rem 0.25rem 0.25rem 0;
+      cursor: pointer;
+    }
+    
+    .variables-list code:hover {
+      background: #40444B;
+    }
+    
+    .save-btn {
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      padding: 0.75rem 2rem;
+      border-radius: 4px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    .save-btn:hover {
+      background: #4752C4;
+      transform: translateY(-1px);
+    }
+    
+    .server-selector {
+      margin-bottom: 2rem;
+    }
+    
+    .server-selector select {
+      width: 100%;
+      max-width: 400px;
+      padding: 0.75rem;
+      background: #202225;
+      border: 1px solid #202225;
+      border-radius: 4px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="dashboard-container">
+    <!-- Боковая панель навигации -->
+    <div class="sidebar">
+      <div class="sidebar-user-profile">
+        <div class="sidebar-user-avatar">
+          <% if (user && user.avatar) { %>
+            <img src="<%= user.avatar %>" alt="<%= user.username %>">
+          <% } else { %>
+            🤖
+          <% } %>
+        </div>
+        <div class="sidebar-user-name">
+          <%= user ? user.username : 'Бот' %>
+        </div>
+      </div>
+      
+      <div class="sidebar-content">
+        <!-- Категория ОБЩЕЕ -->
+        <div class="sidebar-nav-category">
+          <div class="sidebar-nav-category-title">ОБЩЕЕ</div>
+          <a href="/dashboard/overview" class="sidebar-nav-item <%= currentPage === 'overview' ? 'active' : '' %>">
+            <div class="sidebar-nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-item-text">Обзор</div>
+          </a>
+          <a href="/dashboard" class="sidebar-nav-item <%= currentPage === 'embed-editor' ? 'active' : '' %>">
+            <div class="sidebar-nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <path d="M9 9h6M9 15h6M9 12h6"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-item-text">Embed-сообщения</div>
+          </a>
+        </div>
+        
+        <!-- Категория НАСТРОЙКИ МОДУЛЕЙ -->
+        <div class="sidebar-nav-category">
+          <div class="sidebar-nav-category-title">НАСТРОЙКИ МОДУЛЕЙ</div>
+          <a href="/dashboard/welcomer" class="sidebar-nav-item <%= currentPage === 'welcomer' ? 'active' : '' %>">
+            <div class="sidebar-nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-item-text">Добро пожаловать</div>
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Основной контент -->
+    <div class="main-content">
+      <div class="welcomer-header">
+        <h1>Добро пожаловать</h1>
+        <p>Настройте приветственные сообщения для новых участников сервера</p>
+      </div>
+      
+      <!-- Выбор сервера -->
+      <div class="server-selector">
+        <select id="serverSelect" onchange="handleServerSelect(this.value)">
+          <option value="">Выберите сервер...</option>
+          <% if (guilds && guilds.length > 0) { %>
+            <% guilds.forEach(guild => { %>
+              <option value="<%= guild.id %>" <%= selectedGuildId === guild.id ? 'selected' : '' %>><%= guild.name %></option>
+            <% }); %>
+          <% } %>
+        </select>
+      </div>
+      
+      <% if (selectedGuildId) { %>
+      <div class="settings-container">
+        <!-- Приветствие -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h2>Приветствие</h2>
+            <label class="toggle-switch">
+              <input type="checkbox" id="welcomeEnabled" <%= settings && settings.welcome_enabled ? 'checked' : '' %>>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <label>Канал для приветствия</label>
+            <select id="welcomeChannel">
+              <option value="">Выберите канал...</option>
+              <% if (channels && channels.length > 0) { %>
+                <% channels.forEach(channel => { %>
+                  <option value="<%= channel.id %>" <%= settings && settings.welcome_channel_id === channel.id ? 'selected' : '' %>><%= channel.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Сообщение приветствия</label>
+            <textarea id="welcomeMessage" placeholder="Добро пожаловать, {user}!"><%= settings && settings.welcome_message ? settings.welcome_message : '' %></textarea>
+            <small>Используйте переменные для персонализации сообщения</small>
+            <div class="variables-list">
+              <h4>Доступные переменные:</h4>
+              <code onclick="insertVariable('{user}')">{user}</code>
+              <code onclick="insertVariable('{username}')">{username}</code>
+              <code onclick="insertVariable('{guild}')">{guild}</code>
+              <code onclick="insertVariable('{memberCount}')">{memberCount}</code>
+              <code onclick="insertVariable('{mention}')">{mention}</code>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Прощание -->
+        <div class="settings-card">
+          <div class="settings-card-header">
+            <h2>Прощание</h2>
+            <label class="toggle-switch">
+              <input type="checkbox" id="goodbyeEnabled" <%= settings && settings.goodbye_enabled ? 'checked' : '' %>>
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          
+          <div class="form-group">
+            <label>Канал для прощания</label>
+            <select id="goodbyeChannel">
+              <option value="">Выберите канал...</option>
+              <% if (channels && channels.length > 0) { %>
+                <% channels.forEach(channel => { %>
+                  <option value="<%= channel.id %>" <%= settings && settings.goodbye_channel_id === channel.id ? 'selected' : '' %>><%= channel.name %></option>
+                <% }); %>
+              <% } %>
+            </select>
+          </div>
+          
+          <div class="form-group">
+            <label>Сообщение прощания</label>
+            <textarea id="goodbyeMessage" placeholder="Пока, {user}!"><%= settings && settings.goodbye_message ? settings.goodbye_message : '' %></textarea>
+            <small>Используйте переменные для персонализации сообщения</small>
+            <div class="variables-list">
+              <h4>Доступные переменные:</h4>
+              <code onclick="insertGoodbyeVariable('{user}')">{user}</code>
+              <code onclick="insertGoodbyeVariable('{username}')">{username}</code>
+              <code onclick="insertGoodbyeVariable('{guild}')">{guild}</code>
+            </div>
+          </div>
+        </div>
+        
+        <button class="save-btn" onclick="saveSettings()">Сохранить настройки</button>
+      </div>
+      <% } else { %>
+        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+          <p>Выберите сервер для настройки приветствия</p>
+        </div>
+      <% } %>
+    </div>
+  </main>
+  
+  <%- include('partials/footer') %>
+  
+  <script>
+    let selectedGuildId = '<%= selectedGuildId || '' %>';
+    
+    function handleServerSelect(guildId) {
+      if (guildId) {
+        window.location.href = `/dashboard/welcomer?guild=${guildId}`;
+      } else {
+        window.location.href = '/dashboard/welcomer';
+      }
+    }
+    
+    function insertVariable(variable) {
+      const textarea = document.getElementById('welcomeMessage');
+      const cursorPos = textarea.selectionStart;
+      const textBefore = textarea.value.substring(0, cursorPos);
+      const textAfter = textarea.value.substring(cursorPos);
+      textarea.value = textBefore + variable + textAfter;
+      textarea.focus();
+      textarea.setSelectionRange(cursorPos + variable.length, cursorPos + variable.length);
+    }
+    
+    function insertGoodbyeVariable(variable) {
+      const textarea = document.getElementById('goodbyeMessage');
+      const cursorPos = textarea.selectionStart;
+      const textBefore = textarea.value.substring(0, cursorPos);
+      const textAfter = textarea.value.substring(cursorPos);
+      textarea.value = textBefore + variable + textAfter;
+      textarea.focus();
+      textarea.setSelectionRange(cursorPos + variable.length, cursorPos + variable.length);
+    }
+    
+    async function saveSettings() {
+      if (!selectedGuildId) {
+        alert('❌ Выберите сервер');
+        return;
+      }
+      
+      const settings = {
+        welcome_enabled: document.getElementById('welcomeEnabled').checked ? 1 : 0,
+        welcome_channel_id: document.getElementById('welcomeChannel').value,
+        welcome_message: document.getElementById('welcomeMessage').value,
+        goodbye_enabled: document.getElementById('goodbyeEnabled').checked ? 1 : 0,
+        goodbye_channel_id: document.getElementById('goodbyeChannel').value,
+        goodbye_message: document.getElementById('goodbyeMessage').value
+      };
+      
+      try {
+        const response = await fetch(`/api/guild/${selectedGuildId}/welcomer`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(settings)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          alert('✅ Настройки успешно сохранены!');
+        } else {
+          alert('❌ Ошибка: ' + (result.message || 'Неизвестная ошибка'));
+        }
+      } catch (error) {
+        console.error('Ошибка сохранения настроек:', error);
+        alert('❌ Ошибка при сохранении настроек: ' + error.message);
+      }
+    }
+  </script>
+</body>
+</html>
+
