@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Уведомления о стримах - Панель управления</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <style>
+    :root {
+      --sidebar-width: 180px;
+      --border-radius: 12px;
+      --transition: all 0.2s ease;
+    }
+    
+    .dashboard-container {
+      display: flex;
+      min-height: calc(100vh - 80px);
+      background: var(--background);
+    }
+    
+    .sidebar {
+      width: var(--sidebar-width);
+      background: #1E1F22;
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .sidebar-user-profile {
+      padding: 1rem;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+    }
+    
+    .sidebar-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-user-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .sidebar-user-name {
+      flex: 1;
+      min-width: 0;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .sidebar-nav-category {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0;
+    }
+    
+    .sidebar-nav-category-title {
+      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      color: var(--text-secondary);
+      text-decoration: none;
+      transition: var(--transition);
+      border-left: 3px solid transparent;
+    }
+    
+    .sidebar-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item.active {
+      background: rgba(88, 101, 242, 0.15);
+      color: var(--text-primary);
+      border-left-color: var(--primary-color);
+    }
+    
+    .sidebar-nav-item-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-nav-item-icon svg {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .sidebar-nav-item-text {
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    
+    .main-content {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    
+    .page-header {
+      margin-bottom: 2rem;
+    }
+    
+    .page-header h1 {
+      color: var(--text-primary);
+      font-size: 2rem;
+      margin: 0 0 0.5rem 0;
+    }
+    
+    .page-header p {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      margin: 0;
+    }
+    
+    .settings-section {
+      background: var(--background-light);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .settings-section h2 {
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      margin: 0 0 1rem 0;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .settings-section label {
+      display: block;
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .settings-section .input-field,
+    .settings-section select {
+      width: 100%;
+      padding: 0.75rem;
+      background: var(--background);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+    
+    .settings-section .input-field:focus,
+    .settings-section select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+    }
+    
+    .settings-section small {
+      display: block;
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin-top: -0.75rem;
+      margin-bottom: 1rem;
+    }
+    
+    .toggle-switch {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    
+    .toggle-switch input[type="checkbox"] {
+      width: 44px;
+      height: 24px;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      position: relative;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    .toggle-switch input[type="checkbox"]:checked {
+      background: var(--primary-color);
+    }
+    
+    .toggle-switch input[type="checkbox"]::before {
+      content: '';
+      position: absolute;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: white;
+      top: 2px;
+      left: 2px;
+      transition: var(--transition);
+    }
+    
+    .toggle-switch input[type="checkbox"]:checked::before {
+      left: 22px;
+    }
+    
+    .toggle-switch label {
+      margin: 0;
+      cursor: pointer;
+    }
+    
+    .channel-list {
+      margin-top: 1rem;
+    }
+    
+    .channel-item {
+      background: var(--background);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .channel-item-info {
+      flex: 1;
+    }
+    
+    .channel-item-name {
+      color: var(--text-primary);
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+    }
+    
+    .channel-item-type {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+    }
+    
+    .channel-item-actions {
+      display: flex;
+      gap: 0.5rem;
+    }
+    
+    .btn {
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+    
+    .btn-primary {
+      background: var(--primary-color);
+      color: white;
+    }
+    
+    .btn-primary:hover {
+      background: #4752C4;
+    }
+    
+    .btn-danger {
+      background: #ED4245;
+      color: white;
+    }
+    
+    .btn-danger:hover {
+      background: #C03537;
+    }
+    
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+    
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .add-channel-form {
+      background: var(--background);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    
+    .form-row.full {
+      grid-template-columns: 1fr;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="dashboard-container">
+    <!-- Боковая панель навигации -->
+    <div class="sidebar">
+      <div class="sidebar-user-profile">
+        <div class="sidebar-user-avatar">
+          <% if (user && user.avatar) { %>
+            <img src="<%= user.avatar %>" alt="<%= user.username %>">
+          <% } else { %>
+            🤖
+          <% } %>
+        </div>
+        <div class="sidebar-user-name">
+          <% if (user) { %>
+            <%= user.username %>
+          <% } else { %>
+            Гость
+          <% } %>
+        </div>
+      </div>
+      
+      <div class="sidebar-nav-category">
+        <div class="sidebar-nav-category-title">ОБЩЕЕ</div>
+        <a href="/dashboard/overview" class="sidebar-nav-item <%= currentPage === 'overview' ? 'active' : '' %>">
+          <div class="sidebar-nav-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+          </div>
+          <div class="sidebar-nav-item-text">Обзор</div>
+        </a>
+        <a href="/dashboard" class="sidebar-nav-item <%= currentPage === 'embed-editor' ? 'active' : '' %>">
+          <div class="sidebar-nav-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+              <path d="M9 9h6M9 15h6M9 12h6"/>
+            </svg>
+          </div>
+          <div class="sidebar-nav-item-text">Embed-сообщения</div>
+        </a>
+      </div>
+      
+      <div class="sidebar-nav-category">
+        <div class="sidebar-nav-category-title">НАСТРОЙКИ МОДУЛЕЙ</div>
+        <a href="/dashboard/stream-notifications" class="sidebar-nav-item <%= currentPage === 'stream-notifications' ? 'active' : '' %>">
+          <div class="sidebar-nav-item-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+          </div>
+          <div class="sidebar-nav-item-text">Уведомление о стримах</div>
+        </a>
+      </div>
+    </div>
+    
+    <!-- Основной контент -->
+    <div class="main-content">
+      <div class="page-header">
+        <h1>📺 Уведомления о стримах</h1>
+        <p>Настройте уведомления о стримах Twitch и YouTube для вашего сервера</p>
+      </div>
+      
+      <!-- Выбор сервера -->
+      <div class="settings-section">
+        <h2>Выберите сервер</h2>
+        <% if (guilds.length > 0) { %>
+          <select id="serverSelect" class="input-field" onchange="loadStreamSettings(this.value)">
+            <option value="">Выберите сервер...</option>
+            <% guilds.forEach(guild => { %>
+              <option value="<%= guild.id %>"><%= guild.name %></option>
+            <% }); %>
+          </select>
+        <% } else { %>
+          <p style="color: var(--text-secondary);">Бот не добавлен ни на один сервер</p>
+        <% } %>
+      </div>
+      
+      <!-- Основные настройки -->
+      <div class="settings-section" id="mainSettings" style="display: none;">
+        <h2>⚙️ Основные настройки</h2>
+        
+        <div class="toggle-switch">
+          <input type="checkbox" id="streamNotificationsEnabled" onchange="saveStreamSettings()">
+          <label for="streamNotificationsEnabled">Включить уведомления о стримах</label>
+        </div>
+        
+        <label>Канал для уведомлений</label>
+        <select id="notificationChannel" class="input-field" onchange="saveStreamSettings()">
+          <option value="">Выберите канал...</option>
+        </select>
+        <small>Выберите канал, в который будут отправляться уведомления о стримах</small>
+        
+        <label>Сообщение при начале стрима</label>
+        <input type="text" id="streamMessage" class="input-field" placeholder="@here {user} начал стрим!" maxlength="500" onchange="saveStreamSettings()">
+        <small>Используйте {user} для имени стримера, {title} для названия стрима, {game} для игры</small>
+        
+        <label>Цвет embed (HEX)</label>
+        <input type="color" id="embedColor" class="input-field" value="#9146FF" onchange="saveStreamSettings()">
+        <small>Цвет embed сообщения (по умолчанию фиолетовый для Twitch)</small>
+      </div>
+      
+      <!-- Каналы для отслеживания -->
+      <div class="settings-section" id="channelsSection" style="display: none;">
+        <h2>📺 Отслеживаемые каналы</h2>
+        
+        <div class="channel-list" id="channelsList">
+          <!-- Список каналов будет загружен динамически -->
+        </div>
+        
+        <div class="add-channel-form">
+          <h3 style="color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem;">Добавить канал</h3>
+          <div class="form-row">
+            <div>
+              <label>Платформа</label>
+              <select id="channelPlatform" class="input-field">
+                <option value="twitch">Twitch</option>
+                <option value="youtube">YouTube</option>
+              </select>
+            </div>
+            <div>
+              <label>Имя канала / ID</label>
+              <input type="text" id="channelName" class="input-field" placeholder="например: xqc или UCX6OQ3DkcsbYNE6H8uQQuVA">
+            </div>
+          </div>
+          <button type="button" class="btn btn-primary" onclick="addChannel()">Добавить канал</button>
+        </div>
+      </div>
+      
+      <!-- Фильтры -->
+      <div class="settings-section" id="filtersSection" style="display: none;">
+        <h2>🔍 Фильтры</h2>
+        
+        <div class="toggle-switch">
+          <input type="checkbox" id="filterByGame" onchange="saveStreamSettings()">
+          <label for="filterByGame">Фильтровать по игре</label>
+        </div>
+        
+        <label>Игры (через запятую)</label>
+        <input type="text" id="allowedGames" class="input-field" placeholder="Counter-Strike, Valorant, League of Legends" onchange="saveStreamSettings()">
+        <small>Уведомления будут отправляться только для указанных игр. Оставьте пустым для всех игр.</small>
+        
+        <div class="toggle-switch" style="margin-top: 1rem;">
+          <input type="checkbox" id="filterByTitle" onchange="saveStreamSettings()">
+          <label for="filterByTitle">Фильтровать по названию стрима</label>
+        </div>
+        
+        <label>Ключевые слова в названии (через запятую)</label>
+        <input type="text" id="titleKeywords" class="input-field" placeholder="tournament, championship, event" onchange="saveStreamSettings()">
+        <small>Уведомления будут отправляться только если название содержит одно из ключевых слов</small>
+      </div>
+      
+      <!-- Live Role -->
+      <div class="settings-section" id="liveRoleSection" style="display: none;">
+        <h2>🎭 Live Role</h2>
+        
+        <div class="toggle-switch">
+          <input type="checkbox" id="liveRoleEnabled" onchange="saveStreamSettings()">
+          <label for="liveRoleEnabled">Включить автоматическое добавление роли при стриме</label>
+        </div>
+        
+        <label>Роль для стримеров</label>
+        <select id="liveRole" class="input-field" onchange="saveStreamSettings()">
+          <option value="">Выберите роль...</option>
+        </select>
+        <small>Роль будет автоматически добавляться участникам сервера, когда они начинают стрим</small>
+      </div>
+    </div>
+  </main>
+  
+  <script>
+    let selectedGuildId = null;
+    let channels = [];
+    let roles = [];
+    
+    async function loadStreamSettings(guildId) {
+      if (!guildId) return;
+      
+      selectedGuildId = guildId;
+      
+      // Показываем секции настроек
+      document.getElementById('mainSettings').style.display = 'block';
+      document.getElementById('channelsSection').style.display = 'block';
+      document.getElementById('filtersSection').style.display = 'block';
+      document.getElementById('liveRoleSection').style.display = 'block';
+      
+      // Загружаем каналы сервера
+      await loadChannels(guildId);
+      
+      // Загружаем роли сервера
+      await loadRoles(guildId);
+      
+      // Загружаем настройки
+      try {
+        const response = await fetch(`/api/guild/${guildId}/stream-settings`);
+        const settings = await response.json();
+        
+        if (settings.success && settings.data) {
+          const data = settings.data;
+          
+          document.getElementById('streamNotificationsEnabled').checked = data.enabled || false;
+          document.getElementById('notificationChannel').value = data.channelId || '';
+          document.getElementById('streamMessage').value = data.message || '@here {user} начал стрим!';
+          document.getElementById('embedColor').value = data.embedColor || '#9146FF';
+          document.getElementById('filterByGame').checked = data.filterByGame || false;
+          document.getElementById('allowedGames').value = data.allowedGames || '';
+          document.getElementById('filterByTitle').checked = data.filterByTitle || false;
+          document.getElementById('titleKeywords').value = data.titleKeywords || '';
+          document.getElementById('liveRoleEnabled').checked = data.liveRoleEnabled || false;
+          document.getElementById('liveRole').value = data.liveRoleId || '';
+          
+          if (data.channels) {
+            channels = data.channels;
+            renderChannels();
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек:', error);
+      }
+    }
+    
+    async function loadChannels(guildId) {
+      try {
+        const response = await fetch(`/api/guild/${guildId}/channels`);
+        const data = await response.json();
+        
+        const select = document.getElementById('notificationChannel');
+        select.innerHTML = '<option value="">Выберите канал...</option>';
+        
+        if (data.channels) {
+          data.channels.forEach(channel => {
+            const option = document.createElement('option');
+            option.value = channel.id;
+            option.textContent = `# ${channel.name}`;
+            select.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки каналов:', error);
+      }
+    }
+    
+    async function loadRoles(guildId) {
+      try {
+        const response = await fetch(`/api/guild/${guildId}/roles`);
+        const data = await response.json();
+        
+        const select = document.getElementById('liveRole');
+        select.innerHTML = '<option value="">Выберите роль...</option>';
+        
+        if (data.roles) {
+          data.roles.forEach(role => {
+            const option = document.createElement('option');
+            option.value = role.id;
+            option.textContent = role.name;
+            select.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки ролей:', error);
+      }
+    }
+    
+    async function saveStreamSettings() {
+      if (!selectedGuildId) return;
+      
+      const settings = {
+        enabled: document.getElementById('streamNotificationsEnabled').checked,
+        channelId: document.getElementById('notificationChannel').value,
+        message: document.getElementById('streamMessage').value,
+        embedColor: document.getElementById('embedColor').value,
+        filterByGame: document.getElementById('filterByGame').checked,
+        allowedGames: document.getElementById('allowedGames').value,
+        filterByTitle: document.getElementById('filterByTitle').checked,
+        titleKeywords: document.getElementById('titleKeywords').value,
+        liveRoleEnabled: document.getElementById('liveRoleEnabled').checked,
+        liveRoleId: document.getElementById('liveRole').value,
+        channels: channels
+      };
+      
+      try {
+        const response = await fetch(`/api/guild/${selectedGuildId}/stream-settings`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(settings)
+        });
+        
+        const result = await response.json();
+        if (result.success) {
+          showMessage('success', '✅ Настройки сохранены!');
+        } else {
+          showMessage('error', '❌ Ошибка сохранения: ' + (result.message || 'Неизвестная ошибка'));
+        }
+      } catch (error) {
+        console.error('Ошибка сохранения настроек:', error);
+        showMessage('error', '❌ Ошибка сохранения настроек');
+      }
+    }
+    
+    function addChannel() {
+      const platform = document.getElementById('channelPlatform').value;
+      const name = document.getElementById('channelName').value.trim();
+      
+      if (!name) {
+        showMessage('error', '❌ Введите имя канала');
+        return;
+      }
+      
+      channels.push({
+        id: Date.now(),
+        platform: platform,
+        name: name
+      });
+      
+      document.getElementById('channelName').value = '';
+      renderChannels();
+      saveStreamSettings();
+    }
+    
+    function removeChannel(channelId) {
+      channels = channels.filter(c => c.id !== channelId);
+      renderChannels();
+      saveStreamSettings();
+    }
+    
+    function renderChannels() {
+      const container = document.getElementById('channelsList');
+      container.innerHTML = '';
+      
+      if (channels.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">Нет отслеживаемых каналов</p>';
+        return;
+      }
+      
+      channels.forEach(channel => {
+        const item = document.createElement('div');
+        item.className = 'channel-item';
+        item.innerHTML = `
+          <div class="channel-item-info">
+            <div class="channel-item-name">${channel.name}</div>
+            <div class="channel-item-type">${channel.platform === 'twitch' ? '🎮 Twitch' : '📺 YouTube'}</div>
+          </div>
+          <div class="channel-item-actions">
+            <button type="button" class="btn btn-danger" onclick="removeChannel(${channel.id})">Удалить</button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+    
+    function showMessage(type, message) {
+      // Простая реализация уведомлений
+      const div = document.createElement('div');
+      div.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 1rem 1.5rem;
+        background: ${type === 'success' ? '#43B581' : '#ED4245'};
+        color: white;
+        border-radius: 8px;
+        z-index: 10000;
+        font-weight: 600;
+      `;
+      div.textContent = message;
+      document.body.appendChild(div);
+      
+      setTimeout(() => {
+        div.remove();
+      }, 3000);
+    }
+  </script>
+</body>
+</html>
+

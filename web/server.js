@@ -138,6 +138,37 @@ app.get('/dashboard/overview', async (req, res) => {
   }
 });
 
+app.get('/dashboard/stream-notifications', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    
+    let guilds = [];
+    if (client && client.isReady()) {
+      guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+        memberCount: guild.memberCount
+      }));
+    }
+    
+    res.render('stream-notifications', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'stream-notifications',
+      guilds: guilds
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки страницы уведомлений о стримах:', error);
+    res.render('stream-notifications', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'stream-notifications',
+      guilds: []
+    });
+  }
+});
+
 app.get('/rules-editor', async (req, res) => {
   try {
     const client = require('../bot/client');
@@ -1203,6 +1234,99 @@ app.get('/api/statistics', async (req, res) => {
       success: false, 
       message: error.message || 'Ошибка получения статистики' 
     });
+  }
+});
+
+// API для получения ролей сервера
+app.get('/api/guild/:guildId/roles', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    const { guildId } = req.params;
+    
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ success: false, message: 'Бот не готов' });
+    }
+    
+    const guild = await client.guilds.fetch(guildId);
+    if (!guild) {
+      return res.status(404).json({ success: false, message: 'Сервер не найден' });
+    }
+    
+    const roles = Array.from(guild.roles.cache.values())
+      .filter(role => !role.managed && role.id !== guild.id) // Исключаем @everyone и ботов
+      .sort((a, b) => b.position - a.position)
+      .map(role => ({
+        id: role.id,
+        name: role.name,
+        color: role.hexColor
+      }));
+    
+    res.json({ success: true, roles });
+  } catch (error) {
+    console.error('Ошибка получения ролей:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API для получения настроек стримов
+app.get('/api/guild/:guildId/stream-settings', (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const settings = db.getGuildSettings(guildId) || {};
+    
+    res.json({
+      success: true,
+      data: {
+        enabled: settings.stream_notifications_enabled || false,
+        channelId: settings.stream_notifications_channel_id || '',
+        message: settings.stream_notifications_message || '@here {user} начал стрим!',
+        embedColor: settings.stream_notifications_embed_color || '#9146FF',
+        filterByGame: settings.stream_notifications_filter_by_game || false,
+        allowedGames: settings.stream_notifications_allowed_games || '',
+        filterByTitle: settings.stream_notifications_filter_by_title || false,
+        titleKeywords: settings.stream_notifications_title_keywords || '',
+        liveRoleEnabled: settings.stream_notifications_live_role_enabled || false,
+        liveRoleId: settings.stream_notifications_live_role_id || '',
+        channels: settings.stream_notifications_channels || []
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка получения настроек стримов:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API для сохранения настроек стримов
+app.post('/api/guild/:guildId/stream-settings', (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const data = req.body;
+    
+    const currentSettings = db.getGuildSettings(guildId) || {};
+    
+    const updatedSettings = {
+      ...currentSettings,
+      stream_notifications_enabled: data.enabled || false,
+      stream_notifications_channel_id: data.channelId || '',
+      stream_notifications_message: data.message || '@here {user} начал стрим!',
+      stream_notifications_embed_color: data.embedColor || '#9146FF',
+      stream_notifications_filter_by_game: data.filterByGame || false,
+      stream_notifications_allowed_games: data.allowedGames || '',
+      stream_notifications_filter_by_title: data.filterByTitle || false,
+      stream_notifications_title_keywords: data.titleKeywords || '',
+      stream_notifications_live_role_enabled: data.liveRoleEnabled || false,
+      stream_notifications_live_role_id: data.liveRoleId || '',
+      stream_notifications_channels: data.channels || []
+    };
+    
+    db.setGuildSettings(guildId, updatedSettings);
+    
+    console.log('💾 Сохранены настройки уведомлений о стримах для сервера', guildId);
+    
+    res.json({ success: true, message: 'Настройки сохранены!' });
+  } catch (error) {
+    console.error('Ошибка сохранения настроек стримов:', error);
+    res.status(500).json({ success: false, message: error.message });
   }
 });
 
