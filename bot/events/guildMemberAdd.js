@@ -36,12 +36,6 @@ module.exports = {
     }, 30000);
     
     try {
-      // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА - на случай если обработчик вызвался дважды до первого выполнения
-      if (global.processingWelcomeMembers.has(key)) {
-        console.log(`⚠️ ПОВТОРНАЯ ПРОВЕРКА: Пользователь ${member.user.tag} (${userId}) уже обрабатывается, пропускаем`);
-        return;
-      }
-      
       const settings = client.db.getGuildSettings(guildId);
       
       console.log(`👤 Новый участник присоединился к серверу ${guildId}: ${member.user.tag}`);
@@ -49,8 +43,6 @@ module.exports = {
       
       if (!settings) {
         console.log('⚠️ Настройки для сервера не найдены');
-        // Удаляем из Set перед выходом
-        global.processingWelcomeMembers.delete(key);
         return;
       }
       
@@ -58,18 +50,22 @@ module.exports = {
       const welcomeEnabled = settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1' || Number(settings.welcome_enabled) === 1;
       console.log(`✅ Приветствие включено: ${welcomeEnabled} (значение: ${settings.welcome_enabled}), Канал: ${settings.welcome_channel_id}`);
       
+      if (!welcomeEnabled) {
+        console.log(`⚠️ Приветствие отключено (welcome_enabled = ${settings.welcome_enabled})`);
+      } else if (!settings.welcome_channel_id) {
+        console.log(`⚠️ Канал приветствия не указан (welcome_channel_id = ${settings.welcome_channel_id || 'пусто'})`);
+      }
+      
       if (welcomeEnabled && settings.welcome_channel_id) {
         const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
         
         if (!channel) {
           console.error(`❌ Канал ${settings.welcome_channel_id} не найден`);
-          global.processingWelcomeMembers.delete(key);
           return;
         }
         
         if (!channel.isTextBased()) {
           console.error(`❌ Канал ${settings.welcome_channel_id} не является текстовым`);
-          global.processingWelcomeMembers.delete(key);
           return;
         }
         
@@ -118,23 +114,29 @@ module.exports = {
                 // Отправляем только изображение
                 await channel.send({ embeds: [embed] });
                 sent = true;
+                console.log('✅ Изображение отправлено (channel)');
               } else if (sendType === 'with') {
                 // Отправляем изображение вместе с текстовым сообщением
                 await channel.send({ content: welcomeMessage, embeds: [embed] });
                 sent = true;
+                console.log('✅ Изображение и текст отправлены вместе (with)');
               } else if (sendType === 'before') {
                 // Отправляем изображение перед текстовым сообщением
                 await channel.send({ embeds: [embed] });
                 await channel.send({ content: welcomeMessage });
                 sent = true;
+                console.log('✅ Изображение и текст отправлены отдельно (before)');
               }
               
               if (!sent) {
+                console.log('⚠️ Неизвестный тип отправки, отправляем только текст');
                 await channel.send({ content: welcomeMessage });
               }
             } else {
               // Если нет изображения, отправляем только текстовое сообщение
+              console.log('⚠️ URL изображения не найден, отправляем только текст');
               await channel.send({ content: welcomeMessage });
+              console.log('✅ Текстовое сообщение отправлено');
             }
           } catch (error) {
             console.error('❌ Ошибка отправки приветствия:', error);
@@ -146,8 +148,10 @@ module.exports = {
             }
           }
         } else {
-          // Отправляем только текстовое сообщение
+          // Отправляем только текстовое сообщение (изображение отключено)
+          console.log('📝 Изображение отключено, отправляем только текст');
           await channel.send({ content: welcomeMessage });
+          console.log('✅ Текстовое сообщение отправлено');
         }
       }
       
