@@ -21,6 +21,32 @@ if (!global.welcomeMessageProcessing) {
   console.log(`⚠️ Глобальный Set welcomeMessageProcessing уже существует! Размер: ${global.welcomeMessageProcessing.size}`);
 }
 
+// Глобальный объект-блокировщик для синхронной проверки и установки
+// Используем объект с методами для атомарных операций
+if (!global.welcomeMessageLock) {
+  global.welcomeMessageLock = {
+    locks: new Map(), // Map<key, lockObject>
+    lock(key) {
+      // Синхронная проверка и установка блокировки
+      if (this.locks.has(key)) {
+        return false; // Уже заблокировано
+      }
+      const lockObj = { locked: true, timestamp: Date.now() };
+      this.locks.set(key, lockObj);
+      return true; // Успешно заблокировано
+    },
+    unlock(key) {
+      this.locks.delete(key);
+    },
+    isLocked(key) {
+      return this.locks.has(key);
+    }
+  };
+  console.log(`✅ Глобальный блокировщик welcomeMessageLock создан`);
+} else {
+  console.log(`⚠️ Глобальный блокировщик welcomeMessageLock уже существует!`);
+}
+
 // Глобальный флаг для отслеживания выполнения обработчика
 // Это дополнительная защита от одновременных вызовов
 if (!global.welcomeHandlerExecuting) {
@@ -43,21 +69,23 @@ module.exports = {
     console.log(`📋 Ключ в Set ДО проверки: ${global.welcomeMessageProcessing.has(key)}`);
     console.log(`📋 Глобальный флаг выполнения: ${global.welcomeHandlerExecuting}`);
     
-    // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - ИСПОЛЬЗУЕМ ТОЛЬКО MAP
-    // Убираем Set, используем только Map для максимальной надежности
+    // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - ИСПОЛЬЗУЕМ СИНХРОННУЮ БЛОКИРОВКУ
+    // Используем глобальный блокировщик для атомарной проверки и установки
     
-    // Шаг 1: Проверяем has() ПЕРЕД set() - если ключ уже есть, ждем
-    if (global.welcomeMessagePromises.has(key)) {
-      console.log(`⚠️ [${key}] Ключ уже в Map, ждем завершения предыдущей обработки...`);
+    // Шаг 1: Пытаемся заблокировать ключ СИНХРОННО
+    const lockAcquired = global.welcomeMessageLock.lock(key);
+    if (!lockAcquired) {
+      // Ключ уже заблокирован другим обработчиком - ждем
+      console.log(`⚠️ [${key}] Ключ уже заблокирован, ждем завершения предыдущей обработки...`);
       
-      // Ждем завершения обработки
+      // Ждем разблокировки
       let waitCount = 0;
-      while (global.welcomeMessagePromises.has(key) && waitCount < 200) {
+      while (global.welcomeMessageLock.isLocked(key) && waitCount < 200) {
         await new Promise(resolve => setTimeout(resolve, 25));
         waitCount++;
       }
       
-      // Проверяем Promise еще раз
+      // Проверяем Promise в Map
       const finalPromise = global.welcomeMessagePromises.get(key);
       if (finalPromise && finalPromise._resolve) {
         try {
@@ -71,48 +99,34 @@ module.exports = {
       return;
     }
     
-    // Шаг 2: Создаем Promise СРАЗУ и СИНХРОННО добавляем в Map
-    // Это критически важно - создаем Promise ДО добавления в Map
+    // Шаг 2: Проверяем Map - если Promise уже есть, разблокируем и ждем
+    const existingPromise = global.welcomeMessagePromises.get(key);
+    if (existingPromise) {
+      // Разблокируем и ждем
+      global.welcomeMessageLock.unlock(key);
+      console.log(`⚠️ [${key}] Promise уже в Map, ждем...`);
+      try {
+        await existingPromise;
+        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
+      } catch (e) {
+        console.log(`⚠️ [${key}] Ошибка ожидания, пропускаем\n`);
+      }
+      return;
+    }
+    
+    // Шаг 3: Создаем Promise и СИНХРОННО добавляем в Map
     let resolvePromise;
     const newPromise = new Promise(resolve => {
       resolvePromise = resolve;
     });
     newPromise._resolve = resolvePromise;
-    
-    // Шаг 3: СИНХРОННО добавляем Promise в Map
     global.welcomeMessagePromises.set(key, newPromise);
     let processingPromise = newPromise;
     
-    // Шаг 4: НЕМЕДЛЕННАЯ проверка - если кто-то успел заменить наш Promise
-    const checkPromise = global.welcomeMessagePromises.get(key);
-    if (checkPromise !== newPromise) {
-      // Кто-то успел заменить наш Promise - ждем
-      console.log(`⚠️ [${key}] Другой обработчик заменил Promise, ждем...`);
-      
-      // Ждем завершения
-      let waitCount = 0;
-      while (global.welcomeMessagePromises.has(key) && waitCount < 200) {
-        await new Promise(resolve => setTimeout(resolve, 25));
-        waitCount++;
-      }
-      
-      const finalPromise = global.welcomeMessagePromises.get(key);
-      if (finalPromise && finalPromise._resolve) {
-        try {
-          await finalPromise;
-        } catch (e) {
-          // Игнорируем ошибки
-        }
-      }
-      
-      console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
-      return;
-    }
-    
-    // Добавляем в Set для совместимости (но не используем для проверки)
+    // Добавляем в Set для совместимости
     global.welcomeMessageProcessing.add(key);
     
-    console.log(`✅ [${key}] Ключ добавлен в Map и Set, начинаем обработку`);
+    console.log(`✅ [${key}] Ключ заблокирован и добавлен в Map, начинаем обработку`);
     
     // Удаляем из Map через 10 секунд (на случай если Promise не разрешится)
     const timeoutId = setTimeout(() => {
@@ -237,14 +251,17 @@ module.exports = {
       if (processingPromise && processingPromise._resolve) {
         processingPromise._resolve();
       }
+      // ВСЕГДА разблокируем ключ
+      global.welcomeMessageLock.unlock(key);
+      
       // Удаляем из Set
       global.welcomeMessageProcessing.delete(key);
       // Проверяем, что это все еще тот же Promise перед удалением из Map
       if (global.welcomeMessagePromises.get(key) === processingPromise) {
         global.welcomeMessagePromises.delete(key);
-        console.log(`🗑️ [${key}] Ключ удален из Set и Map (обработка завершена)`);
+        console.log(`🗑️ [${key}] Ключ разблокирован и удален из Set и Map (обработка завершена)`);
       } else {
-        console.log(`🗑️ [${key}] Ключ удален из Set (обработка завершена, Promise уже был удален)`);
+        console.log(`🗑️ [${key}] Ключ разблокирован и удален из Set (обработка завершена, Promise уже был удален)`);
       }
     }
   },
