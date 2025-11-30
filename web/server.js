@@ -322,7 +322,7 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
       welcome_enabled: Number(settings.welcome_enabled) || 0,
       welcome_channel_id: settings.welcome_channel_id || '',
       welcome_message: settings.welcome_message || '',
-      welcome_image_enabled: Number(settings.welcome_image_enabled) || 0,
+      welcome_image_enabled: (settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1') ? 1 : 0,
       welcome_image_send_type: settings.welcome_image_send_type || 'channel',
       welcome_image_background_type: settings.welcome_image_background_type || 'image',
       welcome_image_background: settings.welcome_image_background || '',
@@ -355,6 +355,30 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
     res.status(500).json({
       success: false,
       message: error.message || 'Ошибка сохранения настроек'
+    });
+  }
+});
+
+// API для генерации изображения приветствия
+app.get('/api/generate-welcome-image', async (req, res) => {
+  try {
+    const { userId, guildId, backgroundUrl, avatarUrl, username, welcomeText, usernameColor, textColor } = req.query;
+    
+    if (!backgroundUrl) {
+      return res.status(400).json({ success: false, message: 'Не указан URL фонового изображения' });
+    }
+    
+    // Пока что просто возвращаем URL фонового изображения
+    // В будущем здесь можно добавить генерацию через canvas или другой способ
+    res.json({
+      success: true,
+      imageUrl: backgroundUrl
+    });
+  } catch (error) {
+    console.error('Ошибка генерации изображения приветствия:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Ошибка генерации изображения'
     });
   }
 });
