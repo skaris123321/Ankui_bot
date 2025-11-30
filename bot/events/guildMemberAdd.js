@@ -106,57 +106,6 @@ module.exports = {
     processingPromise = newPromise;
     
     console.log(`✅ [${key}] Ключ добавлен в Set и Map, начинаем обработку (первый вызов)`);
-      // Ключ уже был в Set - другой обработчик уже начал обработку
-      console.log(`⚠️ [${key}] Ключ уже в Set (другой обработчик начал обработку), ждем...`);
-      
-      // Ждем, пока ключ не будет удален из Set (обработка завершится)
-      let waitCount = 0;
-      while (global.welcomeMessageProcessing.has(key) && waitCount < 200) {
-        await new Promise(resolve => setTimeout(resolve, 25)); // Ждем 25мс
-        waitCount++;
-      }
-      
-      // Проверяем Promise в Map на случай если обработка еще идет
-      const existingPromise = global.welcomeMessagePromises.get(key);
-      if (existingPromise) {
-        try {
-          await existingPromise;
-        } catch (e) {
-          // Игнорируем ошибки
-        }
-      }
-      
-      console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
-      return;
-    }
-    
-    // Шаг 2: Проверяем Map на наличие Promise (на случай если между проверками что-то изменилось)
-    let processingPromise = global.welcomeMessagePromises.get(key);
-    if (processingPromise) {
-      // Кто-то успел добавить Promise - удаляем из Set и ждем
-      global.welcomeMessageProcessing.delete(key);
-      console.log(`⚠️ [${key}] Promise был найден в Map, ждем...`);
-      try {
-        await processingPromise;
-        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
-      } catch (e) {
-        // Игнорируем ошибки
-      }
-      return;
-    }
-    
-    // Шаг 3: Создаем Promise и добавляем в Map
-    let resolvePromise;
-    const newPromise = new Promise(resolve => {
-      resolvePromise = resolve;
-    });
-    newPromise._resolve = resolvePromise;
-    
-    // Шаг 4: Добавляем Promise в Map
-    global.welcomeMessagePromises.set(key, newPromise);
-    processingPromise = newPromise;
-    
-    console.log(`✅ [${key}] Ключ добавлен в Set и Map, начинаем обработку (первый вызов)`);
     
     // Удаляем из Map через 10 секунд (на случай если Promise не разрешится)
     const timeoutId = setTimeout(() => {
