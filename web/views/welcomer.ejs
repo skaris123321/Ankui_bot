@@ -685,11 +685,12 @@
         }
       }
       
-      // Инициализация типа фона
-      updateBackgroundType();
-      
-      // Инициализация режима редактирования
-      setEditMode('background');
+      // Инициализация типа фона (только если настройки изображения включены)
+      if (welcomeImageEnabled && welcomeImageEnabled.checked) {
+        updateBackgroundType();
+        // Инициализация режима редактирования
+        setEditMode('background');
+      }
       
       // Добавляем обработчики для обновления превью
       const backgroundImageUrl = document.getElementById('backgroundImageUrl');
@@ -750,9 +751,14 @@
     }
     
     function updateBackgroundType() {
-      const type = document.getElementById('backgroundType').value;
+      const backgroundTypeEl = document.getElementById('backgroundType');
+      if (!backgroundTypeEl) return;
+      
+      const type = backgroundTypeEl.value;
       const imageSettings = document.getElementById('backgroundImageSettings');
       const colorSettings = document.getElementById('backgroundColorSettings');
+      
+      if (!imageSettings || !colorSettings) return;
       
       if (type === 'image') {
         imageSettings.style.display = 'block';
@@ -818,13 +824,23 @@
       const preview = document.getElementById('welcomeImagePreview');
       if (!preview) return;
       
-      const backgroundType = document.getElementById('backgroundType')?.value || 'image';
-      const backgroundImageUrl = document.getElementById('backgroundImageUrl')?.value || '';
-      const backgroundColor = document.getElementById('backgroundColor')?.value || '#5865F2';
-      const usernameText = document.getElementById('usernameText')?.value || 'Username';
-      const usernameColor = document.getElementById('usernameColor')?.value || '#FFFFFF';
-      const welcomeText = document.getElementById('welcomeText')?.value || 'Добро пожаловать!';
-      const textColor = document.getElementById('textColor')?.value || '#FFFFFF';
+      const backgroundTypeEl = document.getElementById('backgroundType');
+      const backgroundImageUrlEl = document.getElementById('backgroundImageUrl');
+      const backgroundColorEl = document.getElementById('backgroundColor');
+      const usernameTextEl = document.getElementById('usernameText');
+      const usernameColorEl = document.getElementById('usernameColor');
+      const welcomeTextEl = document.getElementById('welcomeText');
+      const textColorEl = document.getElementById('textColor');
+      
+      if (!backgroundTypeEl || !backgroundImageUrlEl) return;
+      
+      const backgroundType = backgroundTypeEl.value || 'image';
+      const backgroundImageUrl = backgroundImageUrlEl.value || '';
+      const backgroundColor = backgroundColorEl ? backgroundColorEl.value : '#5865F2';
+      const usernameText = usernameTextEl ? usernameTextEl.value : 'Username';
+      const usernameColor = usernameColorEl ? usernameColorEl.value : '#FFFFFF';
+      const welcomeText = welcomeTextEl ? welcomeTextEl.value : 'Добро пожаловать!';
+      const textColor = textColorEl ? textColorEl.value : '#FFFFFF';
       
       // Обновляем фон
       if (backgroundType === 'image' && backgroundImageUrl) {
@@ -852,12 +868,19 @@
     
     function useTemplate() {
       // Устанавливаем значения по умолчанию
-      document.getElementById('backgroundType').value = 'image';
-      document.getElementById('backgroundImageUrl').value = 'https://probot.media/UIODnfcGwa.png';
-      document.getElementById('usernameText').value = 'Username';
-      document.getElementById('usernameColor').value = '#FFFFFF';
-      document.getElementById('welcomeText').value = 'Добро пожаловать!';
-      document.getElementById('textColor').value = '#FFFFFF';
+      const backgroundTypeEl = document.getElementById('backgroundType');
+      const backgroundImageUrlEl = document.getElementById('backgroundImageUrl');
+      const usernameTextEl = document.getElementById('usernameText');
+      const usernameColorEl = document.getElementById('usernameColor');
+      const welcomeTextEl = document.getElementById('welcomeText');
+      const textColorEl = document.getElementById('textColor');
+      
+      if (backgroundTypeEl) backgroundTypeEl.value = 'image';
+      if (backgroundImageUrlEl) backgroundImageUrlEl.value = 'https://probot.media/UIODnfcGwa.png';
+      if (usernameTextEl) usernameTextEl.value = 'Username';
+      if (usernameColorEl) usernameColorEl.value = '#FFFFFF';
+      if (welcomeTextEl) welcomeTextEl.value = 'Добро пожаловать!';
+      if (textColorEl) textColorEl.value = '#FFFFFF';
       
       updateBackgroundType();
       updatePreview();
