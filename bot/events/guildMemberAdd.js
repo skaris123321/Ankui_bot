@@ -5,8 +5,8 @@ const path = require('path');
 const fs = require('fs');
 const url = require('url');
 
-// Защита от двойной отправки - используем Map с таймстемпами
-const processingMembers = new Map();
+// Защита от двойной отправки - используем Set (более надежно)
+const processingMembers = new Set();
 
 module.exports = {
   name: Events.GuildMemberAdd,
@@ -15,26 +15,22 @@ module.exports = {
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
-    const now = Date.now();
     
-    // Проверяем, не обрабатывался ли этот пользователь недавно (последние 5 секунд)
+    // Проверяем, обрабатывается ли уже этот пользователь
     if (processingMembers.has(key)) {
-      const lastProcessed = processingMembers.get(key);
-      if (now - lastProcessed < 5000) {
-        console.log(`⚠️ Пользователь ${member.user.tag} уже обрабатывался недавно, пропускаем`);
-        return;
-      }
+      console.log(`⚠️ Пользователь ${member.user.tag} (${userId}) уже обрабатывается, пропускаем`);
+      return;
     }
     
-    // Отмечаем текущее время обработки
-    processingMembers.set(key, now);
+    // Отмечаем, что начинаем обработку
+    processingMembers.add(key);
+    console.log(`🔄 Начинаем обработку пользователя ${member.user.tag} (${key})`);
     
-    // Удаляем старые записи (старше 30 секунд)
-    for (const [k, timestamp] of processingMembers.entries()) {
-      if (now - timestamp > 30000) {
-        processingMembers.delete(k);
-      }
-    }
+    // Удаляем через 15 секунд (более длительный период)
+    setTimeout(() => {
+      processingMembers.delete(key);
+      console.log(`✅ Завершена обработка пользователя ${member.user.tag} (${key})`);
+    }, 15000);
     
     try {
       

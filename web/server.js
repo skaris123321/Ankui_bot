@@ -232,34 +232,7 @@ app.get('/guild/:guildId', (req, res) => {
   });
 });
 
-// API для сохранения настроек приветствия
-app.post('/api/guild/:guildId/welcomer', (req, res) => {
-  try {
-    const { guildId } = req.params;
-    const settings = req.body;
-    
-    // Обновляем настройки в базе данных
-    db.setGuildSettings(guildId, {
-      welcome_enabled: settings.welcome_enabled || 0,
-      welcome_channel_id: settings.welcome_channel_id || '',
-      welcome_message: settings.welcome_message || '',
-      goodbye_enabled: settings.goodbye_enabled || 0,
-      goodbye_channel_id: settings.goodbye_channel_id || '',
-      goodbye_message: settings.goodbye_message || ''
-    });
-    
-    res.json({
-      success: true,
-      message: 'Настройки приветствия успешно сохранены'
-    });
-  } catch (error) {
-    console.error('Ошибка сохранения настроек приветствия:', error);
-    res.status(500).json({
-      success: false,
-      message: error.message || 'Ошибка сохранения настроек'
-    });
-  }
-});
+// Старый endpoint удален - используем новый ниже
 
 // API для получения списка серверов
 app.get('/api/guilds', async (req, res) => {

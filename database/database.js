@@ -48,9 +48,12 @@ class BotDatabase {
 
   save() {
     try {
-      fs.writeFileSync(this.dbPath, JSON.stringify(this.data, null, 2), 'utf8');
+      const dataString = JSON.stringify(this.data, null, 2);
+      fs.writeFileSync(this.dbPath, dataString, 'utf8');
+      console.log('💾 База данных сохранена');
     } catch (error) {
       console.error('❌ Ошибка сохранения базы данных:', error);
+      throw error;
     }
   }
 
@@ -74,8 +77,16 @@ class BotDatabase {
       };
     }
     
-    Object.assign(this.data.guilds[guildId], settings);
+    // Полностью перезаписываем настройки, сохраняя все существующие
+    this.data.guilds[guildId] = {
+      ...this.data.guilds[guildId],
+      ...settings
+    };
+    
+    // Сохраняем в файл
     this.save();
+    
+    console.log(`💾 Настройки для сервера ${guildId} сохранены:`, JSON.stringify(this.data.guilds[guildId], null, 2));
   }
 
   // Методы для предупреждений
