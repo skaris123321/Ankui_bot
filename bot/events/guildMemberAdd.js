@@ -43,26 +43,21 @@ module.exports = {
     console.log(`📋 Ключ в Set ДО проверки: ${global.welcomeMessageProcessing.has(key)}`);
     console.log(`📋 Глобальный флаг выполнения: ${global.welcomeHandlerExecuting}`);
     
-    // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - ИСПОЛЬЗУЕМ MAP С ФЛАГОМ "В ПРОЦЕССЕ"
-    // Используем Map для хранения флагов "в процессе" - это более надежно чем Set
+    // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - ИСПОЛЬЗУЕМ ТОЛЬКО MAP
+    // Убираем Set, используем только Map для максимальной надежности
     
-    // Проверяем, не обрабатывается ли уже этот ключ
-    const existingFlag = global.welcomeMessagePromises.get(key);
-    if (existingFlag && existingFlag._processing) {
-      console.log(`⚠️ [${key}] Ключ уже обрабатывается (флаг в Map), ждем...`);
+    // Шаг 1: Проверяем has() ПЕРЕД set() - если ключ уже есть, ждем
+    if (global.welcomeMessagePromises.has(key)) {
+      console.log(`⚠️ [${key}] Ключ уже в Map, ждем завершения предыдущей обработки...`);
       
       // Ждем завершения обработки
       let waitCount = 0;
       while (global.welcomeMessagePromises.has(key) && waitCount < 200) {
-        const currentFlag = global.welcomeMessagePromises.get(key);
-        if (!currentFlag || !currentFlag._processing) {
-          break;
-        }
         await new Promise(resolve => setTimeout(resolve, 25));
         waitCount++;
       }
       
-      // Проверяем Promise
+      // Проверяем Promise еще раз
       const finalPromise = global.welcomeMessagePromises.get(key);
       if (finalPromise && finalPromise._resolve) {
         try {
@@ -76,37 +71,45 @@ module.exports = {
       return;
     }
     
-    // Создаем объект-флаг "в процессе" и СИНХРОННО добавляем в Map
-    const processingFlag = { _processing: true };
-    global.welcomeMessagePromises.set(key, processingFlag);
-    
-    // Двойная проверка - если кто-то успел добавить Promise между проверками
-    const checkFlag = global.welcomeMessagePromises.get(key);
-    if (checkFlag !== processingFlag) {
-      // Кто-то успел добавить другой флаг - ждем
-      console.log(`⚠️ [${key}] Другой обработчик успел добавить флаг, ждем...`);
-      if (checkFlag && checkFlag._resolve) {
-        try {
-          await checkFlag;
-        } catch (e) {
-          // Игнорируем ошибки
-        }
-      }
-      console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
-      return;
-    }
-    
-    // Создаем Promise и заменяем флаг на Promise
+    // Шаг 2: Создаем Promise СРАЗУ и СИНХРОННО добавляем в Map
+    // Это критически важно - создаем Promise ДО добавления в Map
     let resolvePromise;
     const newPromise = new Promise(resolve => {
       resolvePromise = resolve;
     });
     newPromise._resolve = resolvePromise;
-    newPromise._processing = true;
+    
+    // Шаг 3: СИНХРОННО добавляем Promise в Map
     global.welcomeMessagePromises.set(key, newPromise);
     let processingPromise = newPromise;
     
-    // Добавляем в Set для совместимости
+    // Шаг 4: НЕМЕДЛЕННАЯ проверка - если кто-то успел заменить наш Promise
+    const checkPromise = global.welcomeMessagePromises.get(key);
+    if (checkPromise !== newPromise) {
+      // Кто-то успел заменить наш Promise - ждем
+      console.log(`⚠️ [${key}] Другой обработчик заменил Promise, ждем...`);
+      
+      // Ждем завершения
+      let waitCount = 0;
+      while (global.welcomeMessagePromises.has(key) && waitCount < 200) {
+        await new Promise(resolve => setTimeout(resolve, 25));
+        waitCount++;
+      }
+      
+      const finalPromise = global.welcomeMessagePromises.get(key);
+      if (finalPromise && finalPromise._resolve) {
+        try {
+          await finalPromise;
+        } catch (e) {
+          // Игнорируем ошибки
+        }
+      }
+      
+      console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
+      return;
+    }
+    
+    // Добавляем в Set для совместимости (но не используем для проверки)
     global.welcomeMessageProcessing.add(key);
     
     console.log(`✅ [${key}] Ключ добавлен в Map и Set, начинаем обработку`);
