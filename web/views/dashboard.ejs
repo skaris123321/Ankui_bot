@@ -1555,6 +1555,9 @@
       // Загружаем блоки embed
       loadEmbedBlocks();
       
+      // Загружаем эмодзи сервера
+      loadServerEmojis();
+      
       // Загружаем каналы
       try {
         const response = await fetch(`/api/guild/${guildId}/channels`);
@@ -1686,6 +1689,66 @@
       }
     }
     
+    let serverEmojis = [];
+    
+    async function loadServerEmojis() {
+      if (!selectedGuildId) return;
+      
+      try {
+        const response = await fetch(`/api/guild/${selectedGuildId}/emojis`);
+        const data = await response.json();
+        
+        if (data.success && data.emojis) {
+          serverEmojis = data.emojis;
+          console.log('✅ Загружено эмодзи с сервера:', serverEmojis.length);
+          // Обновляем select'ы эмодзи во всех кнопках
+          updateEmojiSelects();
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки эмодзи:', error);
+      }
+    }
+    
+    function updateEmojiSelects() {
+      roleButtons.forEach(button => {
+        const select = document.querySelector(`select[data-button="${button.id}"][data-field="emoji_select"]`);
+        if (select) {
+          const currentEmoji = button.emoji || '';
+          select.innerHTML = '<option value="">Выберите эмодзи с сервера...</option>';
+          
+          serverEmojis.forEach(emoji => {
+            const option = document.createElement('option');
+            const emojiValue = `${emoji.name}:${emoji.id}`;
+            option.value = emojiValue;
+            option.textContent = `${emoji.animated ? '🔄' : ''} :${emoji.name}:`;
+            option.dataset.emojiId = emoji.id;
+            option.dataset.emojiName = emoji.name;
+            option.dataset.emojiAnimated = emoji.animated;
+            
+            // Если это текущее эмодзи кнопки, выбираем его
+            if (currentEmoji === emojiValue || currentEmoji === `${emoji.name}:${emoji.id}`) {
+              option.selected = true;
+            }
+            
+            select.appendChild(option);
+          });
+        }
+      });
+    }
+    
+    function selectEmojiForButton(buttonId, emojiValue) {
+      if (!emojiValue) return;
+      
+      const button = roleButtons.find(b => b.id === buttonId);
+      if (button) {
+        button.emoji = emojiValue; // Формат: name:id
+        const emojiInput = document.querySelector(`input[data-button="${buttonId}"][data-field="emoji"]`);
+        if (emojiInput) {
+          emojiInput.value = emojiValue;
+        }
+      }
+    }
+    
     function addRoleButton() {
       const buttonId = Date.now();
       roleButtons.push({
@@ -1695,6 +1758,12 @@
         emoji: ''
       });
       renderRoleButtons();
+      // Загружаем эмодзи, если еще не загружены
+      if (serverEmojis.length === 0) {
+        loadServerEmojis();
+      } else {
+        updateEmojiSelects();
+      }
     }
     
     function removeRoleButton(buttonId) {
@@ -1739,8 +1808,13 @@
               </div>
               <div>
                 <label>Эмодзи (опционально)</label>
-                <input type="text" class="input-field" data-button="${button.id}" data-field="emoji" value="${escapeHtml(button.emoji)}" placeholder="🎮 или :emoji:" maxlength="50" oninput="updateRoleButton(${button.id}, 'emoji', this.value)">
-                <small style="color: var(--text-secondary); font-size: 0.75rem;">Можно использовать обычный эмодзи или Discord формат :emoji:</small>
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <select class="input-field" data-button="${button.id}" data-field="emoji_select" style="flex: 1;" onchange="selectEmojiForButton(${button.id}, this.value)">
+                    <option value="">Выберите эмодзи с сервера...</option>
+                  </select>
+                  <input type="text" class="input-field" data-button="${button.id}" data-field="emoji" value="${escapeHtml(button.emoji)}" placeholder="Или введите вручную" maxlength="50" oninput="updateRoleButton(${button.id}, 'emoji', this.value)" style="flex: 1;">
+                </div>
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">Выберите эмодзи с сервера или введите вручную (обычный эмодзи или формат name:id)</small>
               </div>
             </div>
           </div>
@@ -1750,6 +1824,13 @@
       
       // Обновляем select с блоками
       updateRoleButtonsBlockSelect();
+      
+      // Загружаем и заполняем эмодзи, если еще не загружены
+      if (serverEmojis.length === 0 && selectedGuildId) {
+        loadServerEmojis();
+      } else if (serverEmojis.length > 0) {
+        updateEmojiSelects();
+      }
     }
     
     function updateRoleButtonsBlockSelect() {

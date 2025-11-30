@@ -328,6 +328,50 @@ app.get('/api/guild/:guildId/channels', async (req, res) => {
   }
 });
 
+// API для получения эмодзи сервера
+app.get('/api/guild/:guildId/emojis', async (req, res) => {
+  const { guildId } = req.params;
+  
+  try {
+    const client = require('../bot/client');
+    
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Бот не подключен к Discord' 
+      });
+    }
+    
+    const guild = await client.guilds.fetch(guildId);
+    
+    if (!guild) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Сервер не найден' 
+      });
+    }
+    
+    // Получаем эмодзи сервера
+    const emojis = Array.from(guild.emojis.cache.values())
+      .map(emoji => ({
+        id: emoji.id,
+        name: emoji.name,
+        animated: emoji.animated,
+        url: emoji.url,
+        identifier: emoji.identifier // формат: name:id для кастомных эмодзи
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    
+    res.json({ success: true, emojis });
+  } catch (error) {
+    console.error('Ошибка получения эмодзи:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка получения эмодзи' 
+    });
+  }
+});
+
 // API для загрузки изображений (через файл)
 app.post('/api/upload-image', upload.single('image'), (req, res) => {
   try {
@@ -607,9 +651,44 @@ app.post('/api/send-embed', async (req, res) => {
             
             if (buttonData.emoji && buttonData.emoji.trim()) {
               try {
-                button.setEmoji(buttonData.emoji.trim());
+                const emojiStr = buttonData.emoji.trim();
+                
+                // Если это формат name:id (кастомное эмодзи сервера)
+                if (emojiStr.includes(':') && !emojiStr.startsWith('<')) {
+                  const parts = emojiStr.split(':');
+                  if (parts.length === 2 && parts[1].match(/^\d+$/)) {
+                    // Формат: name:id
+                    button.setEmoji({
+                      id: parts[1],
+                      name: parts[0]
+                    });
+                    console.log('✅ Установлено кастомное эмодзи:', parts[0], parts[1]);
+                  } else {
+                    // Пытаемся использовать как обычное эмодзи (Unicode)
+                    button.setEmoji(emojiStr);
+                  }
+                } else if (emojiStr.startsWith('<') && emojiStr.endsWith('>')) {
+                  // Формат: <:name:id> или <a:name:id>
+                  const match = emojiStr.match(/<a?:(\w+):(\d+)>/);
+                  if (match) {
+                    button.setEmoji({
+                      id: match[2],
+                      name: match[1],
+                      animated: emojiStr.startsWith('<a:')
+                    });
+                    console.log('✅ Установлено эмодзи из формата Discord:', match[1], match[2]);
+                  } else {
+                    console.warn('Неверный формат эмодзи:', emojiStr);
+                  }
+                } else {
+                  // Обычное Unicode эмодзи или просто имя (без двоеточий)
+                  button.setEmoji(emojiStr);
+                  console.log('✅ Установлено Unicode эмодзи:', emojiStr);
+                }
               } catch (err) {
                 console.warn('Ошибка установки эмодзи для кнопки:', err.message);
+                console.warn('Эмодзи:', buttonData.emoji);
+                // Продолжаем без эмодзи, если ошибка
               }
             }
             
