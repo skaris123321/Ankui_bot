@@ -1329,15 +1329,18 @@
             <textarea id="embedDescription" class="textarea-field" rows="6" placeholder="Введите основной текст..." maxlength="4096"></textarea>
           </div>
           
-          <!-- Блоки правил -->
+          <!-- Блоки embed -->
           <div class="editor-section">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-              <label style="margin: 0;">Блоки правил (опционально)</label>
-              <button type="button" class="btn btn-secondary" onclick="toggleRulesBlocks()" id="toggleRulesBtn">Добавить блоки правил</button>
+              <label style="margin: 0;">Блоки embed (отправляются одним сообщением)</label>
+              <button type="button" class="btn btn-secondary" onclick="toggleEmbedBlocks()" id="toggleEmbedBlocksBtn">Добавить блоки</button>
             </div>
-            <div id="rulesBlocksContainer" style="display: none; margin-top: 1rem;">
-              <div id="rulesBlocksList" class="rules-blocks-list"></div>
-              <button type="button" class="btn btn-success" onclick="addRulesBlock()" style="margin-top: 1rem; width: 100%;">Добавить блок правил</button>
+            <div id="embedBlocksContainer" style="display: none; margin-top: 1rem;">
+              <div id="embedBlocksList" class="embed-blocks-list"></div>
+              <button type="button" class="btn btn-success" onclick="addEmbedBlock()" style="margin-top: 1rem; width: 100%;">+ Добавить блок embed</button>
+            </div>
+            <div style="margin-top: 1rem; padding: 0.75rem; background: rgba(88, 101, 242, 0.1); border-radius: 5px; font-size: 0.85rem; color: var(--text-secondary);">
+              💡 <strong>Совет:</strong> Вы можете упоминать роли (<code>&lt;@&amp;ROLE_ID&gt;</code>) и пользователей (<code>&lt;@USER_ID&gt;</code>) в тексте. Используйте кнопку "Упомянуть" для быстрого добавления.
             </div>
           </div>
           
@@ -1512,6 +1515,9 @@
       selectedGuildId = guildId;
       selectedChannelId = null;
       
+      // Загружаем блоки embed
+      loadEmbedBlocks();
+      
       // Загружаем каналы
       try {
         const response = await fetch(`/api/guild/${guildId}/channels`);
@@ -1625,6 +1631,259 @@
       }
     }
     
+    // Система блоков embed
+    let embedBlocks = [];
+    
+    function toggleEmbedBlocks() {
+      const container = document.getElementById('embedBlocksContainer');
+      const btn = document.getElementById('toggleEmbedBlocksBtn');
+      if (container.style.display === 'none') {
+        container.style.display = 'block';
+        btn.textContent = 'Скрыть блоки';
+        loadEmbedBlocks();
+      } else {
+        container.style.display = 'none';
+        btn.textContent = 'Добавить блоки';
+      }
+    }
+    
+    function addEmbedBlock() {
+      const blockId = Date.now();
+      embedBlocks.push({
+        id: blockId,
+        title: '',
+        description: '',
+        color: '#5865F2',
+        image: '',
+        thumbnail: '',
+        author: { name: '', icon_url: '', url: '' },
+        footer: { text: '', icon_url: '' },
+        fields: [],
+        timestamp: true
+      });
+      renderEmbedBlocks();
+    }
+    
+    function removeEmbedBlock(blockId) {
+      embedBlocks = embedBlocks.filter(b => b.id !== blockId);
+      renderEmbedBlocks();
+    }
+    
+    function renderEmbedBlocks() {
+      const container = document.getElementById('embedBlocksList');
+      if (!container) return;
+      
+      container.innerHTML = '';
+      
+      if (embedBlocks.length === 0) {
+        container.innerHTML = '<p style="text-align: center; color: var(--text-secondary); padding: 1rem;">Блоки embed не добавлены. Нажмите "Добавить блок embed" для создания.</p>';
+        updatePreview();
+        return;
+      }
+      
+      embedBlocks.forEach((block, index) => {
+        const blockHtml = `
+          <div class="embed-block-item" style="background: var(--background-light); border: 2px solid var(--background-dark); border-radius: 10px; padding: 1.5rem; margin-bottom: 1rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+              <h4 style="margin: 0;">Блок ${index + 1}</h4>
+              <button type="button" class="btn btn-danger" onclick="removeEmbedBlock(${block.id})" style="padding: 0.25rem 0.75rem; font-size: 0.85rem;">Удалить</button>
+            </div>
+            <div style="display: grid; gap: 1rem;">
+              <div>
+                <label>Заголовок</label>
+                <input type="text" class="input-field" data-block="${block.id}" data-field="title" value="${escapeHtml(block.title)}" placeholder="Заголовок блока" maxlength="256" oninput="updateEmbedBlock(${block.id}, 'title', this.value)">
+              </div>
+              <div>
+                <label>Описание</label>
+                <textarea class="textarea-field" data-block="${block.id}" data-field="description" rows="4" placeholder="Описание блока" maxlength="4096" oninput="updateEmbedBlock(${block.id}, 'description', this.value)">${escapeHtml(block.description)}</textarea>
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">Можно использовать упоминания: &lt;@USER_ID&gt; для пользователей, &lt;@&amp;ROLE_ID&gt; для ролей</small>
+              </div>
+              <div>
+                <label>Цвет</label>
+                <input type="color" data-block="${block.id}" data-field="color" value="${block.color}" onchange="updateEmbedBlock(${block.id}, 'color', this.value)">
+              </div>
+              <div>
+                <label>Изображение (URL)</label>
+                <input type="text" class="input-field" data-block="${block.id}" data-field="image" value="${escapeHtml(block.image)}" placeholder="https://example.com/image.png" oninput="updateEmbedBlock(${block.id}, 'image', this.value)">
+              </div>
+              <div>
+                <label>Миниатюра (URL)</label>
+                <input type="text" class="input-field" data-block="${block.id}" data-field="thumbnail" value="${escapeHtml(block.thumbnail)}" placeholder="https://example.com/thumbnail.png" oninput="updateEmbedBlock(${block.id}, 'thumbnail', this.value)">
+              </div>
+              <div>
+                <label>Автор</label>
+                <input type="text" class="input-field" data-block="${block.id}" data-field="author_name" value="${escapeHtml(block.author.name)}" placeholder="Имя автора" maxlength="256" oninput="updateEmbedBlock(${block.id}, 'author_name', this.value)">
+                <input type="text" class="input-field" style="margin-top: 0.5rem;" data-block="${block.id}" data-field="author_icon" value="${escapeHtml(block.author.icon_url)}" placeholder="URL иконки автора" oninput="updateEmbedBlock(${block.id}, 'author_icon', this.value)">
+              </div>
+              <div>
+                <label>Футер</label>
+                <input type="text" class="input-field" data-block="${block.id}" data-field="footer_text" value="${escapeHtml(block.footer.text)}" placeholder="Текст футера" maxlength="2048" oninput="updateEmbedBlock(${block.id}, 'footer_text', this.value)">
+                <input type="text" class="input-field" style="margin-top: 0.5rem;" data-block="${block.id}" data-field="footer_icon" value="${escapeHtml(block.footer.icon_url)}" placeholder="URL иконки футера" oninput="updateEmbedBlock(${block.id}, 'footer_icon', this.value)">
+              </div>
+              <div>
+                <label class="checkbox-label">
+                  <input type="checkbox" data-block="${block.id}" data-field="timestamp" ${block.timestamp ? 'checked' : ''} onchange="updateEmbedBlock(${block.id}, 'timestamp', this.checked)">
+                  <span>Показать временную метку</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', blockHtml);
+      });
+      
+      updateEmbedPreview();
+    }
+    
+    function updateEmbedPreview() {
+      const preview = document.getElementById('embedPreview');
+      if (!preview) return;
+      
+      if (embedBlocks.length === 0) {
+        // Если нет блоков, используем обычный предпросмотр
+        if (typeof updatePreview === 'function') {
+          updatePreview();
+        }
+        return;
+      }
+      
+      preview.innerHTML = '';
+      preview.classList.remove('empty');
+      
+      embedBlocks.forEach((block, index) => {
+        const embedDiv = document.createElement('div');
+        embedDiv.className = 'embed';
+        embedDiv.style.borderLeftColor = block.color || '#5865F2';
+        embedDiv.style.marginTop = index > 0 ? '1rem' : '0';
+        
+        let html = '';
+        
+        if (block.author && block.author.name) {
+          html += '<div class="embed-author">';
+          if (block.author.icon_url) {
+            html += `<img src="${block.author.icon_url}" class="embed-author-icon" onerror="this.style.display='none'">`;
+          }
+          html += `<span class="embed-author-name">${escapeHtml(block.author.name)}</span>`;
+          html += '</div>';
+        }
+        
+        if (block.title) {
+          html += `<div class="embed-title">${formatMarkdown(escapeHtml(block.title))}</div>`;
+        }
+        
+        if (block.description) {
+          html += `<div class="embed-description">${formatMarkdown(escapeHtml(block.description))}</div>`;
+        }
+        
+        if (block.image) {
+          html += `<img src="${block.image}" class="embed-image" onerror="this.style.display='none'">`;
+        }
+        
+        if (block.thumbnail) {
+          embedDiv.style.position = 'relative';
+          html += `<img src="${block.thumbnail}" class="embed-thumbnail" onerror="this.style.display='none'">`;
+        }
+        
+        if (block.footer && block.footer.text) {
+          html += '<div class="embed-footer">';
+          if (block.footer.icon_url) {
+            html += `<img src="${block.footer.icon_url}" class="embed-footer-icon" onerror="this.style.display='none'">`;
+          }
+          html += '<span class="embed-footer-text">';
+          html += escapeHtml(block.footer.text);
+          if (block.timestamp) {
+            html += ' • ';
+            const now = new Date();
+            html += now.toLocaleString('ru-RU', { 
+              day: '2-digit', 
+              month: '2-digit', 
+              year: 'numeric',
+              hour: '2-digit', 
+              minute: '2-digit' 
+            });
+          }
+          html += '</span></div>';
+        } else if (block.timestamp) {
+          html += '<div class="embed-footer">';
+          html += '<span class="embed-footer-text">';
+          const now = new Date();
+          html += now.toLocaleString('ru-RU', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric',
+            hour: '2-digit', 
+            minute: '2-digit' 
+          });
+          html += '</span></div>';
+        }
+        
+        embedDiv.innerHTML = html;
+        preview.appendChild(embedDiv);
+      });
+    }
+    
+    function formatMarkdown(text) {
+      if (!text) return '';
+      return text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/~~(.*?)~~/g, '<del>$1</del>')
+        .replace(/`(.*?)`/g, '<code>$1</code>')
+        .replace(/\n/g, '<br>')
+        .replace(/&lt;@(\d+)&gt;/g, '<span style="color: #5865F2;">@Пользователь</span>')
+        .replace(/&lt;@&amp;(\d+)&gt;/g, '<span style="color: #5865F2;">@Роль</span>');
+    }
+    
+    function updateEmbedBlock(blockId, field, value) {
+      const block = embedBlocks.find(b => b.id === blockId);
+      if (!block) return;
+      
+      if (field === 'title') block.title = value;
+      else if (field === 'description') block.description = value;
+      else if (field === 'color') block.color = value;
+      else if (field === 'image') block.image = value;
+      else if (field === 'thumbnail') block.thumbnail = value;
+      else if (field === 'author_name') block.author.name = value;
+      else if (field === 'author_icon') block.author.icon_url = value;
+      else if (field === 'footer_text') block.footer.text = value;
+      else if (field === 'footer_icon') block.footer.icon_url = value;
+      else if (field === 'timestamp') block.timestamp = value;
+      
+      updateEmbedPreview();
+    }
+    
+    function loadEmbedBlocks() {
+      if (!selectedGuildId) return;
+      
+      fetch(`/api/guild/${selectedGuildId}/settings`)
+        .then(res => res.json())
+        .then(settings => {
+          if (settings.embed_data && Array.isArray(settings.embed_data)) {
+            embedBlocks = settings.embed_data.map(block => ({
+              id: block.id || Date.now() + Math.random(),
+              title: block.title || '',
+              description: block.description || '',
+              color: block.color || '#5865F2',
+              image: block.image || (block.image?.url || ''),
+              thumbnail: block.thumbnail || (block.thumbnail?.url || ''),
+              author: block.author || { name: '', icon_url: '', url: '' },
+              footer: block.footer || { text: '', icon_url: '' },
+              fields: block.fields || [],
+              timestamp: block.timestamp !== false
+            }));
+            renderEmbedBlocks();
+          }
+        })
+        .catch(err => console.error('Ошибка загрузки блоков embed:', err));
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
     // Отправка embed - переопределяем функцию из embed-editor.js
     async function sendEmbed() {
       // Используем канал из тулбара
@@ -1636,39 +1895,94 @@
         return;
       }
       
-      // Правила уже добавлены в описание через updateDescriptionWithRules()
-      // Отправляем только одно сообщение с описанием, которое содержит правила
-      
-      // Обычная отправка embed (правила уже в описании)
-      const embedData = getEmbedData();
-      
-      if (!embedData.title && !embedData.description) {
-        showMessage('error', '❌ Заполните хотя бы заголовок или описание!');
-        return;
-      }
-      
-      try {
-        const response = await fetch('/api/send-embed', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            channelId: channelId,
-            embed: embedData
-          })
+      // Если есть блоки embed, используем их
+      if (embedBlocks.length > 0) {
+        // Сохраняем блоки в базу данных
+        if (selectedGuildId) {
+          try {
+            await fetch(`/api/guild/${selectedGuildId}/embed-data`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ embed_data: embedBlocks })
+            });
+          } catch (err) {
+            console.error('Ошибка сохранения блоков:', err);
+          }
+        }
+        
+        // Преобразуем блоки в embeds для Discord
+        const embeds = embedBlocks.map(block => {
+          const embed = {
+            color: parseInt(block.color.replace('#', ''), 16) || 0x5865F2
+          };
+          
+          if (block.title) embed.title = block.title;
+          if (block.description) embed.description = block.description;
+          if (block.image) embed.image = { url: block.image };
+          if (block.thumbnail) embed.thumbnail = { url: block.thumbnail };
+          if (block.author && block.author.name) {
+            embed.author = { name: block.author.name };
+            if (block.author.icon_url) embed.author.icon_url = block.author.icon_url;
+            if (block.author.url) embed.author.url = block.author.url;
+          }
+          if (block.footer && block.footer.text) {
+            embed.footer = { text: block.footer.text };
+            if (block.footer.icon_url) embed.footer.icon_url = block.footer.icon_url;
+          }
+          if (block.timestamp) embed.timestamp = new Date().toISOString();
+          if (block.fields && block.fields.length > 0) {
+            embed.fields = block.fields;
+          }
+          
+          return embed;
         });
         
-        const result = await response.json();
-        
-        if (result.success) {
-          showMessage('success', '✅ Сообщение отправлено в Discord!');
-        } else {
-          showMessage('error', `❌ Ошибка: ${result.message}`);
+        // Отправляем все embeds одним сообщением
+        try {
+          const response = await fetch('/api/send-embed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId, embeds })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showMessage('success', '✅ Embed сообщение отправлено в Discord!');
+          } else {
+            showMessage('error', `❌ Ошибка: ${result.message}`);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showMessage('error', '❌ Не удалось отправить сообщение');
         }
-      } catch (error) {
-        console.error('Error:', error);
-        showMessage('error', '❌ Не удалось отправить сообщение');
+      } else {
+        // Обычная отправка одного embed
+        const embedData = getEmbedData();
+        
+        if (!embedData.title && !embedData.description) {
+          showMessage('error', '❌ Заполните хотя бы заголовок или описание!');
+          return;
+        }
+        
+        try {
+          const response = await fetch('/api/send-embed', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ channelId, embed: embedData })
+          });
+          
+          const result = await response.json();
+          
+          if (result.success) {
+            showMessage('success', '✅ Сообщение отправлено в Discord!');
+          } else {
+            showMessage('error', `❌ Ошибка: ${result.message}`);
+          }
+        } catch (error) {
+          console.error('Error:', error);
+          showMessage('error', '❌ Не удалось отправить сообщение');
+        }
       }
     }
     

@@ -541,6 +541,38 @@ app.post('/api/send-embed', async (req, res) => {
   }
 });
 
+// API для сохранения embed блоков в базу данных
+app.post('/api/guild/:guildId/embed-data', (req, res) => {
+  const { guildId } = req.params;
+  const { embed_data } = req.body;
+  
+  try {
+    // Получаем текущие настройки
+    const currentSettings = db.getGuildSettings(guildId) || {};
+    
+    // Обновляем embed_data
+    const updatedSettings = {
+      ...currentSettings,
+      embed_data: embed_data || []
+    };
+    
+    db.setGuildSettings(guildId, updatedSettings);
+    
+    console.log('💾 Сохранены embed блоки для сервера', guildId);
+    
+    res.json({ 
+      success: true, 
+      message: 'Embed блоки успешно сохранены!' 
+    });
+  } catch (error) {
+    console.error('Ошибка сохранения embed блоков:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка сохранения embed блоков' 
+    });
+  }
+});
+
 // API для отправки правил в Discord (все embeds в одном сообщении)
 app.post('/api/send-rules', async (req, res) => {
   const { channelId, embeds } = req.body;
