@@ -529,7 +529,7 @@
               <!-- Превью изображения -->
               <div class="form-group" style="margin-bottom: 1rem;">
                 <label>Превью изображения</label>
-                <div id="welcomeImagePreview" style="background: #202225; border-radius: 8px; padding: 2rem; min-height: 300px; display: flex; align-items: center; justify-content: center; position: relative; background-image: url('<%= settings && settings.welcome_image_background ? settings.welcome_image_background : '' %>'); background-size: cover; background-position: center;">
+                <div id="welcomeImagePreview" style="background: #202225; border-radius: 8px; padding: 2rem; min-height: 300px; display: flex; align-items: center; justify-content: center; position: relative; background-size: cover; background-position: center;">
                   <div style="text-align: center; color: white;">
                     <div style="width: 80px; height: 80px; border-radius: 50%; background: #5865F2; margin: 0 auto 1rem; display: flex; align-items: center; justify-content: center; font-size: 2rem;" id="previewAvatar">👤</div>
                     <div style="font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem;" id="previewUsername">Username</div>
@@ -820,6 +820,82 @@
       }
     }
     
+    // Функция для валидации и безопасной установки URL изображения
+    function validateAndSetImageUrl(url) {
+      if (!url || typeof url !== 'string') return null;
+      
+      // Убираем пробелы в начале и конце
+      url = url.trim();
+      if (!url) return null;
+      
+      // Если это относительный путь (начинается с /), оставляем как есть
+      if (url.startsWith('/')) {
+        return url;
+      }
+      
+      // Если это data URL, оставляем как есть
+      if (url.startsWith('data:')) {
+        return url;
+      }
+      
+      // Пытаемся валидировать как полный URL
+      try {
+        const urlObj = new URL(url);
+        // Проверяем протокол
+        if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
+          console.warn('Невалидный протокол URL:', url);
+          return null;
+        }
+        // Кодируем путь для безопасности
+        urlObj.pathname = encodeURI(urlObj.pathname);
+        return urlObj.toString();
+      } catch (error) {
+        // Если не удалось распарсить как URL, возможно это относительный путь
+        // Пробуем кодировать вручную
+        try {
+          return encodeURI(url);
+        } catch {
+          console.warn('Невалидный URL изображения:', url);
+          return null;
+        }
+      }
+    }
+    
+    // Функция для безопасной установки фонового изображения с обработкой ошибок
+    function setBackgroundImageSafely(element, url) {
+      if (!element || !url) {
+        element.style.backgroundImage = 'none';
+        return;
+      }
+      
+      const validatedUrl = validateAndSetImageUrl(url);
+      if (!validatedUrl) {
+        element.style.backgroundImage = 'none';
+        return;
+      }
+      
+      // Создаем временный элемент img для проверки загрузки
+      const testImg = new Image();
+      
+      testImg.onload = function() {
+        // Изображение загрузилось успешно
+        // Экранируем специальные символы для CSS: заменяем ' на \27 (CSS escape)
+        const escapedUrl = validatedUrl.replace(/'/g, "\\27 ").replace(/"/g, '\\22 ');
+        element.style.backgroundImage = `url("${escapedUrl}")`;
+        element.style.backgroundColor = 'transparent';
+      };
+      
+      testImg.onerror = function() {
+        // Изображение не загрузилось - используем цвет фона
+        console.warn('Не удалось загрузить изображение:', validatedUrl);
+        element.style.backgroundImage = 'none';
+        // Цвет фона будет установлен в updatePreview
+      };
+      
+      // Начинаем загрузку для проверки
+      testImg.src = validatedUrl;
+    }
+    
     function updatePreview() {
       const preview = document.getElementById('welcomeImagePreview');
       if (!preview) return;
@@ -842,10 +918,11 @@
       const welcomeText = welcomeTextEl ? welcomeTextEl.value : 'Добро пожаловать!';
       const textColor = textColorEl ? textColorEl.value : '#FFFFFF';
       
-      // Обновляем фон
+      // Обновляем фон с безопасной обработкой ошибок
       if (backgroundType === 'image' && backgroundImageUrl) {
-        preview.style.backgroundImage = `url('${backgroundImageUrl}')`;
-        preview.style.backgroundColor = 'transparent';
+        setBackgroundImageSafely(preview, backgroundImageUrl);
+        // Если изображение не загрузится, будет использован цвет фона
+        preview.style.backgroundColor = backgroundColor;
       } else {
         preview.style.backgroundImage = 'none';
         preview.style.backgroundColor = backgroundColor;
@@ -957,7 +1034,7 @@
         goodbye_message: goodbyeMessageEl ? goodbyeMessageEl.value : ''
       };
       
-      console.log('💾 Сохраняемые настройки:', settings);
+      console.log('💾 Сохраняемые настройки:', JSON.stringify(settings, null, 2));
       
       try {
         const response = await fetch(`/api/guild/${selectedGuildId}/welcomer`, {
