@@ -43,37 +43,30 @@ module.exports = {
     console.log(`📋 Ключ в Set ДО проверки: ${global.welcomeMessageProcessing.has(key)}`);
     console.log(`📋 Глобальный флаг выполнения: ${global.welcomeHandlerExecuting}`);
     
-    // УРОВЕНЬ 1: СИНХРОННАЯ проверка глобального флага выполнения
-    if (global.welcomeHandlerExecuting) {
-      console.log(`⚠️ [${key}] Глобальный флаг выполнения установлен, пропускаем вызов\n`);
-      return;
-    }
+    // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - ИСПОЛЬЗУЕМ MAP С ФЛАГОМ "В ПРОЦЕССЕ"
+    // Используем Map для хранения флагов "в процессе" - это более надежно чем Set
     
-    // Устанавливаем глобальный флаг СИНХРОННО
-    global.welcomeHandlerExecuting = true;
-    
-    // КРИТИЧЕСКАЯ ЗАЩИТА ОТ RACE CONDITION - МНОГОУРОВНЕВАЯ БЛОКИРОВКА:
-    // 1. Проверяем Set - если ключ уже есть, ждем
-    // 2. Проверяем Map - если Promise уже есть, ждем
-    // 3. Добавляем в Set и проверяем размер
-    // 4. Создаем Promise и добавляем в Map
-    
-    // Шаг 1: Проверяем Set
-    if (global.welcomeMessageProcessing.has(key)) {
-      console.log(`⚠️ [${key}] Ключ уже в Set, ждем завершения предыдущей обработки...`);
+    // Проверяем, не обрабатывается ли уже этот ключ
+    const existingFlag = global.welcomeMessagePromises.get(key);
+    if (existingFlag && existingFlag._processing) {
+      console.log(`⚠️ [${key}] Ключ уже обрабатывается (флаг в Map), ждем...`);
       
-      // Ждем, пока ключ не будет удален из Set
+      // Ждем завершения обработки
       let waitCount = 0;
-      while (global.welcomeMessageProcessing.has(key) && waitCount < 200) {
+      while (global.welcomeMessagePromises.has(key) && waitCount < 200) {
+        const currentFlag = global.welcomeMessagePromises.get(key);
+        if (!currentFlag || !currentFlag._processing) {
+          break;
+        }
         await new Promise(resolve => setTimeout(resolve, 25));
         waitCount++;
       }
       
-      // Проверяем Promise в Map
-      const existingPromise = global.welcomeMessagePromises.get(key);
-      if (existingPromise) {
+      // Проверяем Promise
+      const finalPromise = global.welcomeMessagePromises.get(key);
+      if (finalPromise && finalPromise._resolve) {
         try {
-          await existingPromise;
+          await finalPromise;
         } catch (e) {
           // Игнорируем ошибки
         }
@@ -83,73 +76,40 @@ module.exports = {
       return;
     }
     
-    // Шаг 2: Проверяем Map
-    let processingPromise = global.welcomeMessagePromises.get(key);
-    if (processingPromise) {
-      console.log(`⚠️ [${key}] Promise уже в Map, ждем...`);
-      try {
-        await processingPromise;
-        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
-      } catch (e) {
-        console.log(`⚠️ [${key}] Ошибка ожидания, пропускаем\n`);
-      }
-      return;
-    }
+    // Создаем объект-флаг "в процессе" и СИНХРОННО добавляем в Map
+    const processingFlag = { _processing: true };
+    global.welcomeMessagePromises.set(key, processingFlag);
     
-    // Шаг 3: АТОМАРНАЯ операция - проверяем размер ДО добавления, добавляем, проверяем ПОСЛЕ
-    const sizeBefore = global.welcomeMessageProcessing.size;
-    global.welcomeMessageProcessing.add(key);
-    const sizeAfter = global.welcomeMessageProcessing.size;
-    
-    // Если размер не изменился, значит ключ уже был в Set (другой обработчик успел добавить)
-    if (sizeBefore === sizeAfter) {
-      console.log(`⚠️ [${key}] Ключ был добавлен другим обработчиком (размер: ${sizeBefore} -> ${sizeAfter}), ждем...`);
-      
-      // Ждем завершения
-      let waitCount = 0;
-      while (global.welcomeMessageProcessing.has(key) && waitCount < 200) {
-        await new Promise(resolve => setTimeout(resolve, 25));
-        waitCount++;
-      }
-      
-      const existingPromise = global.welcomeMessagePromises.get(key);
-      if (existingPromise) {
+    // Двойная проверка - если кто-то успел добавить Promise между проверками
+    const checkFlag = global.welcomeMessagePromises.get(key);
+    if (checkFlag !== processingFlag) {
+      // Кто-то успел добавить другой флаг - ждем
+      console.log(`⚠️ [${key}] Другой обработчик успел добавить флаг, ждем...`);
+      if (checkFlag && checkFlag._resolve) {
         try {
-          await existingPromise;
+          await checkFlag;
         } catch (e) {
           // Игнорируем ошибки
         }
       }
-      
       console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
       return;
     }
     
-    // Шаг 4: Двойная проверка Map после добавления в Set
-    processingPromise = global.welcomeMessagePromises.get(key);
-    if (processingPromise) {
-      // Кто-то успел добавить Promise - удаляем из Set и ждем
-      global.welcomeMessageProcessing.delete(key);
-      console.log(`⚠️ [${key}] Promise был добавлен между проверками, ждем...`);
-      try {
-        await processingPromise;
-        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
-      } catch (e) {
-        console.log(`⚠️ [${key}] Ошибка ожидания, пропускаем\n`);
-      }
-      return;
-    }
-    
-    // Шаг 5: Создаем Promise и добавляем в Map СИНХРОННО
+    // Создаем Promise и заменяем флаг на Promise
     let resolvePromise;
     const newPromise = new Promise(resolve => {
       resolvePromise = resolve;
     });
     newPromise._resolve = resolvePromise;
+    newPromise._processing = true;
     global.welcomeMessagePromises.set(key, newPromise);
-    processingPromise = newPromise;
+    let processingPromise = newPromise;
     
-    console.log(`✅ [${key}] Ключ добавлен в Set и Map (размер изменился: ${sizeBefore} -> ${sizeAfter}), начинаем обработку`);
+    // Добавляем в Set для совместимости
+    global.welcomeMessageProcessing.add(key);
+    
+    console.log(`✅ [${key}] Ключ добавлен в Map и Set, начинаем обработку`);
     
     // Удаляем из Map через 10 секунд (на случай если Promise не разрешится)
     const timeoutId = setTimeout(() => {
@@ -274,7 +234,7 @@ module.exports = {
       if (processingPromise && processingPromise._resolve) {
         processingPromise._resolve();
       }
-      // Удаляем из Set (синхронно, первым делом)
+      // Удаляем из Set
       global.welcomeMessageProcessing.delete(key);
       // Проверяем, что это все еще тот же Promise перед удалением из Map
       if (global.welcomeMessagePromises.get(key) === processingPromise) {
@@ -283,9 +243,7 @@ module.exports = {
       } else {
         console.log(`🗑️ [${key}] Ключ удален из Set (обработка завершена, Promise уже был удален)`);
       }
-      
-      // ВСЕГДА сбрасываем глобальный флаг выполнения в самом конце
-      global.welcomeHandlerExecuting = false;
     }
   },
 };
+
