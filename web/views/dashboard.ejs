@@ -1755,7 +1755,8 @@
         id: buttonId,
         label: '',
         roleId: '',
-        emoji: ''
+        emoji: '',
+        style: 'primary' // По умолчанию синий
       });
       renderRoleButtons();
       // Загружаем эмодзи, если еще не загружены
@@ -1815,6 +1816,16 @@
                   <input type="text" class="input-field" data-button="${button.id}" data-field="emoji" value="${escapeHtml(button.emoji)}" placeholder="Или введите вручную" maxlength="50" oninput="updateRoleButton(${button.id}, 'emoji', this.value)" style="flex: 1;">
                 </div>
                 <small style="color: var(--text-secondary); font-size: 0.75rem;">Выберите эмодзи с сервера или введите вручную (обычный эмодзи или формат name:id)</small>
+              </div>
+              <div>
+                <label>Цвет кнопки</label>
+                <select class="input-field" data-button="${button.id}" data-field="style" onchange="updateRoleButton(${button.id}, 'style', this.value)">
+                  <option value="primary" ${button.style === 'primary' ? 'selected' : ''}>🔵 Синий (Primary)</option>
+                  <option value="secondary" ${button.style === 'secondary' ? 'selected' : ''}>⚪ Прозрачный (Secondary)</option>
+                  <option value="success" ${button.style === 'success' ? 'selected' : ''}>🟢 Зеленый (Success)</option>
+                  <option value="danger" ${button.style === 'danger' ? 'selected' : ''}>🔴 Красный (Danger)</option>
+                </select>
+                <small style="color: var(--text-secondary); font-size: 0.75rem;">Выберите цвет кнопки или сделайте её прозрачной</small>
               </div>
             </div>
           </div>
@@ -2145,7 +2156,32 @@
             }));
           }
           
+          // Загружаем кнопки ролей
+          if (settings.role_buttons && typeof settings.role_buttons === 'object') {
+            // Берем кнопки из первого найденного messageId
+            const firstMessageId = Object.keys(settings.role_buttons)[0];
+            if (firstMessageId && settings.role_buttons[firstMessageId].roles) {
+              roleButtons = settings.role_buttons[firstMessageId].roles.map((role, index) => ({
+                id: Date.now() + index,
+                label: role.label || '',
+                roleId: role.roleId || '',
+                emoji: role.emoji || '',
+                style: role.style || 'primary'
+              }));
+              
+              // Устанавливаем выбранный блок для кнопок
+              if (settings.role_buttons[firstMessageId].messageIndex !== undefined) {
+                selectedBlockForButtons = settings.role_buttons[firstMessageId].messageIndex;
+                const select = document.getElementById('roleButtonsBlockSelect');
+                if (select) {
+                  select.value = selectedBlockForButtons;
+                }
+              }
+            }
+          }
+          
       renderEmbedBlocks();
+      renderRoleButtons();
       updateEmbedPreview();
       updateRoleButtonsBlockSelect();
     })
@@ -2252,10 +2288,10 @@
           const totalBlocks = (embedImageBlock.image ? 1 : 0) + embedBlocks.length;
           
           if (targetIndex >= 0 && targetIndex < totalBlocks) {
-            buttonsToSend = roleButtons.filter(b => b.roleId && b.label).map(b => ({
-              label: b.label,
+            buttonsToSend = roleButtons.filter(b => b.roleId && b.emoji).map(b => ({
               roleId: b.roleId,
-              emoji: b.emoji || undefined
+              emoji: b.emoji || undefined,
+              style: b.style || 'primary'
             }));
             messageIndexForButtons = targetIndex;
           }

@@ -644,9 +644,30 @@ app.post('/api/send-embed', async (req, res) => {
           }
           
           try {
+            // Определяем стиль кнопки
+            let buttonStyle = ButtonStyle.Primary; // По умолчанию синий
+            if (buttonData.style) {
+              switch (buttonData.style.toLowerCase()) {
+                case 'primary':
+                  buttonStyle = ButtonStyle.Primary;
+                  break;
+                case 'secondary':
+                  buttonStyle = ButtonStyle.Secondary;
+                  break;
+                case 'success':
+                  buttonStyle = ButtonStyle.Success;
+                  break;
+                case 'danger':
+                  buttonStyle = ButtonStyle.Danger;
+                  break;
+                default:
+                  buttonStyle = ButtonStyle.Primary;
+              }
+            }
+            
             const button = new ButtonBuilder()
               .setCustomId(`role_select_${buttonData.roleId}`)
-              .setStyle(ButtonStyle.Primary);
+              .setStyle(buttonStyle);
             
             // Добавляем эмодзи, если есть
             if (buttonData.emoji && buttonData.emoji.trim()) {

@@ -1,3 +1,3 @@
 git add -A
-git commit -m "Fix: Send all embeds in one message, remove button labels (emoji only), fix button validation"
+git commit -m "Add button color/style selection (Primary, Secondary, Success, Danger) for role buttons"
 git push origin main
