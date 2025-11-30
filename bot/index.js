@@ -81,10 +81,18 @@ if (fs.existsSync(eventsPath)) {
       const afterCount = client.listenerCount(Events.GuildMemberAdd);
       console.log(`📊 Количество обработчиков GuildMemberAdd ПОСЛЕ регистрации: ${afterCount}`);
       if (afterCount > 1) {
-        console.error(`❌ ОШИБКА: Зарегистрировано ${afterCount} обработчиков GuildMemberAdd! Удаляем все и регистрируем заново`);
+        console.error(`❌ КРИТИЧЕСКАЯ ОШИБКА: Зарегистрировано ${afterCount} обработчиков GuildMemberAdd!`);
+        console.error(`❌ Это может привести к двойной отправке приветственных сообщений!`);
+        console.error(`❌ Удаляем все обработчики и регистрируем заново...`);
         client.removeAllListeners(Events.GuildMemberAdd);
         client.on(event.name, (...args) => event.execute(...args, client));
-        console.log(`✅ Повторно зарегистрирован 1 обработчик GuildMemberAdd`);
+        const finalCount = client.listenerCount(Events.GuildMemberAdd);
+        console.log(`✅ Повторно зарегистрирован 1 обработчик GuildMemberAdd. Итого: ${finalCount}`);
+        if (finalCount !== 1) {
+          console.error(`❌ ОШИБКА: После повторной регистрации количество обработчиков все еще ${finalCount}, ожидалось 1!`);
+        }
+      } else if (afterCount === 1) {
+        console.log(`✅ Обработчик GuildMemberAdd успешно зарегистрирован (1 экземпляр)`);
       }
     }
     

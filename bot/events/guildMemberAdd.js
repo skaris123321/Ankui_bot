@@ -1,7 +1,15 @@
 const { Events, EmbedBuilder } = require('discord.js');
 
-// Простая защита от двойной отправки - используем Set с уникальным ключом
-const sentWelcomeKeys = new Set();
+// Глобальная защита от двойной отправки - используем глобальный Set с уникальным ключом
+// Это гарантирует, что защита работает даже если модуль загружается несколько раз
+if (!global.welcomeMessageSent) {
+  global.welcomeMessageSent = new Set();
+}
+
+// Map для отслеживания времени последней обработки (дополнительная защита)
+if (!global.welcomeMessageTimestamps) {
+  global.welcomeMessageTimestamps = new Map();
+}
 
 module.exports = {
   name: Events.GuildMemberAdd,
@@ -10,40 +18,60 @@ module.exports = {
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
+    const now = Date.now();
     
-    // СИНХРОННАЯ проверка - если уже отправлено, пропускаем
-    if (sentWelcomeKeys.has(key)) {
-      console.log(`⚠️ Сообщение для ${member.user.tag} уже отправлено, пропускаем`);
+    // Двойная проверка: проверяем и Set, и время последней обработки
+    if (global.welcomeMessageSent.has(key)) {
+      console.log(`⚠️ [${key}] Сообщение для ${member.user.tag} уже отправлено, пропускаем (Set)`);
       return;
     }
     
-    // СРАЗУ отмечаем как отправленное (до любых операций)
-    sentWelcomeKeys.add(key);
+    // Проверяем, не обрабатывался ли этот пользователь недавно (в последние 10 секунд)
+    const lastProcessed = global.welcomeMessageTimestamps.get(key);
+    if (lastProcessed && (now - lastProcessed) < 10000) {
+      console.log(`⚠️ [${key}] Пользователь ${member.user.tag} обрабатывался недавно (${Math.round((now - lastProcessed) / 1000)} сек назад), пропускаем`);
+      return;
+    }
     
-    // Удаляем через 5 секунд
+    // СРАЗУ отмечаем как отправленное (до любых операций) - СИНХРОННО
+    global.welcomeMessageSent.add(key);
+    global.welcomeMessageTimestamps.set(key, now);
+    
+    console.log(`🔄 [${key}] Начало обработки приветствия для ${member.user.tag}`);
+    
+    // Удаляем из Set через 30 секунд
     setTimeout(() => {
-      sentWelcomeKeys.delete(key);
-    }, 5000);
+      global.welcomeMessageSent.delete(key);
+      console.log(`🗑️ [${key}] Ключ удален из Set (через 30 сек)`);
+    }, 30000);
+    
+    // Удаляем timestamp через 60 секунд
+    setTimeout(() => {
+      global.welcomeMessageTimestamps.delete(key);
+    }, 60000);
     
     try {
       const settings = client.db.getGuildSettings(guildId);
       
       if (!settings) {
-        sentWelcomeKeys.delete(key);
+        global.welcomeMessageSent.delete(key);
+        global.welcomeMessageTimestamps.delete(key);
         return;
       }
       
       const welcomeEnabled = settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1' || Number(settings.welcome_enabled) === 1;
       
       if (!welcomeEnabled || !settings.welcome_channel_id) {
-        sentWelcomeKeys.delete(key);
+        global.welcomeMessageSent.delete(key);
+        global.welcomeMessageTimestamps.delete(key);
         return;
       }
       
       const channel = await member.guild.channels.fetch(settings.welcome_channel_id).catch(() => null);
       
       if (!channel || !channel.isTextBased()) {
-        sentWelcomeKeys.delete(key);
+        global.welcomeMessageSent.delete(key);
+        global.welcomeMessageTimestamps.delete(key);
         return;
       }
       
@@ -98,19 +126,35 @@ module.exports = {
             .setImage(welcomeImageUrl)
             .setThumbnail(avatarUrl);
           
-          if (sendType === 'channel') {
-            await channel.send({ embeds: [embed] });
-          } else if (sendType === 'with') {
-            await channel.send({ content: welcomeMessage, embeds: [embed] });
-          } else if (sendType === 'before') {
-            await channel.send({ embeds: [embed] });
-            await channel.send({ content: welcomeMessage });
+          // ФИНАЛЬНАЯ проверка перед отправкой - убеждаемся, что не отправили уже
+          if (global.welcomeMessageSent.has(key)) {
+            if (sendType === 'channel') {
+              await channel.send({ embeds: [embed] });
+              console.log(`✅ [${key}] Изображение отправлено`);
+            } else if (sendType === 'with') {
+              await channel.send({ content: welcomeMessage, embeds: [embed] });
+              console.log(`✅ [${key}] Изображение и текст отправлены вместе`);
+            } else if (sendType === 'before') {
+              await channel.send({ embeds: [embed] });
+              await channel.send({ content: welcomeMessage });
+              console.log(`✅ [${key}] Изображение и текст отправлены отдельно`);
+            }
+          } else {
+            console.log(`⚠️ [${key}] Ключ был удален до отправки, пропускаем`);
           }
         } else {
-          await channel.send({ content: welcomeMessage });
+          // ФИНАЛЬНАЯ проверка перед отправкой
+          if (global.welcomeMessageSent.has(key)) {
+            await channel.send({ content: welcomeMessage });
+            console.log(`✅ [${key}] Текстовое сообщение отправлено (без изображения)`);
+          }
         }
       } else {
-        await channel.send({ content: welcomeMessage });
+        // ФИНАЛЬНАЯ проверка перед отправкой
+        if (global.welcomeMessageSent.has(key)) {
+          await channel.send({ content: welcomeMessage });
+          console.log(`✅ [${key}] Текстовое сообщение отправлено`);
+        }
       }
       
       // Выдача авто-роли
@@ -121,8 +165,8 @@ module.exports = {
         }
       }
     } catch (error) {
-      console.error('❌ Ошибка обработки:', error);
-      sentWelcomeKeys.delete(key);
+      console.error(`❌ [${key}] Ошибка обработки приветствия:`, error);
+      // Не удаляем из Set при ошибке - пусть остается защита от повторной попытки
     }
   },
 };
