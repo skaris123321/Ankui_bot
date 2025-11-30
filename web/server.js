@@ -472,17 +472,17 @@ app.post('/api/send-embed', async (req, res) => {
       roleButtonsCount: roleButtons ? roleButtons.length : 0,
       messageIndex: messageIndex
     });
-    
-    if (!channelId || (!embed && !embeds)) {
-      return res.status(400).json({ 
-        success: false, 
-        message: 'Не указан канал или данные embed' 
-      });
-    }
-    
-    // Поддержка как одного embed, так и массива embeds
-    const embedsArray = embeds || (embed ? [embed] : []);
-    
+  
+  if (!channelId || (!embed && !embeds)) {
+    return res.status(400).json({ 
+      success: false, 
+      message: 'Не указан канал или данные embed' 
+    });
+  }
+  
+  // Поддержка как одного embed, так и массива embeds
+  const embedsArray = embeds || (embed ? [embed] : []);
+  
     if (!embedsArray || embedsArray.length === 0) {
       return res.status(400).json({ 
         success: false, 
@@ -631,9 +631,9 @@ app.post('/api/send-embed', async (req, res) => {
         for (let i = 0; i < roleButtons.length && rowCount < maxRows; i++) {
           const buttonData = roleButtons[i];
           
-          // Пропускаем кнопки без roleId или label
-          if (!buttonData || !buttonData.roleId || !buttonData.label) {
-            console.warn('Пропущена кнопка без roleId или label:', buttonData);
+          // Пропускаем кнопки без roleId или эмодзи
+          if (!buttonData || !buttonData.roleId || !buttonData.emoji) {
+            console.warn('Пропущена кнопка без roleId или emoji:', buttonData);
             continue;
           }
           
@@ -646,9 +646,9 @@ app.post('/api/send-embed', async (req, res) => {
           try {
             const button = new ButtonBuilder()
               .setCustomId(`role_select_${buttonData.roleId}`)
-              .setLabel(buttonData.label.substring(0, 80)) // Максимум 80 символов
               .setStyle(ButtonStyle.Primary);
             
+            // Добавляем эмодзи, если есть
             if (buttonData.emoji && buttonData.emoji.trim()) {
               try {
                 const emojiStr = buttonData.emoji.trim();
@@ -711,70 +711,25 @@ app.post('/api/send-embed', async (req, res) => {
       }
     }
     
-    // Если есть кнопки и указан индекс сообщения, отправляем несколько сообщений
+    // Всегда отправляем все embeds одним сообщением (с кнопками в конце, если они есть)
     let sentMessage;
     try {
-      if (roleButtons && roleButtons.length > 0 && components.length > 0 && messageIndex !== undefined && messageIndex !== null && !isNaN(messageIndex)) {
-        const messageIndexNum = parseInt(messageIndex);
-        console.log('🔘 Отправка с кнопками для сообщения с индексом:', messageIndexNum);
-        
-        // Проверяем, что индекс валидный
-        if (messageIndexNum >= 0 && messageIndexNum < validatedEmbedsFinal.length) {
-          // Отправляем embeds до выбранного сообщения
-          if (messageIndexNum > 0) {
-            console.log('📤 Отправка embeds до выбранного:', messageIndexNum);
-            await channel.send({ embeds: validatedEmbedsFinal.slice(0, messageIndexNum) });
-          }
-          
-          // Отправляем выбранное сообщение с кнопками
-          const targetEmbed = validatedEmbedsFinal[messageIndexNum];
-          if (targetEmbed && components.length > 0) {
-            console.log('📤 Отправка выбранного сообщения с кнопками');
-            sentMessage = await channel.send({ 
-              embeds: [targetEmbed],
-              components: components
-            });
-          } else if (targetEmbed) {
-            // Если нет компонентов, отправляем без них
-            console.log('📤 Отправка выбранного сообщения без кнопок');
-            sentMessage = await channel.send({ 
-              embeds: [targetEmbed]
-            });
-          }
-          
-          // Отправляем остальные embeds
-          if (messageIndexNum < validatedEmbedsFinal.length - 1) {
-            console.log('📤 Отправка остальных embeds');
-            await channel.send({ embeds: validatedEmbedsFinal.slice(messageIndexNum + 1) });
-          }
-        } else {
-          // Если индекс невалидный, отправляем все embeds одним сообщением с кнопками
-          console.log('⚠️ Индекс невалидный, отправляем все embeds одним сообщением');
-          const messageOptions = { embeds: validatedEmbedsFinal };
-          if (components.length > 0) {
-            messageOptions.components = components;
-          }
-          sentMessage = await channel.send(messageOptions);
-        }
-      } else {
-        // Отправляем все embeds одним сообщением (с кнопками в конце, если они есть)
-        console.log('📤 Отправка всех embeds одним сообщением');
-        const messageOptions = { embeds: validatedEmbedsFinal };
-        if (components.length > 0) {
-          messageOptions.components = components;
-          console.log('✅ Добавлены компоненты с кнопками:', components.length, 'рядов');
-        }
-        console.log('📤 Параметры отправки:', {
-          embedsCount: validatedEmbeds.length,
-          hasComponents: components.length > 0
-        });
-        sentMessage = await channel.send(messageOptions);
-        console.log('✅ Сообщение отправлено, ID:', sentMessage.id);
+      console.log('📤 Отправка всех embeds одним сообщением');
+      const messageOptions = { embeds: validatedEmbedsFinal };
+      if (components.length > 0) {
+        messageOptions.components = components;
+        console.log('✅ Добавлены компоненты с кнопками:', components.length, 'рядов');
       }
+      console.log('📤 Параметры отправки:', {
+        embedsCount: validatedEmbedsFinal.length,
+        hasComponents: components.length > 0
+      });
+      sentMessage = await channel.send(messageOptions);
+      console.log('✅ Сообщение отправлено, ID:', sentMessage.id);
     } catch (sendError) {
       console.error('❌ Ошибка отправки сообщения в Discord:', sendError);
       console.error('Stack:', sendError.stack);
-      console.error('Данные embeds:', JSON.stringify(validatedEmbeds.slice(0, 1), null, 2)); // Первый embed для отладки
+      console.error('Данные embeds:', JSON.stringify(validatedEmbedsFinal.slice(0, 1), null, 2)); // Первый embed для отладки
       console.error('Компоненты:', components.length);
       throw sendError; // Пробрасываем ошибку дальше
     }
