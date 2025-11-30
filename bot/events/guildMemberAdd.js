@@ -26,31 +26,50 @@ module.exports = {
     console.log(`📋 Размер Map ДО проверки: ${global.welcomeMessagePromises.size}`);
     console.log(`📋 Ключ в Map ДО проверки: ${global.welcomeMessagePromises.has(key)}`);
     
-    // Если уже обрабатывается - ждем завершения и выходим
-    if (global.welcomeMessagePromises.has(key)) {
+    // АТОМАРНАЯ проверка: проверяем и создаем Promise в одном синхронном блоке
+    // Используем двойную проверку для максимальной надежности
+    let processingPromise = global.welcomeMessagePromises.get(key);
+    
+    if (processingPromise) {
+      // Уже обрабатывается - ждем завершения и выходим
       console.log(`⚠️ [${key}] Пользователь ${member.user.tag} уже обрабатывается, ждем завершения...`);
       try {
-        await global.welcomeMessagePromises.get(key);
-        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов`);
+        await processingPromise;
+        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
+      } catch (e) {
+        console.log(`⚠️ [${key}] Ошибка ожидания предыдущей обработки, пропускаем\n`);
+      }
+      return;
+    }
+    
+    // Первый вызов - создаем Promise и СРАЗУ добавляем в Map
+    let resolvePromise;
+    processingPromise = new Promise(resolve => {
+      resolvePromise = resolve;
+    });
+    processingPromise._resolve = resolvePromise;
+    
+    // ВТОРАЯ проверка перед добавлением - на случай если между первой проверкой и этим местом
+    // другой обработчик успел добавить ключ
+    if (global.welcomeMessagePromises.has(key)) {
+      console.log(`⚠️ [${key}] Ключ был добавлен другим обработчиком между проверками, ждем...`);
+      const existingPromise = global.welcomeMessagePromises.get(key);
+      try {
+        await existingPromise;
+        console.log(`✅ [${key}] Предыдущая обработка завершена, пропускаем этот вызов\n`);
       } catch (e) {
         // Игнорируем ошибки
       }
       return;
     }
     
-    // Создаем Promise для блокировки - СИНХРОННО добавляем в Map
-    let resolvePromise;
-    const processingPromise = new Promise(resolve => {
-      resolvePromise = resolve;
-    });
-    
-    // СИНХРОННО добавляем в Map ПЕРЕД любыми асинхронными операциями
+    // КРИТИЧНО: Добавляем в Map СИНХРОННО перед любыми операциями
     global.welcomeMessagePromises.set(key, processingPromise);
-    console.log(`✅ [${key}] Ключ добавлен в Map, начинаем обработку`);
+    console.log(`✅ [${key}] Ключ добавлен в Map, начинаем обработку (первый вызов)`);
     
     // Удаляем из Map через 10 секунд (на случай если Promise не разрешится)
-    setTimeout(() => {
-      if (global.welcomeMessagePromises.has(key)) {
+    const timeoutId = setTimeout(() => {
+      if (global.welcomeMessagePromises.has(key) && global.welcomeMessagePromises.get(key) === processingPromise) {
         global.welcomeMessagePromises.delete(key);
         console.log(`🗑️ [${key}] Ключ удален из Map (таймаут 10 сек)`);
       }
@@ -167,11 +186,15 @@ module.exports = {
       console.error(`❌ [${key}] Ошибка обработки приветствия:`, error);
     } finally {
       // ВСЕГДА разрешаем Promise и удаляем из Map
-      if (resolvePromise) {
-        resolvePromise();
+      clearTimeout(timeoutId);
+      if (processingPromise._resolve) {
+        processingPromise._resolve();
       }
-      global.welcomeMessagePromises.delete(key);
-      console.log(`🗑️ [${key}] Ключ удален из Map (обработка завершена)`);
+      // Проверяем, что это все еще тот же Promise перед удалением
+      if (global.welcomeMessagePromises.get(key) === processingPromise) {
+        global.welcomeMessagePromises.delete(key);
+        console.log(`🗑️ [${key}] Ключ удален из Map (обработка завершена)`);
+      }
     }
   },
 };
