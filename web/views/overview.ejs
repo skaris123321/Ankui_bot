@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Обзор - Панель управления</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+  <link rel="stylesheet" href="/css/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root {
+      --sidebar-width: 180px;
+      --border-radius: 12px;
+      --transition: all 0.2s ease;
+    }
+    
+    .dashboard-container {
+      display: flex;
+      height: calc(100vh - 80px);
+      overflow: hidden;
+    }
+    
+    .sidebar {
+      width: var(--sidebar-width);
+      background: #2F3136;
+      border-right: 1px solid #202225;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+    
+    .sidebar-user-profile {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem;
+      border-bottom: 1px solid #202225;
+    }
+    
+    .sidebar-user-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: var(--primary-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      color: white;
+      flex-shrink: 0;
+    }
+    
+    .sidebar-user-avatar img {
+      width: 100%;
+      height: 100%;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    
+    .sidebar-user-name {
+      flex: 1;
+      min-width: 0;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .sidebar-nav-category {
+      margin-top: 0.5rem;
+      padding: 0.5rem 0;
+    }
+    
+    .sidebar-nav-category-title {
+      padding: 0.5rem 1rem;
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: #8E9297;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .sidebar-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.625rem 1rem;
+      color: #B9BBBE;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: var(--transition);
+      border-radius: 4px;
+      margin: 0.125rem 0.5rem;
+      text-decoration: none;
+    }
+    
+    .sidebar-nav-item:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item.active {
+      background: rgba(88, 101, 242, 0.15);
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item-icon {
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      flex-shrink: 0;
+      color: var(--text-secondary);
+    }
+    
+    .sidebar-nav-item.active .sidebar-nav-item-icon {
+      color: var(--text-primary);
+    }
+    
+    .sidebar-nav-item-text {
+      flex: 1;
+    }
+    
+    .sidebar-content {
+      flex: 1;
+      padding: 0;
+    }
+    
+    .main-content {
+      flex: 1;
+      overflow-y: auto;
+      background: #36393F;
+      padding: 2rem;
+    }
+    
+    .overview-header {
+      margin-bottom: 2rem;
+    }
+    
+    .overview-header h1 {
+      color: var(--text-primary);
+      font-size: 1.75rem;
+      margin: 0;
+    }
+    
+    .stats-cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .stat-card {
+      background: #2F3136;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      border-left: 4px solid;
+    }
+    
+    .stat-card.blue {
+      border-left-color: #5865F2;
+    }
+    
+    .stat-card.orange {
+      border-left-color: #FAA61A;
+    }
+    
+    .stat-card.purple {
+      border-left-color: #9B59B6;
+    }
+    
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    
+    .stat-card-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+    
+    .stat-card.blue .stat-card-icon {
+      background: rgba(88, 101, 242, 0.2);
+    }
+    
+    .stat-card.orange .stat-card-icon {
+      background: rgba(250, 166, 26, 0.2);
+    }
+    
+    .stat-card.purple .stat-card-icon {
+      background: rgba(155, 89, 182, 0.2);
+    }
+    
+    .stat-card-title {
+      flex: 1;
+    }
+    
+    .stat-card-title h3 {
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin: 0;
+    }
+    
+    .stat-card-title p {
+      color: var(--text-secondary);
+      font-size: 0.75rem;
+      margin: 0.25rem 0 0 0;
+    }
+    
+    .stat-card-value {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+    
+    .charts-section {
+      background: #2F3136;
+      border-radius: var(--border-radius);
+      padding: 1.5rem;
+      margin-bottom: 2rem;
+    }
+    
+    .charts-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 1.5rem;
+    }
+    
+    .charts-header h2 {
+      color: var(--text-primary);
+      font-size: 1.25rem;
+      margin: 0;
+    }
+    
+    .period-selector {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    
+    .period-selector label {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+    }
+    
+    .period-selector select {
+      background: #202225;
+      border: 1px solid #202225;
+      border-radius: 4px;
+      padding: 0.5rem 1rem;
+      color: var(--text-primary);
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    
+    .charts-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+    
+    .chart-container {
+      position: relative;
+      height: 300px;
+    }
+    
+    .chart-title {
+      color: var(--text-primary);
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <%- include('partials/header') %>
+  
+  <main class="dashboard-container">
+    <!-- Боковая панель навигации -->
+    <div class="sidebar">
+      <div class="sidebar-user-profile">
+        <div class="sidebar-user-avatar">
+          <% if (user && user.avatar) { %>
+            <img src="<%= user.avatar %>" alt="<%= user.username %>">
+          <% } else { %>
+            🤖
+          <% } %>
+        </div>
+        <div class="sidebar-user-name">
+          <%= user ? user.username : 'Бот' %>
+        </div>
+      </div>
+      
+      <div class="sidebar-content">
+        <!-- Категория ОБЩЕЕ -->
+        <div class="sidebar-nav-category">
+          <div class="sidebar-nav-category-title">ОБЩЕЕ</div>
+          <a href="/dashboard/overview" class="sidebar-nav-item <%= currentPage === 'overview' ? 'active' : '' %>">
+            <div class="sidebar-nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-item-text">Обзор</div>
+          </a>
+          <a href="/dashboard" class="sidebar-nav-item <%= currentPage === 'embed-editor' ? 'active' : '' %>">
+            <div class="sidebar-nav-item-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <path d="M9 9h6M9 15h6M9 12h6"/>
+              </svg>
+            </div>
+            <div class="sidebar-nav-item-text">Embed-сообщения</div>
+          </a>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Основной контент -->
+    <div class="main-content">
+      <div class="overview-header">
+        <h1>Обзор</h1>
+      </div>
+      
+      <!-- Карточки статистики -->
+      <div class="stats-cards">
+        <div class="stat-card blue">
+          <div class="stat-card-header">
+            <div class="stat-card-icon">💬</div>
+            <div class="stat-card-title">
+              <h3>Новые сообщения</h3>
+              <p>За последние 24ч</p>
+            </div>
+          </div>
+          <div class="stat-card-value" id="newMessages">0</div>
+        </div>
+        
+        <div class="stat-card orange">
+          <div class="stat-card-header">
+            <div class="stat-card-icon">👥</div>
+            <div class="stat-card-title">
+              <h3>Вошли/Вышли</h3>
+              <p>За последние 24ч</p>
+            </div>
+          </div>
+          <div class="stat-card-value" id="membersChange">00/0</div>
+        </div>
+        
+        <div class="stat-card purple">
+          <div class="stat-card-header">
+            <div class="stat-card-icon">👤</div>
+            <div class="stat-card-title">
+              <h3>Всего участников</h3>
+            </div>
+          </div>
+          <div class="stat-card-value" id="totalMembers">0</div>
+        </div>
+      </div>
+      
+      <!-- Графики -->
+      <div class="charts-section">
+        <div class="charts-header">
+          <h2>Статистика за</h2>
+          <div class="period-selector">
+            <label for="periodSelect">Период:</label>
+            <select id="periodSelect" onchange="loadStatistics()">
+              <option value="7">Последние 7 дней</option>
+              <option value="30">Последние 30 дней</option>
+              <option value="90">Последние 90 дней</option>
+            </select>
+          </div>
+        </div>
+        
+        <div class="charts-grid">
+          <div class="chart-container">
+            <div class="chart-title">Присоединились / Вышли</div>
+            <canvas id="membersChart"></canvas>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">Рост Участников</div>
+            <canvas id="growthChart"></canvas>
+          </div>
+          
+          <div class="chart-container">
+            <div class="chart-title">Количество сообщений (без учета ботов)</div>
+            <canvas id="messagesChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+  
+  <%- include('partials/footer') %>
+  
+  <script>
+    let membersChart, growthChart, messagesChart;
+    
+    async function loadStatistics() {
+      const period = document.getElementById('periodSelect').value;
+      
+      try {
+        const response = await fetch(`/api/statistics?period=${period}`);
+        const data = await response.json();
+        
+        if (data.success) {
+          updateStats(data.stats);
+          updateCharts(data.charts);
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки статистики:', error);
+      }
+    }
+    
+    function updateStats(stats) {
+      document.getElementById('newMessages').textContent = stats.newMessages || 0;
+      document.getElementById('membersChange').textContent = `${stats.joined || 0}/${stats.left || 0}`;
+      document.getElementById('totalMembers').textContent = stats.totalMembers || 0;
+    }
+    
+    function updateCharts(charts) {
+      // График присоединились/вышли
+      const membersCtx = document.getElementById('membersChart').getContext('2d');
+      if (membersChart) membersChart.destroy();
+      membersChart = new Chart(membersCtx, {
+        type: 'line',
+        data: {
+          labels: charts.dates || [],
+          datasets: [
+            {
+              label: 'Присоединились',
+              data: charts.joined || [],
+              borderColor: '#57F287',
+              backgroundColor: 'rgba(87, 242, 135, 0.1)',
+              fill: true,
+              tension: 0.4
+            },
+            {
+              label: 'Вышли',
+              data: charts.left || [],
+              borderColor: '#5865F2',
+              backgroundColor: 'rgba(88, 101, 242, 0.1)',
+              fill: true,
+              tension: 0.4
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#B9BBBE' }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#8E9297' }, grid: { color: '#202225' } },
+            y: { ticks: { color: '#8E9297' }, grid: { color: '#202225' } }
+          }
+        }
+      });
+      
+      // График роста участников
+      const growthCtx = document.getElementById('growthChart').getContext('2d');
+      if (growthChart) growthChart.destroy();
+      growthChart = new Chart(growthCtx, {
+        type: 'line',
+        data: {
+          labels: charts.dates || [],
+          datasets: [{
+            label: 'Участников',
+            data: charts.totalMembers || [],
+            borderColor: '#9B59B6',
+            backgroundColor: 'rgba(155, 89, 182, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#B9BBBE' }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#8E9297' }, grid: { color: '#202225' } },
+            y: { ticks: { color: '#8E9297' }, grid: { color: '#202225' } }
+          }
+        }
+      });
+      
+      // График сообщений
+      const messagesCtx = document.getElementById('messagesChart').getContext('2d');
+      if (messagesChart) messagesChart.destroy();
+      messagesChart = new Chart(messagesCtx, {
+        type: 'line',
+        data: {
+          labels: charts.dates || [],
+          datasets: [{
+            label: 'Сообщений',
+            data: charts.messages || [],
+            borderColor: '#EB459E',
+            backgroundColor: 'rgba(235, 69, 158, 0.1)',
+            fill: true,
+            tension: 0.4
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              labels: { color: '#B9BBBE' }
+            }
+          },
+          scales: {
+            x: { ticks: { color: '#8E9297' }, grid: { color: '#202225' } },
+            y: { ticks: { color: '#8E9297' }, grid: { color: '#202225' } }
+          }
+        }
+      });
+    }
+    
+    // Загружаем статистику при загрузке страницы
+    document.addEventListener('DOMContentLoaded', () => {
+      loadStatistics();
+    });
+  </script>
+</body>
+</html>
+

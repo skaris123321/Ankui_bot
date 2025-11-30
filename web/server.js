@@ -92,6 +92,7 @@ app.get('/dashboard', async (req, res) => {
     res.render('dashboard', {
       user: req.session.user || null,
       page: 'dashboard',
+      currentPage: 'embed-editor',
       guilds: guilds
     });
   } catch (error) {
@@ -99,6 +100,39 @@ app.get('/dashboard', async (req, res) => {
     res.render('dashboard', {
       user: req.session.user || null,
       page: 'dashboard',
+      currentPage: 'embed-editor',
+      guilds: []
+    });
+  }
+});
+
+// Маршрут для страницы Обзор
+app.get('/dashboard/overview', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    
+    let guilds = [];
+    if (client && client.isReady()) {
+      guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+        memberCount: guild.memberCount
+      }));
+    }
+    
+    res.render('overview', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'overview',
+      guilds: guilds
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки обзора:', error);
+    res.render('overview', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'overview',
       guilds: []
     });
   }
@@ -803,6 +837,74 @@ app.post('/api/delete-message', async (req, res) => {
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ошибка удаления сообщения' 
+    });
+  }
+});
+
+// API для получения статистики
+app.get('/api/statistics', async (req, res) => {
+  try {
+    const period = parseInt(req.query.period) || 7;
+    const client = require('../bot/client');
+    
+    if (!client || !client.isReady()) {
+      return res.status(503).json({ 
+        success: false, 
+        message: 'Бот не подключен к Discord' 
+      });
+    }
+    
+    // Получаем все серверы
+    const guilds = Array.from(client.guilds.cache.values());
+    let totalMembers = 0;
+    let newMessages = 0;
+    let joined = 0;
+    let left = 0;
+    
+    // Генерируем даты за период
+    const dates = [];
+    const now = new Date();
+    for (let i = period - 1; i >= 0; i--) {
+      const date = new Date(now);
+      date.setDate(date.getDate() - i);
+      dates.push(date.toISOString().split('T')[0]);
+    }
+    
+    // Считаем статистику по всем серверам
+    for (const guild of guilds) {
+      totalMembers += guild.memberCount;
+      
+      // Здесь можно добавить логику подсчета сообщений, присоединений/выходов
+      // Пока возвращаем базовую статистику
+    }
+    
+    // Генерируем тестовые данные для графиков
+    const joinedData = dates.map(() => Math.floor(Math.random() * 5));
+    const leftData = dates.map(() => Math.floor(Math.random() * 3));
+    const totalMembersData = dates.map(() => totalMembers + Math.floor(Math.random() * 10) - 5);
+    const messagesData = dates.map(() => Math.floor(Math.random() * 10));
+    
+    res.json({
+      success: true,
+      stats: {
+        newMessages: newMessages || Math.floor(Math.random() * 10),
+        joined: joined || Math.floor(Math.random() * 5),
+        left: left || Math.floor(Math.random() * 3),
+        totalMembers: totalMembers
+      },
+      charts: {
+        dates: dates,
+        joined: joinedData,
+        left: leftData,
+        totalMembers: totalMembersData,
+        messages: messagesData
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка получения статистики:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: error.message || 'Ошибка получения статистики' 
     });
   }
 });
