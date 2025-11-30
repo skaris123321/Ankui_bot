@@ -444,17 +444,28 @@
         
         <div class="add-channel-form">
           <h3 style="color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem;">Добавить канал</h3>
+          <div style="background: rgba(88, 101, 242, 0.1); border-left: 3px solid var(--primary-color); padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
+            <strong style="color: var(--text-primary);">💡 Важно:</strong>
+            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.5rem 0 0 0;">
+              <strong>Twitch Client ID НЕ обязателен!</strong> Бот работает без него через альтернативный метод.<br>
+              Просто вставьте имя канала или ссылку на Twitch канал ниже.
+            </p>
+          </div>
           <div class="form-row">
             <div>
               <label>Платформа</label>
               <select id="channelPlatform" class="input-field">
-                <option value="twitch">Twitch</option>
-                <option value="youtube">YouTube</option>
+                <option value="twitch">🎮 Twitch</option>
+                <option value="youtube">📺 YouTube</option>
               </select>
             </div>
             <div>
-              <label>Имя канала / ID</label>
-              <input type="text" id="channelName" class="input-field" placeholder="например: xqc или UCX6OQ3DkcsbYNE6H8uQQuVA">
+              <label>Имя канала / ID / Ссылка</label>
+              <input type="text" id="channelName" class="input-field" placeholder="например: xqc или https://www.twitch.tv/xqc">
+              <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
+                Для Twitch: можно вставить имя канала (xqc) или полную ссылку (https://www.twitch.tv/xqc)<br>
+                Для YouTube: можно вставить ID канала (UCX6OQ3DkcsbYNE6H8uQQuVA) или имя канала
+              </small>
             </div>
           </div>
           <button type="button" class="btn btn-primary" onclick="addChannel()">Добавить канал</button>
@@ -635,10 +646,37 @@
     
     function addChannel() {
       const platform = document.getElementById('channelPlatform').value;
-      const name = document.getElementById('channelName').value.trim();
+      let name = document.getElementById('channelName').value.trim();
       
       if (!name) {
-        showMessage('error', '❌ Введите имя канала');
+        showMessage('error', '❌ Введите имя канала или ссылку');
+        return;
+      }
+      
+      // Извлекаем имя канала из ссылки, если пользователь вставил полную ссылку
+      if (platform === 'twitch') {
+        // Обрабатываем ссылки типа: https://www.twitch.tv/xqc или twitch.tv/xqc
+        const twitchMatch = name.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([^\/\?]+)/i);
+        if (twitchMatch) {
+          name = twitchMatch[1];
+        }
+        // Убираем @ если есть
+        name = name.replace(/^@/, '');
+      } else if (platform === 'youtube') {
+        // Обрабатываем ссылки типа: https://www.youtube.com/@channel или https://www.youtube.com/channel/UC...
+        const youtubeChannelMatch = name.match(/youtube\.com\/(?:channel\/|@|c\/)([^\/\?]+)/i);
+        if (youtubeChannelMatch) {
+          name = youtubeChannelMatch[1];
+        }
+        // Обрабатываем ссылки типа: https://youtu.be/... (это видео, не канал)
+        if (name.includes('youtu.be') || name.includes('youtube.com/watch')) {
+          showMessage('error', '❌ Вставьте ссылку на канал, а не на видео. Пример: https://www.youtube.com/@channelname');
+          return;
+        }
+      }
+      
+      if (!name) {
+        showMessage('error', '❌ Не удалось извлечь имя канала из ссылки');
         return;
       }
       
@@ -651,6 +689,7 @@
       document.getElementById('channelName').value = '';
       renderChannels();
       saveStreamSettings();
+      showMessage('success', `✅ Канал ${name} добавлен!`);
     }
     
     function removeChannel(channelId) {

@@ -8,6 +8,12 @@ module.exports = {
     console.log(`📊 Серверов: ${client.guilds.cache.size}`);
     console.log(`👥 Пользователей: ${client.users.cache.size}`);
     
+    // Запускаем StreamTracker
+    if (client.streamTracker) {
+      client.streamTracker.start();
+      console.log('✅ StreamTracker запущен');
+    }
+    
     // Устанавливаем статус бота
     const activities = [
       { name: 'за сервером', type: ActivityType.Watching },

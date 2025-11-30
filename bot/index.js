@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require(
 const fs = require('fs');
 const path = require('path');
 const Database = require('../database/database');
+const StreamTracker = require('./services/streamTracker');
 
 // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - начало инициализации бота
 console.log(`\n🚀🚀🚀 ===== ИНИЦИАЛИЗАЦИЯ БОТА - bot/index.js загружен ===== 🚀🚀🚀\n`);
@@ -23,6 +24,10 @@ console.log(`✅ Клиент Discord создан\n`);
 // Инициализация базы данных
 const db = new Database();
 client.db = db;
+
+// Инициализация StreamTracker
+const streamTracker = new StreamTracker(client);
+client.streamTracker = streamTracker;
 
 // Коллекции для команд и событий
 client.commands = new Collection();

@@ -61,6 +61,22 @@ SESSION_SECRET=случайная_строка_для_безопасности
 # OAuth2 (для будущей авторизации через Discord)
 CLIENT_SECRET=ваш_client_secret_здесь
 CALLBACK_URL=http://localhost:3000/auth/callback
+
+# Twitch API (ОПЦИОНАЛЬНО - для более надежной работы уведомлений о стримах)
+# Получить можно на https://dev.twitch.tv/console
+# 1. Зарегистрируйтесь на https://dev.twitch.tv
+# 2. Нажмите "Register Your Application"
+# 3. Заполните форму (Name: любое, OAuth Redirect URLs: http://localhost)
+# 4. Скопируйте Client ID
+TWITCH_CLIENT_ID=ваш_twitch_client_id_здесь
+
+# YouTube API (ОПЦИОНАЛЬНО - для уведомлений о стримах YouTube)
+# Получить можно на https://console.cloud.google.com/
+# 1. Создайте проект в Google Cloud Console
+# 2. Включите YouTube Data API v3
+# 3. Создайте API ключ
+# 4. Скопируйте ключ
+YOUTUBE_API_KEY=ваш_youtube_api_key_здесь
 ```
 
 ### 3. Зарегистрируйте slash-команды
