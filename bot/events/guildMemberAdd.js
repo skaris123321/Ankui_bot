@@ -130,10 +130,13 @@ module.exports = {
         return;
       }
       
+      // Проверяем, включено ли приветствие или изображение
       const welcomeEnabled = settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1' || Number(settings.welcome_enabled) === 1;
+      const imageEnabled = settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1';
       
-      if (!welcomeEnabled || !settings.welcome_channel_id) {
-        console.log(`⚠️ [${key}] Приветствие отключено или канал не указан`);
+      // Если ни приветствие, ни изображение не включены - выходим
+      if ((!welcomeEnabled && !imageEnabled) || !settings.welcome_channel_id) {
+        console.log(`⚠️ [${key}] Приветствие и изображение отключены или канал не указан`);
         return;
       }
       
@@ -144,6 +147,7 @@ module.exports = {
         return;
       }
       
+      // Подготавливаем текст приветствия
       let welcomeMessage = settings.welcome_message || 'Добро пожаловать, {mention}!';
       const mention = `<@${member.user.id}>`;
       welcomeMessage = welcomeMessage
@@ -153,8 +157,7 @@ module.exports = {
         .replace(/{guild}/g, member.guild.name)
         .replace(/{memberCount}/g, member.guild.memberCount);
       
-      const imageEnabled = settings.welcome_image_enabled === 1 || settings.welcome_image_enabled === true || settings.welcome_image_enabled === '1';
-      
+      // Обрабатываем изображение
       if (imageEnabled) {
         let welcomeImageUrl = settings.welcome_image_background || '';
         
@@ -188,8 +191,10 @@ module.exports = {
         if (welcomeImageUrl) {
           const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256, dynamic: true });
           
-          // Отправляем текст ПЕРЕД изображением
-          await channel.send({ content: welcomeMessage });
+          // Отправляем текст ПЕРЕД изображением (если приветствие включено)
+          if (welcomeEnabled) {
+            await channel.send({ content: welcomeMessage });
+          }
           
           // Отправляем изображение с круглым аватаром (thumbnail в Discord уже круглый)
           const embed = new EmbedBuilder()
@@ -198,14 +203,16 @@ module.exports = {
             .setThumbnail(avatarUrl);
           
           await channel.send({ embeds: [embed] });
-          console.log(`✅ [${key}] Текст и изображение отправлены (текст перед изображением)`);
+          console.log(`✅ [${key}] ${welcomeEnabled ? 'Текст и ' : ''}Изображение отправлено`);
         } else {
-          // Отправляем только текстовое сообщение
-          await channel.send({ content: welcomeMessage });
-          console.log(`✅ [${key}] Текстовое сообщение отправлено (без изображения)`);
+          // Если изображение включено, но URL не указан - отправляем только текст (если приветствие включено)
+          if (welcomeEnabled) {
+            await channel.send({ content: welcomeMessage });
+            console.log(`✅ [${key}] Текстовое сообщение отправлено (изображение не указано)`);
+          }
         }
-      } else {
-        // Отправляем текстовое сообщение
+      } else if (welcomeEnabled) {
+        // Отправляем только текстовое сообщение, если приветствие включено
         await channel.send({ content: welcomeMessage });
         console.log(`✅ [${key}] Текстовое сообщение отправлено`);
       }

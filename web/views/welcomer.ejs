@@ -465,7 +465,7 @@
           <div class="settings-card-header">
             <h2>Приветствие</h2>
             <label class="toggle-switch">
-              <input type="checkbox" id="welcomeEnabled" <%= settings && settings.welcome_enabled ? 'checked' : '' %>>
+              <input type="checkbox" id="welcomeEnabled" <%= settings && (settings.welcome_enabled === 1 || settings.welcome_enabled === true || settings.welcome_enabled === '1') ? 'checked' : '' %>>
               <span class="toggle-slider"></span>
             </label>
           </div>
