@@ -313,11 +313,24 @@ app.post('/api/guild/:guildId/welcomer', (req, res) => {
     const { guildId } = req.params;
     const settings = req.body;
     
+    // Получаем текущие настройки, чтобы не перезаписать другие
+    const currentSettings = db.getGuildSettings(guildId) || {};
+    
     // Обновляем настройки в базе данных
     db.setGuildSettings(guildId, {
+      ...currentSettings,
       welcome_enabled: settings.welcome_enabled || 0,
       welcome_channel_id: settings.welcome_channel_id || '',
       welcome_message: settings.welcome_message || '',
+      welcome_image_enabled: settings.welcome_image_enabled || 0,
+      welcome_image_send_type: settings.welcome_image_send_type || 'channel',
+      welcome_image_background_type: settings.welcome_image_background_type || 'image',
+      welcome_image_background: settings.welcome_image_background || '',
+      welcome_image_background_color: settings.welcome_image_background_color || '',
+      welcome_image_username_text: settings.welcome_image_username_text || '',
+      welcome_image_username_color: settings.welcome_image_username_color || '',
+      welcome_image_text: settings.welcome_image_text || '',
+      welcome_image_text_color: settings.welcome_image_text_color || '',
       goodbye_enabled: settings.goodbye_enabled || 0,
       goodbye_channel_id: settings.goodbye_channel_id || '',
       goodbye_message: settings.goodbye_message || ''
