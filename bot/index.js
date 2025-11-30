@@ -43,14 +43,36 @@ const eventsPath = path.join(__dirname, 'events');
 if (fs.existsSync(eventsPath)) {
   const eventFiles = fs.readdirSync(eventsPath).filter(file => file.endsWith('.js'));
   
+  // Отслеживаем уже зарегистрированные события, чтобы избежать дубликатов
+  const registeredEvents = new Set();
+  
   for (const file of eventFiles) {
     const filePath = path.join(eventsPath, file);
     const event = require(filePath);
+    
+    // Проверяем, не зарегистрировано ли уже это событие
+    const eventKey = `${event.name}_${file}`;
+    if (registeredEvents.has(eventKey)) {
+      console.log(`⚠️ Событие ${event.name} из файла ${file} уже зарегистрировано, пропускаем`);
+      continue;
+    }
+    
+    // Удаляем все предыдущие обработчики этого события перед регистрацией нового (только для GuildMemberAdd)
+    if (event.name === 'guildMemberAdd') {
+      const listenerCount = client.listenerCount(event.name);
+      if (listenerCount > 0) {
+        console.log(`⚠️ Удаляем ${listenerCount} предыдущих обработчиков события ${event.name}`);
+        client.removeAllListeners(event.name);
+      }
+    }
+    
     if (event.once) {
       client.once(event.name, (...args) => event.execute(...args, client));
     } else {
       client.on(event.name, (...args) => event.execute(...args, client));
     }
+    
+    registeredEvents.add(eventKey);
     console.log(`✅ Загружено событие: ${event.name}`);
   }
 }

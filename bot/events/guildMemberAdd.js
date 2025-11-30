@@ -5,8 +5,10 @@ const path = require('path');
 const fs = require('fs');
 const url = require('url');
 
-// Защита от двойной отправки - используем Set (более надежно)
-const processingMembers = new Set();
+// Защита от двойной отправки - используем глобальный Set для всех экземпляров
+if (!global.processingWelcomeMembers) {
+  global.processingWelcomeMembers = new Set();
+}
 
 module.exports = {
   name: Events.GuildMemberAdd,
@@ -15,24 +17,30 @@ module.exports = {
     const guildId = member.guild.id;
     const userId = member.user.id;
     const key = `${guildId}-${userId}`;
+    const timestamp = Date.now();
     
-    // Проверяем, обрабатывается ли уже этот пользователь
-    if (processingMembers.has(key)) {
-      console.log(`⚠️ Пользователь ${member.user.tag} (${userId}) уже обрабатывается, пропускаем`);
+    // НЕМЕДЛЕННО проверяем и блокируем ПЕРЕД любой асинхронной логикой
+    if (global.processingWelcomeMembers.has(key)) {
+      console.log(`⚠️ Пользователь ${member.user.tag} (${userId}) уже обрабатывается, пропускаем дубликат`);
       return;
     }
     
-    // Отмечаем, что начинаем обработку
-    processingMembers.add(key);
-    console.log(`🔄 Начинаем обработку пользователя ${member.user.tag} (${key})`);
+    // НЕМЕДЛЕННО добавляем в Set
+    global.processingWelcomeMembers.add(key);
+    console.log(`🔄 [${timestamp}] Начинаем обработку пользователя ${member.user.tag} (${key})`);
     
-    // Удаляем через 15 секунд (более длительный период)
+    // Удаляем через 30 секунд (более длительный период)
     setTimeout(() => {
-      processingMembers.delete(key);
+      global.processingWelcomeMembers.delete(key);
       console.log(`✅ Завершена обработка пользователя ${member.user.tag} (${key})`);
-    }, 15000);
+    }, 30000);
     
     try {
+      // ДОПОЛНИТЕЛЬНАЯ ПРОВЕРКА - на случай если обработчик вызвался дважды до первого выполнения
+      if (global.processingWelcomeMembers.has(key)) {
+        console.log(`⚠️ ПОВТОРНАЯ ПРОВЕРКА: Пользователь ${member.user.tag} (${userId}) уже обрабатывается, пропускаем`);
+        return;
+      }
       
       const settings = client.db.getGuildSettings(guildId);
       
@@ -41,6 +49,8 @@ module.exports = {
       
       if (!settings) {
         console.log('⚠️ Настройки для сервера не найдены');
+        // Удаляем из Set перед выходом
+        global.processingWelcomeMembers.delete(key);
         return;
       }
       
@@ -53,11 +63,13 @@ module.exports = {
         
         if (!channel) {
           console.error(`❌ Канал ${settings.welcome_channel_id} не найден`);
+          global.processingWelcomeMembers.delete(key);
           return;
         }
         
         if (!channel.isTextBased()) {
           console.error(`❌ Канал ${settings.welcome_channel_id} не является текстовым`);
+          global.processingWelcomeMembers.delete(key);
           return;
         }
         
@@ -86,11 +98,18 @@ module.exports = {
             const welcomeImageUrl = await generateWelcomeImage(member, settings);
             
             if (welcomeImageUrl) {
-              // Создаем embed с изображением и аватаром пользователя в thumbnail
+              // Получаем круглый аватар пользователя (Discord автоматически делает thumbnail круглым)
+              const avatarUrl = member.user.displayAvatarURL({ extension: 'png', size: 256, forceStatic: false });
+              
+              // Создаем embed с изображением и аватаром пользователя в thumbnail (круглым)
               const embed = new EmbedBuilder()
                 .setColor(0x5865F2)
                 .setImage(welcomeImageUrl)
-                .setThumbnail(member.user.displayAvatarURL({ extension: 'png', size: 256 }));
+                .setThumbnail(avatarUrl)
+                .setAuthor({ 
+                  name: member.user.username, 
+                  iconURL: avatarUrl 
+                });
               
               // Отправляем в зависимости от типа - ТОЛЬКО ОДИН РАЗ
               let sent = false;
@@ -143,6 +162,9 @@ module.exports = {
       }
     } catch (error) {
       console.error('❌ Ошибка обработки присоединения пользователя:', error);
+    } finally {
+      // Удаляем из Set после завершения обработки (но таймер тоже удалит через 30 секунд)
+      // Это нужно на случай раннего выхода
     }
   },
 };
