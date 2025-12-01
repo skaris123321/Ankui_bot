@@ -46,10 +46,13 @@ class StreamTracker {
     try {
       // Получаем все серверы бота
       const guilds = this.client.guilds.cache;
+      console.log(`🔄 Начало проверки всех стримов. Всего серверов: ${guilds.size}, активных стримов в памяти: ${this.activeStreams.size}`);
       
       for (const guild of guilds.values()) {
         await this.checkGuildStreams(guild.id);
       }
+      
+      console.log(`✅ Проверка завершена. Активных стримов в памяти: ${this.activeStreams.size}`);
     } catch (error) {
       console.error('❌ Ошибка проверки стримов:', error);
     }
@@ -92,8 +95,13 @@ class StreamTracker {
       // Инициализируем Map для этого сервера, если его нет
       if (!this.activeStreams.has(guildId)) {
         this.activeStreams.set(guildId, new Map());
+        console.log(`📝 Создан новый Map для сервера ${guildId}`);
       }
       const guildStreams = this.activeStreams.get(guildId);
+      console.log(`📋 Размер Map для сервера ${guildId}: ${guildStreams.size} стримов в памяти`);
+      if (guildStreams.size > 0) {
+        console.log(`📋 Ключи в Map:`, Array.from(guildStreams.keys()));
+      }
 
       // Проверяем каждый канал
       for (const streamChannel of channels) {
@@ -107,15 +115,15 @@ class StreamTracker {
             streamData = await this.checkYouTubeStream(streamChannel.name);
           }
           
+          const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
+          console.log(`🔑 Формируем ключ стрима: "${streamKey}" (platform: "${streamChannel.platform}", name: "${streamChannel.name}")`);
+          console.log(`📋 Размер Map ДО проверки: ${guildStreams.size}`);
+          console.log(`📋 Все ключи в Map ДО проверки:`, Array.from(guildStreams.keys()));
+          const previousStream = guildStreams.get(streamKey);
+          console.log(`📋 Результат get(${streamKey}):`, previousStream ? `ЕСТЬ (ID: ${previousStream.id}, notified: ${previousStream.notified})` : 'НЕТ');
+          
           if (streamData) {
             console.log(`✅ Стрим найден: ${streamData.user} - ${streamData.title}`);
-          } else {
-            console.log(`❌ Стрим не найден для канала ${streamChannel.name}`);
-          }
-
-          if (streamData) {
-            const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
-            const previousStream = guildStreams.get(streamKey);
 
             // Если стрим новый (не было в предыдущей проверке) - отправляем уведомление
             if (!previousStream) {
@@ -134,8 +142,11 @@ class StreamTracker {
                 notified: true, // Флаг, что уведомление уже отправлено
                 startTime: Date.now()
               });
+              console.log(`💾 Стрим сохранен в память с ключом: ${streamKey}`);
+              console.log(`📊 Размер Map после сохранения: ${guildStreams.size}, все ключи:`, Array.from(guildStreams.keys()));
             } else {
               // Стрим продолжается, просто обновляем данные (зрителей и т.д.), но НЕ отправляем уведомление
+              console.log(`▶️ Стрим продолжается: ${streamData.user} (уже был в памяти)`);
               guildStreams.set(streamKey, {
                 ...previousStream,
                 ...streamData,
