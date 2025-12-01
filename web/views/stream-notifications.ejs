@@ -425,9 +425,9 @@
         </select>
         <small>Выберите канал, в который будут отправляться уведомления о стримах</small>
         
-        <label>Сообщение при начале стрима</label>
+        <label>Сообщение при начале стрима (по умолчанию для всех каналов)</label>
         <input type="text" id="streamMessage" class="input-field" placeholder="@here {user} начал стрим!" maxlength="500" onchange="saveStreamSettings()">
-        <small>Используйте {user} для имени стримера, {title} для названия стрима, {game} для игры</small>
+        <small>Используйте {user} для имени стримера, {title} для названия стрима, {game} для игры. Для каждого канала можно настроить свое сообщение ниже.</small>
         
         <label>Цвет embed (HEX)</label>
         <input type="color" id="embedColor" class="input-field" value="#9146FF" onchange="saveStreamSettings()">
@@ -472,44 +472,6 @@
         </div>
       </div>
       
-      <!-- Фильтры -->
-      <div class="settings-section" id="filtersSection" style="display: none;">
-        <h2>🔍 Фильтры</h2>
-        
-        <div class="toggle-switch">
-          <input type="checkbox" id="filterByGame" onchange="saveStreamSettings()">
-          <label for="filterByGame">Фильтровать по игре</label>
-        </div>
-        
-        <label>Игры (через запятую)</label>
-        <input type="text" id="allowedGames" class="input-field" placeholder="Counter-Strike, Valorant, League of Legends" onchange="saveStreamSettings()">
-        <small>Уведомления будут отправляться только для указанных игр. Оставьте пустым для всех игр.</small>
-        
-        <div class="toggle-switch" style="margin-top: 1rem;">
-          <input type="checkbox" id="filterByTitle" onchange="saveStreamSettings()">
-          <label for="filterByTitle">Фильтровать по названию стрима</label>
-        </div>
-        
-        <label>Ключевые слова в названии (через запятую)</label>
-        <input type="text" id="titleKeywords" class="input-field" placeholder="tournament, championship, event" onchange="saveStreamSettings()">
-        <small>Уведомления будут отправляться только если название содержит одно из ключевых слов</small>
-      </div>
-      
-      <!-- Live Role -->
-      <div class="settings-section" id="liveRoleSection" style="display: none;">
-        <h2>🎭 Live Role</h2>
-        
-        <div class="toggle-switch">
-          <input type="checkbox" id="liveRoleEnabled" onchange="saveStreamSettings()">
-          <label for="liveRoleEnabled">Включить автоматическое добавление роли при стриме</label>
-        </div>
-        
-        <label>Роль для стримеров</label>
-        <select id="liveRole" class="input-field" onchange="saveStreamSettings()">
-          <option value="">Выберите роль...</option>
-        </select>
-        <small>Роль будет автоматически добавляться участникам сервера, когда они начинают стрим</small>
-      </div>
     </div>
   </main>
   
@@ -526,14 +488,9 @@
       // Показываем секции настроек
       document.getElementById('mainSettings').style.display = 'block';
       document.getElementById('channelsSection').style.display = 'block';
-      document.getElementById('filtersSection').style.display = 'block';
-      document.getElementById('liveRoleSection').style.display = 'block';
       
       // Загружаем каналы сервера
       await loadChannels(guildId);
-      
-      // Загружаем роли сервера
-      await loadRoles(guildId);
       
       // Загружаем настройки
       try {
@@ -547,15 +504,12 @@
           document.getElementById('notificationChannel').value = data.channelId || '';
           document.getElementById('streamMessage').value = data.message || '@here {user} начал стрим!';
           document.getElementById('embedColor').value = data.embedColor || '#9146FF';
-          document.getElementById('filterByGame').checked = data.filterByGame || false;
-          document.getElementById('allowedGames').value = data.allowedGames || '';
-          document.getElementById('filterByTitle').checked = data.filterByTitle || false;
-          document.getElementById('titleKeywords').value = data.titleKeywords || '';
-          document.getElementById('liveRoleEnabled').checked = data.liveRoleEnabled || false;
-          document.getElementById('liveRole').value = data.liveRoleId || '';
           
           if (data.channels) {
-            channels = data.channels;
+            channels = data.channels.map(ch => ({
+              ...ch,
+              message: ch.message || null
+            }));
             renderChannels();
           }
         }
@@ -585,26 +539,6 @@
       }
     }
     
-    async function loadRoles(guildId) {
-      try {
-        const response = await fetch(`/api/guild/${guildId}/roles`);
-        const data = await response.json();
-        
-        const select = document.getElementById('liveRole');
-        select.innerHTML = '<option value="">Выберите роль...</option>';
-        
-        if (data.roles) {
-          data.roles.forEach(role => {
-            const option = document.createElement('option');
-            option.value = role.id;
-            option.textContent = role.name;
-            select.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки ролей:', error);
-      }
-    }
     
     async function saveStreamSettings() {
       if (!selectedGuildId) return;
@@ -710,17 +644,41 @@
       channels.forEach(channel => {
         const item = document.createElement('div');
         item.className = 'channel-item';
+        item.style.flexDirection = 'column';
+        item.style.alignItems = 'stretch';
         item.innerHTML = `
-          <div class="channel-item-info">
-            <div class="channel-item-name">${channel.name}</div>
-            <div class="channel-item-type">${channel.platform === 'twitch' ? '🎮 Twitch' : '📺 YouTube'}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+            <div class="channel-item-info">
+              <div class="channel-item-name">${channel.name}</div>
+              <div class="channel-item-type">${channel.platform === 'twitch' ? '🎮 Twitch' : '📺 YouTube'}</div>
+            </div>
+            <div class="channel-item-actions">
+              <button type="button" class="btn btn-danger" onclick="removeChannel(${channel.id})">Удалить</button>
+            </div>
           </div>
-          <div class="channel-item-actions">
-            <button type="button" class="btn btn-danger" onclick="removeChannel(${channel.id})">Удалить</button>
+          <div>
+            <label style="display: block; color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Сообщение для этого канала (оставьте пустым для использования общего)</label>
+            <input type="text" class="input-field" data-channel-id="${channel.id}" value="${escapeHtml(channel.message || '')}" placeholder="Оставьте пустым для использования общего сообщения" maxlength="500" onchange="updateChannelMessage(${channel.id}, this.value)" style="margin-bottom: 0;">
+            <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Используйте {user}, {title}, {game}, {viewers}, {platform}</small>
           </div>
         `;
         container.appendChild(item);
       });
+    }
+    
+    function updateChannelMessage(channelId, message) {
+      const channel = channels.find(c => c.id === channelId);
+      if (channel) {
+        channel.message = message.trim() || null;
+        saveStreamSettings();
+      }
+    }
+    
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
     }
     
     function showMessage(type, message) {

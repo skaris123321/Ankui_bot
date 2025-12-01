@@ -1,3 +1,3 @@
 git add -A
-git commit -m "Fix: Send stream notification only once per stream using notified flag"
+git commit -m "Fix stream notifications: remove filters/Live Role, add per-channel custom messages, fix notification sending"
 git push origin main

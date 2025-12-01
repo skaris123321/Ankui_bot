@@ -98,32 +98,25 @@ class StreamTracker {
           }
 
           if (streamData) {
-            // Проверяем фильтры
-            if (!this.passesFilters(streamData, settings)) {
-              continue;
-            }
-
             const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
             const previousStream = guildStreams.get(streamKey);
 
-            // Если стрим новый (не было в предыдущей проверке) И уведомление еще не отправлено
-            if (!previousStream || !previousStream.notified) {
+            // Если стрим новый (не было в предыдущей проверке)
+            if (!previousStream) {
               // Это новый стрим - отправляем уведомление только один раз
               console.log(`📺 Новый стрим обнаружен: ${streamData.user} на ${streamChannel.platform}`);
               
-              // Отправляем уведомление
-              await this.sendNotification(guildId, channel, streamData, settings);
+              // Получаем сообщение для этого канала или используем общее
+              const channelMessage = streamChannel.message || settings.stream_notifications_message || '@here {user} начал стрим!';
               
-              // Обновляем Live Role
-              if (settings.stream_notifications_live_role_enabled && settings.stream_notifications_live_role_id) {
-                await this.updateLiveRole(guildId, streamData.user, true);
-              }
-
+              // Отправляем уведомление
+              await this.sendNotification(guildId, channel, streamData, settings, channelMessage);
+              
               // Сохраняем информацию о стриме с флагом, что уведомление отправлено
               guildStreams.set(streamKey, {
                 ...streamData,
                 notified: true, // Флаг, что уведомление уже отправлено
-                startTime: previousStream?.startTime || Date.now()
+                startTime: Date.now()
               });
             } else {
               // Стрим продолжается, просто обновляем данные (зрителей и т.д.), но НЕ отправляем уведомление
@@ -141,12 +134,6 @@ class StreamTracker {
             
             if (previousStream && previousStream.notified) {
               console.log(`🔴 Стрим закончился: ${previousStream.user} на ${streamChannel.platform}`);
-              
-              // Удаляем Live Role
-              if (settings.stream_notifications_live_role_enabled && settings.stream_notifications_live_role_id) {
-                await this.updateLiveRole(guildId, previousStream.user, false);
-              }
-
               guildStreams.delete(streamKey);
             }
           }
@@ -321,37 +308,11 @@ class StreamTracker {
     }
   }
 
-  passesFilters(streamData, settings) {
-    // Фильтр по игре
-    if (settings.stream_notifications_filter_by_game && settings.stream_notifications_allowed_games) {
-      const allowedGames = settings.stream_notifications_allowed_games
-        .split(',')
-        .map(g => g.trim().toLowerCase());
-      
-      if (!allowedGames.includes(streamData.game.toLowerCase())) {
-        return false;
-      }
-    }
 
-    // Фильтр по названию
-    if (settings.stream_notifications_filter_by_title && settings.stream_notifications_title_keywords) {
-      const keywords = settings.stream_notifications_title_keywords
-        .split(',')
-        .map(k => k.trim().toLowerCase());
-      
-      const titleLower = streamData.title.toLowerCase();
-      if (!keywords.some(keyword => titleLower.includes(keyword))) {
-        return false;
-      }
-    }
-
-    return true;
-  }
-
-  async sendNotification(guildId, channel, streamData, settings) {
+  async sendNotification(guildId, channel, streamData, settings, customMessage = null) {
     try {
-      // Формируем сообщение
-      let message = settings.stream_notifications_message || '@here {user} начал стрим!';
+      // Формируем сообщение (используем кастомное сообщение для канала или общее)
+      let message = customMessage || settings.stream_notifications_message || '@here {user} начал стрим!';
       message = message
         .replace(/{user}/g, streamData.user)
         .replace(/{title}/g, streamData.title)
@@ -385,37 +346,6 @@ class StreamTracker {
     }
   }
 
-  async updateLiveRole(guildId, username, isLive) {
-    try {
-      const guild = await this.client.guilds.fetch(guildId);
-      if (!guild) return;
-
-      const settings = this.db.getGuildSettings(guildId);
-      if (!settings || !settings.stream_notifications_live_role_id) return;
-
-      const role = await guild.roles.fetch(settings.stream_notifications_live_role_id).catch(() => null);
-      if (!role) return;
-
-      // Ищем участника по имени (можно улучшить, добавив привязку Discord ID к Twitch/YouTube)
-      const members = await guild.members.fetch();
-      const member = members.find(m => 
-        m.displayName.toLowerCase().includes(username.toLowerCase()) ||
-        m.user.username.toLowerCase().includes(username.toLowerCase())
-      );
-
-      if (member) {
-        if (isLive) {
-          await member.roles.add(role).catch(() => {});
-          console.log(`✅ Роль ${role.name} добавлена ${member.user.tag}`);
-        } else {
-          await member.roles.remove(role).catch(() => {});
-          console.log(`✅ Роль ${role.name} удалена у ${member.user.tag}`);
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Ошибка обновления Live Role:`, error);
-    }
-  }
 }
 
 module.exports = StreamTracker;

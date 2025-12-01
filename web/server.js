@@ -1281,12 +1281,6 @@ app.get('/api/guild/:guildId/stream-settings', (req, res) => {
         channelId: settings.stream_notifications_channel_id || '',
         message: settings.stream_notifications_message || '@here {user} начал стрим!',
         embedColor: settings.stream_notifications_embed_color || '#9146FF',
-        filterByGame: settings.stream_notifications_filter_by_game || false,
-        allowedGames: settings.stream_notifications_allowed_games || '',
-        filterByTitle: settings.stream_notifications_filter_by_title || false,
-        titleKeywords: settings.stream_notifications_title_keywords || '',
-        liveRoleEnabled: settings.stream_notifications_live_role_enabled || false,
-        liveRoleId: settings.stream_notifications_live_role_id || '',
         channels: settings.stream_notifications_channels || []
       }
     });
@@ -1310,12 +1304,6 @@ app.post('/api/guild/:guildId/stream-settings', (req, res) => {
       stream_notifications_channel_id: data.channelId || '',
       stream_notifications_message: data.message || '@here {user} начал стрим!',
       stream_notifications_embed_color: data.embedColor || '#9146FF',
-      stream_notifications_filter_by_game: data.filterByGame || false,
-      stream_notifications_allowed_games: data.allowedGames || '',
-      stream_notifications_filter_by_title: data.filterByTitle || false,
-      stream_notifications_title_keywords: data.titleKeywords || '',
-      stream_notifications_live_role_enabled: data.liveRoleEnabled || false,
-      stream_notifications_live_role_id: data.liveRoleId || '',
       stream_notifications_channels: data.channels || []
     };
     
