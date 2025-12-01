@@ -1,3 +1,3 @@
 git add -A
-git commit -m "Fix: Simplify stream detection logic - send notification only when stream appears (not in previous check)"
+git commit -m "Fix: Remove alternative check that caused duplicate notifications, use only uptime check"
 git push origin main
