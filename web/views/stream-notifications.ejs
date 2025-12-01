@@ -480,41 +480,77 @@
     let channels = [];
     let roles = [];
     
+    // Загружаем сохраненный сервер при загрузке страницы
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedGuildId = localStorage.getItem('streamNotifications_selectedGuildId');
+      if (savedGuildId) {
+        const select = document.getElementById('serverSelect');
+        if (select) {
+          select.value = savedGuildId;
+          loadStreamSettings(savedGuildId);
+        }
+      }
+    });
+    
     async function loadStreamSettings(guildId) {
       if (!guildId) return;
       
       selectedGuildId = guildId;
       
+      // Сохраняем выбранный сервер в localStorage
+      localStorage.setItem('streamNotifications_selectedGuildId', guildId);
+      
       // Показываем секции настроек
       document.getElementById('mainSettings').style.display = 'block';
       document.getElementById('channelsSection').style.display = 'block';
       
-      // Загружаем каналы сервера
-      await loadChannels(guildId);
+      // Загружаем каналы сервера и настройки параллельно
+      const [channelsData, settingsData] = await Promise.all([
+        loadChannels(guildId),
+        fetch(`/api/guild/${guildId}/stream-settings`).then(res => res.json())
+      ]);
       
       // Загружаем настройки
       try {
-        const response = await fetch(`/api/guild/${guildId}/stream-settings`);
-        const settings = await response.json();
-        
-        if (settings.success && settings.data) {
-          const data = settings.data;
+        if (settingsData.success && settingsData.data) {
+          const data = settingsData.data;
           
-          document.getElementById('streamNotificationsEnabled').checked = data.enabled || false;
-          document.getElementById('notificationChannel').value = data.channelId || '';
-          document.getElementById('streamMessage').value = data.message || '@here {user} начал стрим!';
-          document.getElementById('embedColor').value = data.embedColor || '#9146FF';
+          // Устанавливаем значения полей
+          const enabledCheckbox = document.getElementById('streamNotificationsEnabled');
+          const channelSelect = document.getElementById('notificationChannel');
+          const messageInput = document.getElementById('streamMessage');
+          const colorInput = document.getElementById('embedColor');
           
-          if (data.channels) {
+          if (enabledCheckbox) enabledCheckbox.checked = data.enabled || false;
+          if (messageInput) messageInput.value = data.message || '@here {user} начал стрим!';
+          if (colorInput) colorInput.value = data.embedColor || '#9146FF';
+          
+          // Устанавливаем канал после загрузки списка каналов
+          if (channelSelect && data.channelId) {
+            channelSelect.value = data.channelId;
+          }
+          
+          if (data.channels && Array.isArray(data.channels)) {
             channels = data.channels.map(ch => ({
-              ...ch,
+              id: ch.id || Date.now() + Math.random(),
+              platform: ch.platform || 'twitch',
+              name: ch.name || '',
               message: ch.message || null
             }));
             renderChannels();
+          } else {
+            channels = [];
+            renderChannels();
           }
+        } else {
+          // Если настроек нет, инициализируем пустые значения
+          channels = [];
+          renderChannels();
         }
       } catch (error) {
         console.error('Ошибка загрузки настроек:', error);
+        channels = [];
+        renderChannels();
       }
     }
     
@@ -524,37 +560,46 @@
         const data = await response.json();
         
         const select = document.getElementById('notificationChannel');
-        select.innerHTML = '<option value="">Выберите канал...</option>';
-        
-        if (data.channels) {
-          data.channels.forEach(channel => {
-            const option = document.createElement('option');
-            option.value = channel.id;
-            option.textContent = `# ${channel.name}`;
-            select.appendChild(option);
-          });
+        if (select) {
+          select.innerHTML = '<option value="">Выберите канал...</option>';
+          
+          if (data.channels) {
+            data.channels.forEach(channel => {
+              const option = document.createElement('option');
+              option.value = channel.id;
+              option.textContent = `# ${channel.name}`;
+              select.appendChild(option);
+            });
+          }
         }
+        return data;
       } catch (error) {
         console.error('Ошибка загрузки каналов:', error);
+        return { channels: [] };
       }
     }
     
     
     async function saveStreamSettings() {
-      if (!selectedGuildId) return;
+      if (!selectedGuildId) {
+        showMessage('error', '❌ Выберите сервер перед сохранением');
+        return;
+      }
+      
+      // Собираем все данные каналов с их сообщениями
+      const channelsToSave = channels.map(ch => ({
+        id: ch.id,
+        platform: ch.platform,
+        name: ch.name,
+        message: ch.message && ch.message.trim() ? ch.message.trim() : null
+      }));
       
       const settings = {
         enabled: document.getElementById('streamNotificationsEnabled').checked,
         channelId: document.getElementById('notificationChannel').value,
-        message: document.getElementById('streamMessage').value,
-        embedColor: document.getElementById('embedColor').value,
-        filterByGame: document.getElementById('filterByGame').checked,
-        allowedGames: document.getElementById('allowedGames').value,
-        filterByTitle: document.getElementById('filterByTitle').checked,
-        titleKeywords: document.getElementById('titleKeywords').value,
-        liveRoleEnabled: document.getElementById('liveRoleEnabled').checked,
-        liveRoleId: document.getElementById('liveRole').value,
-        channels: channels
+        message: document.getElementById('streamMessage').value || '@here {user} начал стрим!',
+        embedColor: document.getElementById('embedColor').value || '#9146FF',
+        channels: channelsToSave
       };
       
       try {
@@ -569,6 +614,8 @@
         const result = await response.json();
         if (result.success) {
           showMessage('success', '✅ Настройки сохранены!');
+          // Перезагружаем настройки для обновления данных
+          await loadStreamSettings(selectedGuildId);
         } else {
           showMessage('error', '❌ Ошибка сохранения: ' + (result.message || 'Неизвестная ошибка'));
         }
@@ -670,6 +717,7 @@
       const channel = channels.find(c => c.id === channelId);
       if (channel) {
         channel.message = message.trim() || null;
+        // Сохраняем автоматически при изменении сообщения канала
         saveStreamSettings();
       }
     }
