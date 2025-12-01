@@ -117,19 +117,10 @@ class StreamTracker {
             const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
             const previousStream = guildStreams.get(streamKey);
 
-            // Если стрим новый (не было в предыдущей проверке) ИЛИ ID/название изменилось (новый стрим)
-            // Проверяем по ID и названию, так как название может измениться при новом стриме
-            const isNewStream = !previousStream || 
-                               previousStream.id !== streamData.id || 
-                               previousStream.title !== streamData.title;
-            
-            if (isNewStream) {
+            // Если стрим новый (не было в предыдущей проверке) - отправляем уведомление
+            if (!previousStream) {
               // Это новый стрим - отправляем уведомление только один раз
-              console.log(`📺 Новый стрим обнаружен: ${streamData.user} на ${streamChannel.platform} (ID: ${streamData.id})`);
-              if (previousStream) {
-                console.log(`🔄 Предыдущий стрим был: ID ${previousStream.id}, название "${previousStream.title}"`);
-                console.log(`🔄 Новый стрим: ID ${streamData.id}, название "${streamData.title}"`);
-              }
+              console.log(`📺 Новый стрим обнаружен: ${streamData.user} на ${streamChannel.platform}`);
               
               // Получаем сообщение для этого канала или используем общее
               const channelMessage = streamChannel.message || settings.stream_notifications_message || '@here {user} начал стрим!';
@@ -145,7 +136,6 @@ class StreamTracker {
               });
             } else {
               // Стрим продолжается, просто обновляем данные (зрителей и т.д.), но НЕ отправляем уведомление
-              console.log(`▶️ Стрим продолжается: ${streamData.user} (ID: ${streamData.id})`);
               guildStreams.set(streamKey, {
                 ...previousStream,
                 ...streamData,
@@ -244,11 +234,9 @@ class StreamTracker {
           
           console.log(`✅ Twitch стрим найден для ${channelName}: "${title}" (${game}), зрителей: ${viewers}`);
           
-          // Генерируем уникальный ID на основе канала, названия стрима и времени
-          // Используем хеш названия стрима, чтобы ID менялся при новом стриме
-          // Округляем время до минуты, чтобы ID был стабильным во время одного стрима
-          const titleHash = title.substring(0, 20).replace(/\s+/g, '_').toLowerCase();
-          const streamId = `twitch_${channelName}_${Math.floor(Date.now() / 60000)}_${titleHash}`;
+          // Генерируем простой стабильный ID на основе канала
+          // ID не меняется во время стрима, меняется только когда стрим заканчивается и начинается новый
+          const streamId = `twitch_${channelName}_live`;
           
           return {
             id: streamId,
