@@ -202,15 +202,18 @@ class StreamTracker {
       // Метод 2: Альтернативный метод БЕЗ API ключа (работает всегда!)
       // Используем публичные API endpoints
       try {
-        // Проверяем, идет ли стрим
-        const uptimeResponse = await axios.get(`https://decapi.me/twitch/uptime/${channelName}`, {
-          timeout: 8000
-        });
+        // Проверяем, идет ли стрим через несколько методов для надежности
+        const [uptimeResponse, titleResponse] = await Promise.allSettled([
+          axios.get(`https://decapi.me/twitch/uptime/${channelName}`, { timeout: 8000 }),
+          axios.get(`https://decapi.me/twitch/title/${channelName}`, { timeout: 8000 })
+        ]);
         
-        const uptime = uptimeResponse.data?.toString().trim() || '';
+        const uptime = uptimeResponse.status === 'fulfilled' ? (uptimeResponse.value.data?.toString().trim() || '') : '';
+        const title = titleResponse.status === 'fulfilled' ? (titleResponse.value.data?.toString().trim() || '') : '';
         
         // Если стрим идет, uptime будет содержать время (например, "2h 30m 15s"), иначе "offline" или пусто
         console.log(`📊 Twitch uptime для ${channelName}: "${uptime}"`);
+        console.log(`📊 Twitch title для ${channelName}: "${title}"`);
         
         // Проверяем различные форматы ответа "offline"
         const isOffline = uptime.toLowerCase().includes('offline') || 
@@ -218,21 +221,23 @@ class StreamTracker {
                          uptime.toLowerCase().includes('is offline') ||
                          uptime === '' || 
                          uptime === 'null' ||
-                         uptime === 'false';
+                         uptime === 'false' ||
+                         title.toLowerCase().includes('offline') ||
+                         title === '';
         
-        if (!isOffline && uptime) {
-          // Получаем дополнительную информацию о стриме
-          const [titleResponse, gameResponse, viewersResponse] = await Promise.allSettled([
-            axios.get(`https://decapi.me/twitch/title/${channelName}`, { timeout: 5000 }),
+        // Если стрим идет (не offline) И есть название стрима
+        if (!isOffline && uptime && title && !title.toLowerCase().includes('offline')) {
+          // Получаем дополнительную информацию о стриме (title уже получен выше)
+          const [gameResponse, viewersResponse] = await Promise.allSettled([
             axios.get(`https://decapi.me/twitch/game/${channelName}`, { timeout: 5000 }),
             axios.get(`https://decapi.me/twitch/viewercount/${channelName}`, { timeout: 5000 })
           ]);
           
-          const title = titleResponse.status === 'fulfilled' ? (titleResponse.value.data || 'Live Stream') : 'Live Stream';
+          const streamTitle = title || 'Live Stream';
           const game = gameResponse.status === 'fulfilled' ? (gameResponse.value.data || 'Unknown') : 'Unknown';
           const viewers = viewersResponse.status === 'fulfilled' ? (parseInt(viewersResponse.value.data) || 0) : 0;
           
-          console.log(`✅ Twitch стрим найден для ${channelName}: "${title}" (${game}), зрителей: ${viewers}`);
+          console.log(`✅ Twitch стрим найден для ${channelName}: "${streamTitle}" (${game}), зрителей: ${viewers}`);
           
           // Генерируем простой стабильный ID на основе канала
           // ID не меняется во время стрима, меняется только когда стрим заканчивается и начинается новый
@@ -241,7 +246,7 @@ class StreamTracker {
           return {
             id: streamId,
             user: channelName,
-            title: title,
+            title: streamTitle,
             game: game,
             viewers: viewers,
             thumbnail: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channelName.toLowerCase()}-1280x720.jpg`,
@@ -249,7 +254,41 @@ class StreamTracker {
             platform: 'twitch'
           };
         } else {
-          console.log(`⏸️ Twitch канал ${channelName} не стримит (uptime: "${uptime}")`);
+          console.log(`⏸️ Twitch канал ${channelName} не стримит (uptime: "${uptime}", title: "${title}")`);
+          
+          // Альтернативная проверка: если uptime говорит offline, но title есть и не содержит offline - возможно стрим идет
+          if (title && !title.toLowerCase().includes('offline') && title.trim() !== '' && title !== 'null') {
+            console.log(`⚠️ Обнаружено несоответствие: uptime говорит offline, но title существует. Пробуем альтернативную проверку...`);
+            
+            // Пробуем получить информацию о стриме через другие endpoints
+            try {
+              const [gameResponse, viewersResponse] = await Promise.allSettled([
+                axios.get(`https://decapi.me/twitch/game/${channelName}`, { timeout: 5000 }),
+                axios.get(`https://decapi.me/twitch/viewercount/${channelName}`, { timeout: 5000 })
+              ]);
+              
+              const game = gameResponse.status === 'fulfilled' ? (gameResponse.value.data || 'Unknown') : 'Unknown';
+              const viewers = viewersResponse.status === 'fulfilled' ? (parseInt(viewersResponse.value.data) || 0) : 0;
+              
+              // Если есть зрители или игра - вероятно стрим идет
+              if (viewers > 0 || (game && game !== 'Unknown' && !game.toLowerCase().includes('offline'))) {
+                console.log(`✅ Альтернативная проверка: стрим найден! (viewers: ${viewers}, game: ${game})`);
+                const streamId = `twitch_${channelName}_live`;
+                return {
+                  id: streamId,
+                  user: channelName,
+                  title: title,
+                  game: game,
+                  viewers: viewers,
+                  thumbnail: `https://static-cdn.jtvnw.net/previews-ttv/live_user_${channelName.toLowerCase()}-1280x720.jpg`,
+                  url: `https://www.twitch.tv/${channelName}`,
+                  platform: 'twitch'
+                };
+              }
+            } catch (altError) {
+              console.warn(`⚠️ Альтернативная проверка не сработала:`, altError.message);
+            }
+          }
         }
       } catch (altError) {
         console.warn(`⚠️ Альтернативный метод Twitch для ${channelName} не сработал:`, altError.message);
