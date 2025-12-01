@@ -3,10 +3,12 @@ const { EmbedBuilder } = require('discord.js');
 
 class StreamTracker {
   constructor(client) {
+    console.log(`🔵🔵🔵 StreamTracker конструктор вызван! this = ${this}`);
     this.client = client;
     this.db = client.db;
     this.checkInterval = 60000; // Проверка каждую минуту
     this.activeStreams = new Map(); // Хранит активные стримы: guildId -> Map<channelId, streamData>
+    console.log(`🔵 Создан новый activeStreams Map: ${this.activeStreams}, размер: ${this.activeStreams.size}`);
     this.isRunning = false;
     this.checkTimer = null;
   }
@@ -18,13 +20,14 @@ class StreamTracker {
     }
 
     this.isRunning = true;
-    console.log('✅ StreamTracker запущен');
+    console.log(`✅ StreamTracker запущен, this.activeStreams = ${this.activeStreams}, размер: ${this.activeStreams.size}`);
     
     // Первая проверка сразу
     this.checkAllStreams();
     
     // Затем каждую минуту
     this.checkTimer = setInterval(() => {
+      console.log(`⏰ Таймер сработал, this.activeStreams = ${this.activeStreams}, размер: ${this.activeStreams.size}`);
       this.checkAllStreams();
     }, this.checkInterval);
   }
@@ -47,12 +50,25 @@ class StreamTracker {
       // Получаем все серверы бота
       const guilds = this.client.guilds.cache;
       console.log(`🔄 Начало проверки всех стримов. Всего серверов: ${guilds.size}, активных стримов в памяти: ${this.activeStreams.size}`);
+      console.log(`🔍 this.activeStreams === ${this.activeStreams.constructor.name}, размер: ${this.activeStreams.size}`);
+      if (this.activeStreams.size > 0) {
+        console.log(`🔍 Ключи в this.activeStreams:`, Array.from(this.activeStreams.keys()));
+        for (const [guildId, guildStreams] of this.activeStreams.entries()) {
+          console.log(`🔍 Сервер ${guildId}: ${guildStreams.size} стримов, ключи:`, Array.from(guildStreams.keys()));
+        }
+      }
       
       for (const guild of guilds.values()) {
         await this.checkGuildStreams(guild.id);
       }
       
       console.log(`✅ Проверка завершена. Активных стримов в памяти: ${this.activeStreams.size}`);
+      if (this.activeStreams.size > 0) {
+        console.log(`🔍 Ключи в this.activeStreams после проверки:`, Array.from(this.activeStreams.keys()));
+        for (const [guildId, guildStreams] of this.activeStreams.entries()) {
+          console.log(`🔍 Сервер ${guildId} после проверки: ${guildStreams.size} стримов, ключи:`, Array.from(guildStreams.keys()));
+        }
+      }
     } catch (error) {
       console.error('❌ Ошибка проверки стримов:', error);
     }
@@ -93,12 +109,17 @@ class StreamTracker {
       console.log(`🔍 Проверка стримов для сервера ${guildId}: ${channels.length} каналов`);
 
       // Инициализируем Map для этого сервера, если его нет
+      console.log(`🔍 Проверка this.activeStreams.has(${guildId}): ${this.activeStreams.has(guildId)}`);
+      console.log(`🔍 this.activeStreams.size ДО проверки: ${this.activeStreams.size}`);
       if (!this.activeStreams.has(guildId)) {
         this.activeStreams.set(guildId, new Map());
         console.log(`📝 Создан новый Map для сервера ${guildId}`);
+      } else {
+        console.log(`✅ Map для сервера ${guildId} уже существует`);
       }
       const guildStreams = this.activeStreams.get(guildId);
       console.log(`📋 Размер Map для сервера ${guildId}: ${guildStreams.size} стримов в памяти`);
+      console.log(`🔍 this.activeStreams.size ПОСЛЕ получения: ${this.activeStreams.size}`);
       if (guildStreams.size > 0) {
         console.log(`📋 Ключи в Map:`, Array.from(guildStreams.keys()));
       }
