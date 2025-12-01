@@ -106,8 +106,9 @@ class StreamTracker {
             const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
             const previousStream = guildStreams.get(streamKey);
 
-            // Если стрим новый (не было в предыдущей проверке)
-            if (!previousStream || previousStream.id !== streamData.id) {
+            // Если стрим новый (не было в предыдущей проверке) И уведомление еще не отправлено
+            if (!previousStream || !previousStream.notified) {
+              // Это новый стрим - отправляем уведомление только один раз
               console.log(`📺 Новый стрим обнаружен: ${streamData.user} на ${streamChannel.platform}`);
               
               // Отправляем уведомление
@@ -118,15 +119,27 @@ class StreamTracker {
                 await this.updateLiveRole(guildId, streamData.user, true);
               }
 
-              // Сохраняем информацию о стриме
-              guildStreams.set(streamKey, streamData);
+              // Сохраняем информацию о стриме с флагом, что уведомление отправлено
+              guildStreams.set(streamKey, {
+                ...streamData,
+                notified: true, // Флаг, что уведомление уже отправлено
+                startTime: previousStream?.startTime || Date.now()
+              });
+            } else {
+              // Стрим продолжается, просто обновляем данные (зрителей и т.д.), но НЕ отправляем уведомление
+              guildStreams.set(streamKey, {
+                ...previousStream,
+                ...streamData,
+                notified: true, // Сохраняем флаг
+                startTime: previousStream.startTime // Сохраняем время начала
+              });
             }
           } else {
             // Стрим закончился
             const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
             const previousStream = guildStreams.get(streamKey);
             
-            if (previousStream) {
+            if (previousStream && previousStream.notified) {
               console.log(`🔴 Стрим закончился: ${previousStream.user} на ${streamChannel.platform}`);
               
               // Удаляем Live Role
@@ -206,8 +219,9 @@ class StreamTracker {
           const game = gameResponse.status === 'fulfilled' ? (gameResponse.value.data || 'Unknown') : 'Unknown';
           const viewers = viewersResponse.status === 'fulfilled' ? (parseInt(viewersResponse.value.data) || 0) : 0;
           
-          // Генерируем уникальный ID на основе времени и канала
-          const streamId = `twitch_${channelName}_${Math.floor(Date.now() / 60000)}`; // ID обновляется каждую минуту
+          // Генерируем стабильный ID на основе канала (не меняется во время стрима)
+          // Используем timestamp начала стрима, если можем его определить
+          const streamId = `twitch_${channelName}_live`;
           
           return {
             id: streamId,
