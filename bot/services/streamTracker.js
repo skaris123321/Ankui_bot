@@ -61,24 +61,33 @@ class StreamTracker {
       
       // Проверяем, включены ли уведомления
       if (!settings || !settings.stream_notifications_enabled) {
+        console.log(`⏭️ Уведомления о стримах отключены для сервера ${guildId}`);
         return;
       }
 
       const channels = settings.stream_notifications_channels || [];
       if (channels.length === 0) {
+        console.log(`⏭️ Нет отслеживаемых каналов для сервера ${guildId}`);
         return;
       }
 
       const notificationChannelId = settings.stream_notifications_channel_id;
       if (!notificationChannelId) {
+        console.log(`⏭️ Канал для уведомлений не указан для сервера ${guildId}`);
         return;
       }
 
       // Получаем канал для уведомлений
-      const channel = await this.client.channels.fetch(notificationChannelId).catch(() => null);
+      const channel = await this.client.channels.fetch(notificationChannelId).catch((err) => {
+        console.error(`❌ Ошибка получения канала ${notificationChannelId} для сервера ${guildId}:`, err.message);
+        return null;
+      });
       if (!channel) {
+        console.log(`⏭️ Канал ${notificationChannelId} не найден для сервера ${guildId}`);
         return;
       }
+
+      console.log(`🔍 Проверка стримов для сервера ${guildId}: ${channels.length} каналов`);
 
       // Инициализируем Map для этого сервера, если его нет
       if (!this.activeStreams.has(guildId)) {
@@ -89,12 +98,19 @@ class StreamTracker {
       // Проверяем каждый канал
       for (const streamChannel of channels) {
         try {
+          console.log(`🔍 Проверка канала ${streamChannel.name} (${streamChannel.platform})...`);
           let streamData = null;
 
           if (streamChannel.platform === 'twitch') {
             streamData = await this.checkTwitchStream(streamChannel.name);
           } else if (streamChannel.platform === 'youtube') {
             streamData = await this.checkYouTubeStream(streamChannel.name);
+          }
+          
+          if (streamData) {
+            console.log(`✅ Стрим найден: ${streamData.user} - ${streamData.title}`);
+          } else {
+            console.log(`❌ Стрим не найден для канала ${streamChannel.name}`);
           }
 
           if (streamData) {
@@ -194,7 +210,8 @@ class StreamTracker {
         const uptime = uptimeResponse.data?.toString().trim() || '';
         
         // Если стрим идет, uptime будет содержать время (например, "2h 30m 15s"), иначе "offline" или пусто
-        if (uptime && !uptime.toLowerCase().includes('offline') && uptime !== '' && uptime !== 'null') {
+        console.log(`📊 Twitch uptime для ${channelName}: "${uptime}"`);
+        if (uptime && !uptime.toLowerCase().includes('offline') && uptime !== '' && uptime !== 'null' && !uptime.toLowerCase().includes('not live')) {
           // Получаем дополнительную информацию о стриме
           const [titleResponse, gameResponse, viewersResponse] = await Promise.allSettled([
             axios.get(`https://decapi.me/twitch/title/${channelName}`, { timeout: 5000 }),
@@ -311,6 +328,8 @@ class StreamTracker {
 
   async sendNotification(guildId, channel, streamData, settings, customMessage = null) {
     try {
+      console.log(`📤 Отправка уведомления для ${streamData.user} в канал ${channel.id}...`);
+      
       // Формируем сообщение (используем кастомное сообщение для канала или общее)
       let message = customMessage || settings.stream_notifications_message || '@here {user} начал стрим!';
       message = message
@@ -335,14 +354,16 @@ class StreamTracker {
         .setTimestamp()
         .setFooter({ text: streamData.platform === 'twitch' ? 'Twitch' : 'YouTube' });
 
-      await channel.send({
+      const sentMessage = await channel.send({
         content: message,
         embeds: [embed]
       });
 
-      console.log(`✅ Уведомление отправлено для ${streamData.user} на сервере ${guildId}`);
+      console.log(`✅ Уведомление успешно отправлено для ${streamData.user} на сервере ${guildId}, ID сообщения: ${sentMessage.id}`);
     } catch (error) {
-      console.error(`❌ Ошибка отправки уведомления:`, error);
+      console.error(`❌ Ошибка отправки уведомления для ${streamData.user}:`, error);
+      console.error(`❌ Детали ошибки:`, error.message);
+      console.error(`❌ Stack:`, error.stack);
     }
   }
 
