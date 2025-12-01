@@ -117,10 +117,19 @@ class StreamTracker {
             const streamKey = `${streamChannel.platform}:${streamChannel.name}`;
             const previousStream = guildStreams.get(streamKey);
 
-            // Если стрим новый (не было в предыдущей проверке)
-            if (!previousStream) {
+            // Если стрим новый (не было в предыдущей проверке) ИЛИ ID/название изменилось (новый стрим)
+            // Проверяем по ID и названию, так как название может измениться при новом стриме
+            const isNewStream = !previousStream || 
+                               previousStream.id !== streamData.id || 
+                               previousStream.title !== streamData.title;
+            
+            if (isNewStream) {
               // Это новый стрим - отправляем уведомление только один раз
-              console.log(`📺 Новый стрим обнаружен: ${streamData.user} на ${streamChannel.platform}`);
+              console.log(`📺 Новый стрим обнаружен: ${streamData.user} на ${streamChannel.platform} (ID: ${streamData.id})`);
+              if (previousStream) {
+                console.log(`🔄 Предыдущий стрим был: ID ${previousStream.id}, название "${previousStream.title}"`);
+                console.log(`🔄 Новый стрим: ID ${streamData.id}, название "${streamData.title}"`);
+              }
               
               // Получаем сообщение для этого канала или используем общее
               const channelMessage = streamChannel.message || settings.stream_notifications_message || '@here {user} начал стрим!';
@@ -136,6 +145,7 @@ class StreamTracker {
               });
             } else {
               // Стрим продолжается, просто обновляем данные (зрителей и т.д.), но НЕ отправляем уведомление
+              console.log(`▶️ Стрим продолжается: ${streamData.user} (ID: ${streamData.id})`);
               guildStreams.set(streamKey, {
                 ...previousStream,
                 ...streamData,
@@ -211,7 +221,16 @@ class StreamTracker {
         
         // Если стрим идет, uptime будет содержать время (например, "2h 30m 15s"), иначе "offline" или пусто
         console.log(`📊 Twitch uptime для ${channelName}: "${uptime}"`);
-        if (uptime && !uptime.toLowerCase().includes('offline') && uptime !== '' && uptime !== 'null' && !uptime.toLowerCase().includes('not live')) {
+        
+        // Проверяем различные форматы ответа "offline"
+        const isOffline = uptime.toLowerCase().includes('offline') || 
+                         uptime.toLowerCase().includes('not live') ||
+                         uptime.toLowerCase().includes('is offline') ||
+                         uptime === '' || 
+                         uptime === 'null' ||
+                         uptime === 'false';
+        
+        if (!isOffline && uptime) {
           // Получаем дополнительную информацию о стриме
           const [titleResponse, gameResponse, viewersResponse] = await Promise.allSettled([
             axios.get(`https://decapi.me/twitch/title/${channelName}`, { timeout: 5000 }),
@@ -223,9 +242,13 @@ class StreamTracker {
           const game = gameResponse.status === 'fulfilled' ? (gameResponse.value.data || 'Unknown') : 'Unknown';
           const viewers = viewersResponse.status === 'fulfilled' ? (parseInt(viewersResponse.value.data) || 0) : 0;
           
-          // Генерируем стабильный ID на основе канала (не меняется во время стрима)
-          // Используем timestamp начала стрима, если можем его определить
-          const streamId = `twitch_${channelName}_live`;
+          console.log(`✅ Twitch стрим найден для ${channelName}: "${title}" (${game}), зрителей: ${viewers}`);
+          
+          // Генерируем уникальный ID на основе канала, названия стрима и времени
+          // Используем хеш названия стрима, чтобы ID менялся при новом стриме
+          // Округляем время до минуты, чтобы ID был стабильным во время одного стрима
+          const titleHash = title.substring(0, 20).replace(/\s+/g, '_').toLowerCase();
+          const streamId = `twitch_${channelName}_${Math.floor(Date.now() / 60000)}_${titleHash}`;
           
           return {
             id: streamId,
@@ -237,6 +260,8 @@ class StreamTracker {
             url: `https://www.twitch.tv/${channelName}`,
             platform: 'twitch'
           };
+        } else {
+          console.log(`⏸️ Twitch канал ${channelName} не стримит (uptime: "${uptime}")`);
         }
       } catch (altError) {
         console.warn(`⚠️ Альтернативный метод Twitch для ${channelName} не сработал:`, altError.message);

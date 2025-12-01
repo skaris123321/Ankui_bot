@@ -1,3 +1,3 @@
 git add -A
-git commit -m "Add detailed logging to StreamTracker for debugging stream notifications"
+git commit -m "Improve Twitch stream detection: better offline detection and stream ID handling"
 git push origin main
