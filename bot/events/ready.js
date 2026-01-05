@@ -10,7 +10,7 @@ module.exports = {
     console.log(`📊 Серверов: ${client.guilds.cache.size}`);
     console.log(`👥 Пользователей: ${client.users.cache.size}`);
     
-    // Автоматическая регистрация команд
+    // Автоматическая регистрация команд (включая /stats)
     try {
       const commands = [];
       const commandsPath = path.join(__dirname, '..', 'commands');
