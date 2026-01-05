@@ -368,10 +368,8 @@ client.on(Events.InteractionCreate, async interaction => {
     return;
   }
   
-  console.log(`✅ Команда ${interaction.commandName} найдена, начинаем выполнение...`);
-
   try {
-    console.log(`📝 Выполняется команда: /${interaction.commandName} пользователем ${interaction.user.tag}`);
+    // Выполняем команду сразу, без лишних логов (команда сама вызовет deferReply)
     await command.execute(interaction, client);
   } catch (error) {
     console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error);

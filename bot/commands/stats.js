@@ -14,7 +14,9 @@ module.exports = {
         )),
   
   async execute(interaction, client) {
-    console.log(`🚀 Команда /stats начала выполнение`);
+    // Откладываем ответ ПЕРВЫМ делом, до любых других операций
+    await interaction.deferReply();
+    
     try {
       const guildId = interaction.guild.id;
       const channel = interaction.channel;
@@ -30,16 +32,12 @@ module.exports = {
       
       if (channelIdStr !== allowedIdStr && channel.name !== 'spam-chat' && !channel.name.toLowerCase().includes('spam')) {
         console.log(`❌ Команда /stats отклонена: канал не разрешен (ID: ${channelIdStr}, разрешенный: ${allowedIdStr})`);
-        return interaction.reply({ 
-          content: '❌ Эта команда доступна только в канале spam-chat!', 
-          ephemeral: true
+        return interaction.editReply({ 
+          content: '❌ Эта команда доступна только в канале spam-chat!' 
         });
       }
       
       console.log(`✅ Канал разрешен, продолжаем выполнение команды`);
-      
-      // Откладываем ответ, чтобы избежать таймаута
-      await interaction.deferReply();
 
       const statsType = interaction.options.getString('тип');
       if (!statsType) {

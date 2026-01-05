@@ -6,9 +6,10 @@ module.exports = {
     .setDescription('Показать список всех команд бота'),
   
   async execute(interaction, client) {
+    // Откладываем ответ ПЕРВЫМ делом, до любых других операций
+    await interaction.deferReply();
+    
     try {
-      await interaction.deferReply();
-      
       const embed = new EmbedBuilder()
         .setColor('#5865F2')
         .setTitle('📚 Справка по командам')
