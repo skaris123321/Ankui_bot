@@ -17,8 +17,11 @@ module.exports = {
     const guildId = interaction.guild.id;
     const channel = interaction.channel;
     
-    // Проверяем, что команда используется в канале spam-chat
-    if (channel.name !== 'spam-chat' && !channel.name.includes('spam')) {
+    // ID разрешенного канала spam-chat
+    const allowedChannelId = '1444744987677032538';
+    
+    // Проверяем, что команда используется в разрешенном канале (по ID или имени)
+    if (channel.id !== allowedChannelId && channel.name !== 'spam-chat' && !channel.name.includes('spam')) {
       return interaction.reply({ 
         content: '❌ Эта команда доступна только в канале spam-chat!', 
         ephemeral: true 

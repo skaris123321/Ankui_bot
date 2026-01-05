@@ -162,8 +162,11 @@ client.on(Events.InteractionCreate, async interaction => {
           return;
         }
 
-        // Проверяем, что команда используется в канале spam-chat
-        if (interaction.channel.name !== 'spam-chat' && !interaction.channel.name.includes('spam')) {
+        // ID разрешенного канала spam-chat
+        const allowedChannelId = '1444744987677032538';
+        
+        // Проверяем, что команда используется в разрешенном канале (по ID или имени)
+        if (interaction.channel.id !== allowedChannelId && interaction.channel.name !== 'spam-chat' && !interaction.channel.name.includes('spam')) {
           await interaction.reply({ 
             content: '❌ Эта команда доступна только в канале spam-chat!', 
             ephemeral: true 
