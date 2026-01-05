@@ -24,52 +24,64 @@ module.exports = {
       console.log(`📊 Команда /stats вызвана в канале: ${channel.name} (ID: ${channel.id})`);
       
       // Проверяем, что команда используется в разрешенном канале (по ID или имени)
-      if (channel.id !== allowedChannelId && channel.name !== 'spam-chat' && !channel.name.includes('spam')) {
-        console.log(`❌ Команда /stats отклонена: канал не разрешен`);
+      const channelIdStr = String(channel.id);
+      const allowedIdStr = String(allowedChannelId);
+      
+      if (channelIdStr !== allowedIdStr && channel.name !== 'spam-chat' && !channel.name.toLowerCase().includes('spam')) {
+        console.log(`❌ Команда /stats отклонена: канал не разрешен (ID: ${channelIdStr}, разрешенный: ${allowedIdStr})`);
         return interaction.reply({ 
           content: '❌ Эта команда доступна только в канале spam-chat!', 
           ephemeral: true 
         });
       }
+      
+      console.log(`✅ Канал разрешен, продолжаем выполнение команды`);
 
-    const statsType = interaction.options.getString('тип');
-    const db = client.db;
+      const statsType = interaction.options.getString('тип');
+      if (!statsType) {
+        return interaction.reply({ 
+          content: '❌ Укажите тип статистики (Топ по сообщениям или Топ по онлайну)', 
+          ephemeral: true 
+        });
+      }
 
-    // Загружаем актуальные данные из базы
-    db.load();
+      const db = client.db;
 
-    // Получаем всех пользователей из базы данных для этого сервера
-    // Используем внутреннее свойство data, которое доступно после load()
-    const allUsers = Object.values(db.data.userLevels || {})
-      .filter(user => user.guild_id === guildId);
+      // Загружаем актуальные данные из базы
+      db.load();
 
-    let sortedUsers = [];
-    let title = '';
-    let fieldName = '';
+      // Получаем всех пользователей из базы данных для этого сервера
+      // Используем внутреннее свойство data, которое доступно после load()
+      const allUsers = Object.values(db.data.userLevels || {})
+        .filter(user => user.guild_id === guildId);
 
-    if (statsType === 'messages') {
-      sortedUsers = allUsers
-        .sort((a, b) => (b.messages || 0) - (a.messages || 0))
-        .slice(0, 140); // Максимум 140 пользователей (7 страниц по 20)
-      title = 'Топ пользователей по сообщениям';
-      fieldName = 'сообщений';
-    } else if (statsType === 'voice') {
-      sortedUsers = allUsers
-        .sort((a, b) => (b.voiceTime || 0) - (a.voiceTime || 0))
-        .slice(0, 140);
-      title = 'Топ пользователей по онлайну';
-      fieldName = 'онлайн';
-    }
+      let sortedUsers = [];
+      let title = '';
+      let fieldName = '';
 
-    if (sortedUsers.length === 0) {
-      return interaction.reply({ 
-        content: '❌ Нет данных для отображения статистики.', 
-        ephemeral: true 
-      });
-    }
+      if (statsType === 'messages') {
+        sortedUsers = allUsers
+          .sort((a, b) => (b.messages || 0) - (a.messages || 0))
+          .slice(0, 140); // Максимум 140 пользователей (7 страниц по 20)
+        title = 'Топ пользователей по сообщениям';
+        fieldName = 'сообщений';
+      } else if (statsType === 'voice') {
+        sortedUsers = allUsers
+          .sort((a, b) => (b.voiceTime || 0) - (a.voiceTime || 0))
+          .slice(0, 140);
+        title = 'Топ пользователей по онлайну';
+        fieldName = 'онлайн';
+      }
 
-    // Функция для форматирования времени
-    const formatTime = (seconds) => {
+      if (sortedUsers.length === 0) {
+        return interaction.reply({ 
+          content: '❌ Нет данных для отображения статистики.', 
+          ephemeral: true 
+        });
+      }
+
+      // Функция для форматирования времени
+      const formatTime = (seconds) => {
       const days = Math.floor(seconds / 86400);
       const hours = Math.floor((seconds % 86400) / 3600);
       const minutes = Math.floor((seconds % 3600) / 60);
@@ -82,8 +94,8 @@ module.exports = {
       }
     };
 
-    // Функция для создания embed со страницей
-    const createEmbed = (page = 0) => {
+      // Функция для создания embed со страницей
+      const createEmbed = (page = 0) => {
       const itemsPerPage = 20;
       const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
       const startIndex = page * itemsPerPage;
@@ -126,11 +138,11 @@ module.exports = {
       return { embed, totalPages, currentPage: page };
     };
 
-    // Создаем первую страницу
-    const { embed, totalPages } = createEmbed(0);
+      // Создаем первую страницу
+      const { embed, totalPages } = createEmbed(0);
 
-    // Создаем кнопки навигации
-    const row = new ActionRowBuilder()
+      // Создаем кнопки навигации
+      const row = new ActionRowBuilder()
       .addComponents(
         new ButtonBuilder()
           .setCustomId(`stats_back_${statsType}_0_${interaction.user.id}`)
