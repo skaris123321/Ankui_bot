@@ -1,12 +1,45 @@
-const { Events, ActivityType } = require('discord.js');
+const { Events, ActivityType, REST, Routes } = require('discord.js');
+const fs = require('fs');
+const path = require('path');
 
 module.exports = {
   name: Events.ClientReady,
   once: true,
-  execute(client) {
+  async execute(client) {
     console.log(`\n✅ Бот ${client.user.tag} успешно запущен!`);
     console.log(`📊 Серверов: ${client.guilds.cache.size}`);
     console.log(`👥 Пользователей: ${client.users.cache.size}`);
+    
+    // Автоматическая регистрация команд
+    try {
+      const commands = [];
+      const commandsPath = path.join(__dirname, '..', 'commands');
+      const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+
+      for (const file of commandFiles) {
+        const filePath = path.join(commandsPath, file);
+        const command = require(filePath);
+        if ('data' in command && 'execute' in command) {
+          commands.push(command.data.toJSON());
+        }
+      }
+
+      const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN);
+      const clientId = process.env.DISCORD_CLIENT_ID || process.env.CLIENT_ID;
+
+      if (clientId) {
+        console.log(`🔄 Регистрирую ${commands.length} slash-команд...`);
+        const data = await rest.put(
+          Routes.applicationCommands(clientId),
+          { body: commands },
+        );
+        console.log(`✅ Успешно зарегистрировано ${data.length} slash-команд!`);
+      } else {
+        console.log('⚠️ DISCORD_CLIENT_ID не установлен, команды не зарегистрированы');
+      }
+    } catch (error) {
+      console.error('❌ Ошибка при регистрации команд:', error);
+    }
     
     // Запускаем StreamTracker
     if (client.streamTracker) {
