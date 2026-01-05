@@ -368,15 +368,17 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 
   try {
+    console.log(`📝 Выполняется команда: /${interaction.commandName} пользователем ${interaction.user.tag}`);
     await command.execute(interaction, client);
   } catch (error) {
     console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error);
+    console.error(error.stack);
     const errorMessage = { content: 'Произошла ошибка при выполнении команды!', ephemeral: true };
     
     if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage);
+      await interaction.followUp(errorMessage).catch(() => {});
     } else {
-      await interaction.reply(errorMessage);
+      await interaction.reply(errorMessage).catch(() => {});
     }
   }
 });

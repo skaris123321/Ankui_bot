@@ -14,19 +14,23 @@ module.exports = {
         )),
   
   async execute(interaction, client) {
-    const guildId = interaction.guild.id;
-    const channel = interaction.channel;
-    
-    // ID разрешенного канала spam-chat
-    const allowedChannelId = '1444744987677032538';
-    
-    // Проверяем, что команда используется в разрешенном канале (по ID или имени)
-    if (channel.id !== allowedChannelId && channel.name !== 'spam-chat' && !channel.name.includes('spam')) {
-      return interaction.reply({ 
-        content: '❌ Эта команда доступна только в канале spam-chat!', 
-        ephemeral: true 
-      });
-    }
+    try {
+      const guildId = interaction.guild.id;
+      const channel = interaction.channel;
+      
+      // ID разрешенного канала spam-chat
+      const allowedChannelId = '1444744987677032538';
+      
+      console.log(`📊 Команда /stats вызвана в канале: ${channel.name} (ID: ${channel.id})`);
+      
+      // Проверяем, что команда используется в разрешенном канале (по ID или имени)
+      if (channel.id !== allowedChannelId && channel.name !== 'spam-chat' && !channel.name.includes('spam')) {
+        console.log(`❌ Команда /stats отклонена: канал не разрешен`);
+        return interaction.reply({ 
+          content: '❌ Эта команда доступна только в канале spam-chat!', 
+          ephemeral: true 
+        });
+      }
 
     const statsType = interaction.options.getString('тип');
     const db = client.db;
@@ -144,7 +148,17 @@ module.exports = {
           .setDisabled(totalPages <= 1)
       );
 
-    await interaction.reply({ embeds: [embed], components: [row] });
+      await interaction.reply({ embeds: [embed], components: [row] });
+    } catch (error) {
+      console.error('❌ Ошибка в команде /stats:', error);
+      console.error(error.stack);
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ 
+          content: '❌ Произошла ошибка при выполнении команды статистики!', 
+          ephemeral: true 
+        }).catch(() => {});
+      }
+    }
   },
 };
 
