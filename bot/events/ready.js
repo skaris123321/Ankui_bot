@@ -18,9 +18,17 @@ module.exports = {
 
       for (const file of commandFiles) {
         const filePath = path.join(commandsPath, file);
-        const command = require(filePath);
-        if ('data' in command && 'execute' in command) {
-          commands.push(command.data.toJSON());
+        try {
+          const command = require(filePath);
+          if ('data' in command && 'execute' in command) {
+            const commandData = command.data.toJSON();
+            commands.push(commandData);
+            console.log(`  ✅ Загружена команда: /${commandData.name}`);
+          } else {
+            console.log(`  ⚠️ Файл ${file} не содержит data и execute`);
+          }
+        } catch (error) {
+          console.error(`  ❌ Ошибка загрузки команды ${file}:`, error);
         }
       }
 
@@ -29,11 +37,13 @@ module.exports = {
 
       if (clientId) {
         console.log(`🔄 Регистрирую ${commands.length} slash-команд...`);
+        console.log(`📋 Список команд для регистрации:`, commands.map(c => `/${c.name}`).join(', '));
         const data = await rest.put(
           Routes.applicationCommands(clientId),
           { body: commands },
         );
         console.log(`✅ Успешно зарегистрировано ${data.length} slash-команд!`);
+        console.log(`📋 Зарегистрированные команды:`, data.map(c => `/${c.name}`).join(', '));
       } else {
         console.log('⚠️ DISCORD_CLIENT_ID не установлен, команды не зарегистрированы');
       }
