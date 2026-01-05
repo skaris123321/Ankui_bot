@@ -171,12 +171,77 @@ class BotDatabase {
         user_id: userId,
         xp: xpAmount,
         level: 0,
-        messages: 1
+        messages: 1,
+        voiceTime: 0 // Время в секундах
       };
       this.save();
       
       return { leveledUp: false, newLevel: 0 };
     }
+  }
+
+  // Добавляем сообщение пользователю
+  addUserMessage(guildId, userId) {
+    const key = `${guildId}_${userId}`;
+    const user = this.getUserLevel(guildId, userId);
+    
+    if (user) {
+      this.data.userLevels[key].messages = (this.data.userLevels[key].messages || 0) + 1;
+      this.save();
+      return this.data.userLevels[key].messages;
+    } else {
+      this.data.userLevels[key] = {
+        guild_id: guildId,
+        user_id: userId,
+        xp: 0,
+        level: 0,
+        messages: 1,
+        voiceTime: 0
+      };
+      this.save();
+      return 1;
+    }
+  }
+
+  // Добавляем время в голосовом канале (в секундах)
+  addUserVoiceTime(guildId, userId, seconds) {
+    const key = `${guildId}_${userId}`;
+    const user = this.getUserLevel(guildId, userId);
+    
+    if (user) {
+      this.data.userLevels[key].voiceTime = (this.data.userLevels[key].voiceTime || 0) + seconds;
+      this.save();
+      return this.data.userLevels[key].voiceTime;
+    } else {
+      this.data.userLevels[key] = {
+        guild_id: guildId,
+        user_id: userId,
+        xp: 0,
+        level: 0,
+        messages: 0,
+        voiceTime: seconds
+      };
+      this.save();
+      return seconds;
+    }
+  }
+
+  // Получаем активность пользователя
+  getUserActivity(guildId, userId) {
+    const key = `${guildId}_${userId}`;
+    const user = this.getUserLevel(guildId, userId);
+    
+    if (user) {
+      return {
+        messages: user.messages || 0,
+        voiceHours: Math.floor((user.voiceTime || 0) / 3600) // Конвертируем секунды в часы
+      };
+    }
+    
+    return {
+      messages: 0,
+      voiceHours: 0
+    };
   }
 
   getTopUsers(guildId, limit = 10) {

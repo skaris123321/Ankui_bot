@@ -1318,6 +1318,82 @@ app.post('/api/guild/:guildId/stream-settings', (req, res) => {
   }
 });
 
+// Маршрут для страницы Роли за активность
+app.get('/dashboard/activity-roles', async (req, res) => {
+  try {
+    const client = require('../bot/client');
+    
+    let guilds = [];
+    if (client && client.isReady()) {
+      guilds = Array.from(client.guilds.cache.values()).map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        icon: guild.iconURL({ dynamic: true, size: 128 }) || null,
+        memberCount: guild.memberCount
+      }));
+    }
+    
+    res.render('activity-roles', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'activity-roles',
+      guilds: guilds
+    });
+  } catch (error) {
+    console.error('Ошибка загрузки страницы ролей за активность:', error);
+    res.render('activity-roles', {
+      user: req.session.user || null,
+      page: 'dashboard',
+      currentPage: 'activity-roles',
+      guilds: []
+    });
+  }
+});
+
+// API для получения настроек ролей за активность
+app.get('/api/guild/:guildId/activity-roles', (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const settings = db.getGuildSettings(guildId) || {};
+    
+    res.json({
+      success: true,
+      data: {
+        enabled: settings.activity_roles_enabled || false,
+        roles: settings.activity_roles || []
+      }
+    });
+  } catch (error) {
+    console.error('Ошибка получения настроек ролей за активность:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// API для сохранения настроек ролей за активность
+app.post('/api/guild/:guildId/activity-roles', (req, res) => {
+  try {
+    const { guildId } = req.params;
+    const data = req.body;
+    
+    const currentSettings = db.getGuildSettings(guildId) || {};
+    
+    const updatedSettings = {
+      ...currentSettings,
+      activity_roles_enabled: data.enabled || false,
+      activity_roles: data.roles || []
+    };
+    
+    db.setGuildSettings(guildId, updatedSettings);
+    
+    console.log('💾 Сохранены настройки ролей за активность для сервера', guildId);
+    
+    res.json({ success: true, message: 'Настройки сохранены!' });
+  } catch (error) {
+    console.error('Ошибка сохранения настроек ролей за активность:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 // Запуск сервера
 app.listen(PORT, () => {
   console.log(`\n✅ Веб-панель управления запущена!`);

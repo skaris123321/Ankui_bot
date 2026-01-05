@@ -29,6 +29,11 @@ client.db = db;
 const streamTracker = new StreamTracker(client);
 client.streamTracker = streamTracker;
 
+// Инициализация ActivityTracker
+const ActivityTracker = require('./services/activityTracker');
+const activityTracker = new ActivityTracker(client);
+client.activityTracker = activityTracker;
+
 // Коллекции для команд и событий
 client.commands = new Collection();
 client.events = new Collection();

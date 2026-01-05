@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Уведомления о стримах - Панель управления</title>
+  <title>Роли за активность - Панель управления</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
   <link rel="stylesheet" href="/css/style.css">
   <style>
@@ -238,39 +238,45 @@
       cursor: pointer;
     }
     
-    .channel-list {
+    .role-list {
       margin-top: 1rem;
     }
     
-    .channel-item {
+    .role-item {
       background: var(--background);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
       padding: 1rem;
       margin-bottom: 0.75rem;
+    }
+    
+    .role-item-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      margin-bottom: 1rem;
     }
     
-    .channel-item-info {
+    .role-item-info {
       flex: 1;
     }
     
-    .channel-item-name {
+    .role-item-name {
       color: var(--text-primary);
       font-weight: 600;
       margin-bottom: 0.25rem;
+      font-size: 1rem;
     }
     
-    .channel-item-type {
-      color: var(--text-secondary);
-      font-size: 0.85rem;
-    }
-    
-    .channel-item-actions {
+    .role-item-actions {
       display: flex;
       gap: 0.5rem;
+    }
+    
+    .role-item-requirements {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
     }
     
     .btn {
@@ -310,7 +316,7 @@
       background: rgba(255, 255, 255, 0.15);
     }
     
-    .add-channel-form {
+    .add-role-form {
       background: var(--background);
       border: 1px solid rgba(255, 255, 255, 0.1);
       border-radius: 8px;
@@ -327,6 +333,24 @@
     
     .form-row.full {
       grid-template-columns: 1fr;
+    }
+    
+    .info-box {
+      background: rgba(88, 101, 242, 0.1);
+      border-left: 3px solid var(--primary-color);
+      padding: 0.75rem;
+      margin-bottom: 1rem;
+      border-radius: 4px;
+    }
+    
+    .info-box strong {
+      color: var(--text-primary);
+    }
+    
+    .info-box p {
+      color: var(--text-secondary);
+      font-size: 0.85rem;
+      margin: 0.5rem 0 0 0;
     }
   </style>
 </head>
@@ -400,15 +424,15 @@
     <!-- Основной контент -->
     <div class="main-content">
       <div class="page-header">
-        <h1>📺 Уведомления о стримах</h1>
-        <p>Настройте уведомления о стримах Twitch и YouTube для вашего сервера</p>
+        <h1>🎖️ Роли за активность</h1>
+        <p>Настройте автоматическую выдачу ролей за активность в чате и время в голосовых каналах</p>
       </div>
       
       <!-- Выбор сервера -->
       <div class="settings-section">
         <h2>Выберите сервер</h2>
         <% if (guilds.length > 0) { %>
-          <select id="serverSelect" class="input-field" onchange="loadStreamSettings(this.value)">
+          <select id="serverSelect" class="input-field" onchange="loadActivityRolesSettings(this.value)">
             <option value="">Выберите сервер...</option>
             <% guilds.forEach(guild => { %>
               <option value="<%= guild.id %>"><%= guild.name %></option>
@@ -424,60 +448,51 @@
         <h2>⚙️ Основные настройки</h2>
         
         <div class="toggle-switch">
-          <input type="checkbox" id="streamNotificationsEnabled" onchange="saveStreamSettings()">
-          <label for="streamNotificationsEnabled">Включить уведомления о стримах</label>
+          <input type="checkbox" id="activityRolesEnabled" onchange="saveActivityRolesSettings()">
+          <label for="activityRolesEnabled">Включить систему ролей за активность</label>
         </div>
         
-        <label>Канал для уведомлений</label>
-        <select id="notificationChannel" class="input-field" onchange="saveStreamSettings()">
-          <option value="">Выберите канал...</option>
-        </select>
-        <small>Выберите канал, в который будут отправляться уведомления о стримах</small>
-        
-        <label>Сообщение при начале стрима (по умолчанию для всех каналов)</label>
-        <input type="text" id="streamMessage" class="input-field" placeholder="@here {user} начал стрим!" maxlength="500" onchange="saveStreamSettings()">
-        <small>Используйте {user} для имени стримера, {title} для названия стрима, {game} для игры. Для каждого канала можно настроить свое сообщение ниже.</small>
-        
-        <label>Цвет embed (HEX)</label>
-        <input type="color" id="embedColor" class="input-field" value="#9146FF" onchange="saveStreamSettings()">
-        <small>Цвет embed сообщения (по умолчанию фиолетовый для Twitch)</small>
+        <div class="info-box">
+          <strong>💡 Информация:</strong>
+          <p>
+            Роли ранга выдаются за определённое количество сообщений в чате и проведённое время в голосовых каналах.<br>
+            Вы можете настроить несколько ролей с разными требованиями. Роли будут выдаваться автоматически при достижении требований.
+          </p>
+        </div>
       </div>
       
-      <!-- Каналы для отслеживания -->
-      <div class="settings-section" id="channelsSection" style="display: none;">
-        <h2>📺 Отслеживаемые каналы</h2>
+      <!-- Список ролей -->
+      <div class="settings-section" id="rolesSection" style="display: none;">
+        <h2>🎖️ Настроенные роли</h2>
         
-        <div class="channel-list" id="channelsList">
-          <!-- Список каналов будет загружен динамически -->
+        <div class="role-list" id="rolesList">
+          <!-- Список ролей будет загружен динамически -->
         </div>
         
-        <div class="add-channel-form">
-          <h3 style="color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem;">Добавить канал</h3>
-          <div style="background: rgba(88, 101, 242, 0.1); border-left: 3px solid var(--primary-color); padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px;">
-            <strong style="color: var(--text-primary);">💡 Важно:</strong>
-            <p style="color: var(--text-secondary); font-size: 0.85rem; margin: 0.5rem 0 0 0;">
-              <strong>Twitch Client ID НЕ обязателен!</strong> Бот работает без него через альтернативный метод.<br>
-              Просто вставьте имя канала или ссылку на Twitch канал ниже.
-            </p>
+        <div class="add-role-form">
+          <h3 style="color: var(--text-primary); font-size: 1rem; margin-bottom: 1rem;">Добавить роль</h3>
+          <div class="form-row full">
+            <div>
+              <label>Роль</label>
+              <select id="roleSelect" class="input-field">
+                <option value="">Выберите роль...</option>
+              </select>
+              <small>Роль, которая будет выдана при достижении требований</small>
+            </div>
           </div>
           <div class="form-row">
             <div>
-              <label>Платформа</label>
-              <select id="channelPlatform" class="input-field">
-                <option value="twitch">🎮 Twitch</option>
-                <option value="youtube">📺 YouTube</option>
-              </select>
+              <label>Количество сообщений</label>
+              <input type="number" id="roleMessages" class="input-field" min="0" placeholder="0" step="100">
+              <small>Минимальное количество сообщений (например: 1000 для 1k сообщений)</small>
             </div>
             <div>
-              <label>Имя канала / ID / Ссылка</label>
-              <input type="text" id="channelName" class="input-field" placeholder="например: xqc или https://www.twitch.tv/xqc">
-              <small style="color: var(--text-secondary); font-size: 0.75rem; margin-top: 0.25rem; display: block;">
-                Для Twitch: можно вставить имя канала (xqc) или полную ссылку (https://www.twitch.tv/xqc)<br>
-                Для YouTube: можно вставить ID канала (UCX6OQ3DkcsbYNE6H8uQQuVA) или имя канала
-              </small>
+              <label>Время в голосовых каналах (часы)</label>
+              <input type="number" id="roleVoiceHours" class="input-field" min="0" placeholder="0" step="1">
+              <small>Минимальное время в голосовых каналах в часах (например: 200 для 200h)</small>
             </div>
           </div>
-          <button type="button" class="btn btn-primary" onclick="addChannel()">Добавить канал</button>
+          <button type="button" class="btn btn-primary" onclick="addRole()">Добавить роль</button>
         </div>
       </div>
       
@@ -486,133 +501,119 @@
   
   <script>
     let selectedGuildId = null;
-    let channels = [];
     let roles = [];
+    let availableRoles = [];
     
     // Загружаем сохраненный сервер при загрузке страницы
     window.addEventListener('DOMContentLoaded', () => {
-      const savedGuildId = localStorage.getItem('streamNotifications_selectedGuildId');
+      const savedGuildId = localStorage.getItem('activityRoles_selectedGuildId');
       if (savedGuildId) {
         const select = document.getElementById('serverSelect');
         if (select) {
           select.value = savedGuildId;
-          loadStreamSettings(savedGuildId);
+          loadActivityRolesSettings(savedGuildId);
         }
       }
     });
     
-    async function loadStreamSettings(guildId) {
+    async function loadActivityRolesSettings(guildId) {
       if (!guildId) return;
       
       selectedGuildId = guildId;
       
       // Сохраняем выбранный сервер в localStorage
-      localStorage.setItem('streamNotifications_selectedGuildId', guildId);
+      localStorage.setItem('activityRoles_selectedGuildId', guildId);
       
       // Показываем секции настроек
       document.getElementById('mainSettings').style.display = 'block';
-      document.getElementById('channelsSection').style.display = 'block';
+      document.getElementById('rolesSection').style.display = 'block';
       
-      // Загружаем каналы сервера и настройки параллельно
-      const [channelsData, settingsData] = await Promise.all([
-        loadChannels(guildId),
-        fetch(`/api/guild/${guildId}/stream-settings`).then(res => res.json())
+      // Загружаем роли сервера и настройки параллельно
+      await Promise.all([
+        loadRoles(guildId),
+        loadSettings(guildId)
       ]);
-      
-      // Загружаем настройки
-      try {
-        if (settingsData.success && settingsData.data) {
-          const data = settingsData.data;
-          
-          // Устанавливаем значения полей
-          const enabledCheckbox = document.getElementById('streamNotificationsEnabled');
-          const channelSelect = document.getElementById('notificationChannel');
-          const messageInput = document.getElementById('streamMessage');
-          const colorInput = document.getElementById('embedColor');
-          
-          if (enabledCheckbox) enabledCheckbox.checked = data.enabled || false;
-          if (messageInput) messageInput.value = data.message || '@here {user} начал стрим!';
-          if (colorInput) colorInput.value = data.embedColor || '#9146FF';
-          
-          // Устанавливаем канал после загрузки списка каналов
-          if (channelSelect && data.channelId) {
-            channelSelect.value = data.channelId;
-          }
-          
-          if (data.channels && Array.isArray(data.channels)) {
-            channels = data.channels.map(ch => ({
-              id: ch.id || Date.now() + Math.random(),
-              platform: ch.platform || 'twitch',
-              name: ch.name || '',
-              message: ch.message || null
-            }));
-            renderChannels();
-          } else {
-            channels = [];
-            renderChannels();
-          }
-        } else {
-          // Если настроек нет, инициализируем пустые значения
-          channels = [];
-          renderChannels();
-        }
-      } catch (error) {
-        console.error('Ошибка загрузки настроек:', error);
-        channels = [];
-        renderChannels();
-      }
     }
     
-    async function loadChannels(guildId) {
+    async function loadRoles(guildId) {
       try {
-        const response = await fetch(`/api/guild/${guildId}/channels`);
+        const response = await fetch(`/api/guild/${guildId}/roles`);
         const data = await response.json();
         
-        const select = document.getElementById('notificationChannel');
-        if (select) {
-          select.innerHTML = '<option value="">Выберите канал...</option>';
+        if (data.success && data.roles) {
+          availableRoles = data.roles;
           
-          if (data.channels) {
-            data.channels.forEach(channel => {
+          const select = document.getElementById('roleSelect');
+          if (select) {
+            select.innerHTML = '<option value="">Выберите роль...</option>';
+            
+            data.roles.forEach(role => {
               const option = document.createElement('option');
-              option.value = channel.id;
-              option.textContent = `# ${channel.name}`;
+              option.value = role.id;
+              option.textContent = role.name;
+              option.style.color = role.color || '#FFFFFF';
               select.appendChild(option);
             });
           }
         }
-        return data;
       } catch (error) {
-        console.error('Ошибка загрузки каналов:', error);
-        return { channels: [] };
+        console.error('Ошибка загрузки ролей:', error);
       }
     }
     
+    async function loadSettings(guildId) {
+      try {
+        const response = await fetch(`/api/guild/${guildId}/activity-roles`);
+        const data = await response.json();
+        
+        if (data.success && data.data) {
+          const settings = data.data;
+          
+          // Устанавливаем значения полей
+          const enabledCheckbox = document.getElementById('activityRolesEnabled');
+          if (enabledCheckbox) enabledCheckbox.checked = settings.enabled || false;
+          
+          if (settings.roles && Array.isArray(settings.roles)) {
+            roles = settings.roles.map(r => ({
+              id: r.id || Date.now() + Math.random(),
+              roleId: r.roleId || '',
+              messages: r.messages || 0,
+              voiceHours: r.voiceHours || 0
+            }));
+          } else {
+            roles = [];
+          }
+          
+          renderRoles();
+        } else {
+          roles = [];
+          renderRoles();
+        }
+      } catch (error) {
+        console.error('Ошибка загрузки настроек:', error);
+        roles = [];
+        renderRoles();
+      }
+    }
     
-    async function saveStreamSettings() {
+    async function saveActivityRolesSettings() {
       if (!selectedGuildId) {
         showMessage('error', '❌ Выберите сервер перед сохранением');
         return;
       }
       
-      // Собираем все данные каналов с их сообщениями
-      const channelsToSave = channels.map(ch => ({
-        id: ch.id,
-        platform: ch.platform,
-        name: ch.name,
-        message: ch.message && ch.message.trim() ? ch.message.trim() : null
-      }));
-      
       const settings = {
-        enabled: document.getElementById('streamNotificationsEnabled').checked,
-        channelId: document.getElementById('notificationChannel').value,
-        message: document.getElementById('streamMessage').value || '@here {user} начал стрим!',
-        embedColor: document.getElementById('embedColor').value || '#9146FF',
-        channels: channelsToSave
+        enabled: document.getElementById('activityRolesEnabled').checked,
+        roles: roles.map(r => ({
+          id: r.id,
+          roleId: r.roleId,
+          messages: parseInt(r.messages) || 0,
+          voiceHours: parseInt(r.voiceHours) || 0
+        }))
       };
       
       try {
-        const response = await fetch(`/api/guild/${selectedGuildId}/stream-settings`, {
+        const response = await fetch(`/api/guild/${selectedGuildId}/activity-roles`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -623,8 +624,7 @@
         const result = await response.json();
         if (result.success) {
           showMessage('success', '✅ Настройки сохранены!');
-          // Перезагружаем настройки для обновления данных
-          await loadStreamSettings(selectedGuildId);
+          await loadSettings(selectedGuildId);
         } else {
           showMessage('error', '❌ Ошибка сохранения: ' + (result.message || 'Неизвестная ошибка'));
         }
@@ -634,101 +634,105 @@
       }
     }
     
-    function addChannel() {
-      const platform = document.getElementById('channelPlatform').value;
-      let name = document.getElementById('channelName').value.trim();
+    function addRole() {
+      const roleId = document.getElementById('roleSelect').value;
+      const messages = parseInt(document.getElementById('roleMessages').value) || 0;
+      const voiceHours = parseInt(document.getElementById('roleVoiceHours').value) || 0;
       
-      if (!name) {
-        showMessage('error', '❌ Введите имя канала или ссылку');
+      if (!roleId) {
+        showMessage('error', '❌ Выберите роль');
         return;
       }
       
-      // Извлекаем имя канала из ссылки, если пользователь вставил полную ссылку
-      if (platform === 'twitch') {
-        // Обрабатываем ссылки типа: https://www.twitch.tv/xqc или twitch.tv/xqc
-        const twitchMatch = name.match(/(?:https?:\/\/)?(?:www\.)?twitch\.tv\/([^\/\?]+)/i);
-        if (twitchMatch) {
-          name = twitchMatch[1];
-        }
-        // Убираем @ если есть
-        name = name.replace(/^@/, '');
-      } else if (platform === 'youtube') {
-        // Обрабатываем ссылки типа: https://www.youtube.com/@channel или https://www.youtube.com/channel/UC...
-        const youtubeChannelMatch = name.match(/youtube\.com\/(?:channel\/|@|c\/)([^\/\?]+)/i);
-        if (youtubeChannelMatch) {
-          name = youtubeChannelMatch[1];
-        }
-        // Обрабатываем ссылки типа: https://youtu.be/... (это видео, не канал)
-        if (name.includes('youtu.be') || name.includes('youtube.com/watch')) {
-          showMessage('error', '❌ Вставьте ссылку на канал, а не на видео. Пример: https://www.youtube.com/@channelname');
-          return;
-        }
-      }
-      
-      if (!name) {
-        showMessage('error', '❌ Не удалось извлечь имя канала из ссылки');
+      if (messages === 0 && voiceHours === 0) {
+        showMessage('error', '❌ Укажите хотя бы одно требование (сообщения или время в войсе)');
         return;
       }
       
-      channels.push({
+      // Проверяем, не добавлена ли уже эта роль
+      if (roles.some(r => r.roleId === roleId)) {
+        showMessage('error', '❌ Эта роль уже добавлена');
+        return;
+      }
+      
+      const role = availableRoles.find(r => r.id === roleId);
+      
+      roles.push({
         id: Date.now(),
-        platform: platform,
-        name: name
+        roleId: roleId,
+        roleName: role ? role.name : 'Неизвестная роль',
+        messages: messages,
+        voiceHours: voiceHours
       });
       
-      document.getElementById('channelName').value = '';
-      renderChannels();
-      saveStreamSettings();
-      showMessage('success', `✅ Канал ${name} добавлен!`);
+      // Очищаем форму
+      document.getElementById('roleSelect').value = '';
+      document.getElementById('roleMessages').value = '';
+      document.getElementById('roleVoiceHours').value = '';
+      
+      renderRoles();
+      saveActivityRolesSettings();
+      showMessage('success', '✅ Роль добавлена!');
     }
     
-    function removeChannel(channelId) {
-      channels = channels.filter(c => c.id !== channelId);
-      renderChannels();
-      saveStreamSettings();
+    function removeRole(roleId) {
+      roles = roles.filter(r => r.id !== roleId);
+      renderRoles();
+      saveActivityRolesSettings();
     }
     
-    function renderChannels() {
-      const container = document.getElementById('channelsList');
+    function renderRoles() {
+      const container = document.getElementById('rolesList');
       container.innerHTML = '';
       
-      if (channels.length === 0) {
-        container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">Нет отслеживаемых каналов</p>';
+      if (roles.length === 0) {
+        container.innerHTML = '<p style="color: var(--text-secondary); text-align: center; padding: 1rem;">Нет настроенных ролей</p>';
         return;
       }
       
-      channels.forEach(channel => {
+      // Сортируем роли по требованиям (от большего к меньшему)
+      const sortedRoles = [...roles].sort((a, b) => {
+        const aTotal = (a.messages || 0) + (a.voiceHours || 0) * 100;
+        const bTotal = (b.messages || 0) + (b.voiceHours || 0) * 100;
+        return bTotal - aTotal;
+      });
+      
+      sortedRoles.forEach(role => {
+        const roleData = availableRoles.find(r => r.id === role.roleId);
+        const roleName = roleData ? roleData.name : (role.roleName || 'Неизвестная роль');
+        const roleColor = roleData ? roleData.color : '#FFFFFF';
+        
         const item = document.createElement('div');
-        item.className = 'channel-item';
-        item.style.flexDirection = 'column';
-        item.style.alignItems = 'stretch';
+        item.className = 'role-item';
         item.innerHTML = `
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
-            <div class="channel-item-info">
-              <div class="channel-item-name">${channel.name}</div>
-              <div class="channel-item-type">${channel.platform === 'twitch' ? '🎮 Twitch' : '📺 YouTube'}</div>
+          <div class="role-item-header">
+            <div class="role-item-info">
+              <div class="role-item-name" style="color: ${roleColor};">${escapeHtml(roleName)}</div>
             </div>
-            <div class="channel-item-actions">
-              <button type="button" class="btn btn-danger" onclick="removeChannel(${channel.id})">Удалить</button>
+            <div class="role-item-actions">
+              <button type="button" class="btn btn-danger" onclick="removeRole(${role.id})">Удалить</button>
             </div>
           </div>
-          <div>
-            <label style="display: block; color: var(--text-primary); font-weight: 600; margin-bottom: 0.5rem; font-size: 0.9rem;">Сообщение для этого канала (оставьте пустым для использования общего)</label>
-            <input type="text" class="input-field" data-channel-id="${channel.id}" value="${escapeHtml(channel.message || '')}" placeholder="Оставьте пустым для использования общего сообщения" maxlength="500" onchange="updateChannelMessage(${channel.id}, this.value)" style="margin-bottom: 0;">
-            <small style="color: var(--text-secondary); font-size: 0.75rem; display: block; margin-top: 0.25rem;">Используйте {user}, {title}, {game}, {viewers}, {platform}</small>
+          <div class="role-item-requirements">
+            <div>
+              <strong style="color: var(--text-primary); display: block; margin-bottom: 0.25rem;">Сообщений:</strong>
+              <span style="color: var(--text-secondary);">${formatNumber(role.messages || 0)}</span>
+            </div>
+            <div>
+              <strong style="color: var(--text-primary); display: block; margin-bottom: 0.25rem;">Время в войсе:</strong>
+              <span style="color: var(--text-secondary);">${formatNumber(role.voiceHours || 0)}h</span>
+            </div>
           </div>
         `;
         container.appendChild(item);
       });
     }
     
-    function updateChannelMessage(channelId, message) {
-      const channel = channels.find(c => c.id === channelId);
-      if (channel) {
-        channel.message = message.trim() || null;
-        // Сохраняем автоматически при изменении сообщения канала
-        saveStreamSettings();
+    function formatNumber(num) {
+      if (num >= 1000) {
+        return (num / 1000).toFixed(1) + 'k';
       }
+      return num.toString();
     }
     
     function escapeHtml(text) {
@@ -739,7 +743,6 @@
     }
     
     function showMessage(type, message) {
-      // Простая реализация уведомлений
       const div = document.createElement('div');
       div.style.cssText = `
         position: fixed;
