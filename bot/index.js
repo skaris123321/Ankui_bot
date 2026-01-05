@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, Events, ActivityType, InteractionResponseFlags } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const Database = require('../database/database');
@@ -157,7 +157,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.user.id !== userId) {
           await interaction.reply({ 
             content: '❌ Только пользователь, вызвавший команду, может управлять статистикой.', 
-            flags: InteractionResponseFlags.Ephemeral
+            ephemeral: true
           });
           return;
         }
@@ -169,7 +169,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.channel.id !== allowedChannelId && interaction.channel.name !== 'spam-chat' && !interaction.channel.name.includes('spam')) {
           await interaction.reply({ 
             content: '❌ Эта команда доступна только в канале spam-chat!', 
-            flags: InteractionResponseFlags.Ephemeral
+            ephemeral: true
           });
           return;
         }
@@ -380,7 +380,7 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
     
-    const errorMessage = { content: 'Произошла ошибка при выполнении команды!', flags: InteractionResponseFlags.Ephemeral };
+    const errorMessage = { content: 'Произошла ошибка при выполнении команды!', ephemeral: true };
     
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(errorMessage).catch(() => {});

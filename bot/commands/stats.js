@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionResponseFlags } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,17 +31,19 @@ module.exports = {
         console.log(`❌ Команда /stats отклонена: канал не разрешен (ID: ${channelIdStr}, разрешенный: ${allowedIdStr})`);
         return interaction.reply({ 
           content: '❌ Эта команда доступна только в канале spam-chat!', 
-          flags: InteractionResponseFlags.Ephemeral
+          ephemeral: true
         });
       }
       
       console.log(`✅ Канал разрешен, продолжаем выполнение команды`);
+      
+      // Откладываем ответ, чтобы избежать таймаута
+      await interaction.deferReply();
 
       const statsType = interaction.options.getString('тип');
       if (!statsType) {
-        return interaction.reply({ 
-          content: '❌ Укажите тип статистики (Топ по сообщениям или Топ по онлайну)', 
-          ephemeral: true 
+        return interaction.editReply({ 
+          content: '❌ Укажите тип статистики (Топ по сообщениям или Топ по онлайну)'
         });
       }
 
@@ -74,9 +76,8 @@ module.exports = {
       }
 
       if (sortedUsers.length === 0) {
-        return interaction.reply({ 
-          content: '❌ Нет данных для отображения статистики.', 
-          flags: InteractionResponseFlags.Ephemeral
+        return interaction.editReply({ 
+          content: '❌ Нет данных для отображения статистики.'
         });
       }
 
@@ -160,11 +161,15 @@ module.exports = {
           .setDisabled(totalPages <= 1)
       );
 
-      await interaction.reply({ embeds: [embed], components: [row] });
+      await interaction.editReply({ embeds: [embed], components: [row] });
     } catch (error) {
       console.error('❌ Ошибка в команде /stats:', error);
       console.error(error.stack);
-      if (!interaction.replied && !interaction.deferred) {
+      if (interaction.deferred) {
+        await interaction.editReply({ 
+          content: '❌ Произошла ошибка при выполнении команды статистики!'
+        }).catch(() => {});
+      } else if (!interaction.replied) {
         await interaction.reply({ 
           content: '❌ Произошла ошибка при выполнении команды статистики!', 
           ephemeral: true 
