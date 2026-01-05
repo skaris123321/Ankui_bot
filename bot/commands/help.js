@@ -6,9 +6,6 @@ module.exports = {
     .setDescription('Показать список всех команд бота'),
   
   async execute(interaction, client) {
-    // Откладываем ответ ПЕРВЫМ делом, до любых других операций
-    await interaction.deferReply();
-    
     try {
       const embed = new EmbedBuilder()
         .setColor('#5865F2')
@@ -24,12 +21,11 @@ module.exports = {
         })
         .setTimestamp();
 
-      await interaction.editReply({ embeds: [embed] });
+      // Отвечаем сразу, без deferReply (команда быстрая)
+      await interaction.reply({ embeds: [embed], ephemeral: false });
     } catch (error) {
       console.error('❌ Ошибка в команде /help:', error);
-      if (interaction.deferred) {
-        await interaction.editReply({ content: '❌ Произошла ошибка!' }).catch(() => {});
-      } else if (!interaction.replied) {
+      if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({ content: '❌ Произошла ошибка!', ephemeral: true }).catch(() => {});
       }
     }
