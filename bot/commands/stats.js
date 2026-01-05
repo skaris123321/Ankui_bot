@@ -14,6 +14,7 @@ module.exports = {
         )),
   
   async execute(interaction, client) {
+    console.log(`🚀 Команда /stats начала выполнение`);
     try {
       const guildId = interaction.guild.id;
       const channel = interaction.channel;
@@ -83,61 +84,61 @@ module.exports = {
 
       // Функция для форматирования времени
       const formatTime = (seconds) => {
-      const days = Math.floor(seconds / 86400);
-      const hours = Math.floor((seconds % 86400) / 3600);
-      const minutes = Math.floor((seconds % 3600) / 60);
-      const secs = seconds % 60;
-      
-      if (days > 0) {
-        return `${days} дней, ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-      } else {
-        return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-      }
-    };
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const secs = seconds % 60;
+        
+        if (days > 0) {
+          return `${days} дней, ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        } else {
+          return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+      };
 
       // Функция для создания embed со страницей
       const createEmbed = (page = 0) => {
-      const itemsPerPage = 20;
-      const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
-      const startIndex = page * itemsPerPage;
-      const endIndex = Math.min(startIndex + itemsPerPage, sortedUsers.length);
-      const pageUsers = sortedUsers.slice(startIndex, endIndex);
+        const itemsPerPage = 20;
+        const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+        const startIndex = page * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, sortedUsers.length);
+        const pageUsers = sortedUsers.slice(startIndex, endIndex);
 
-      let description = '';
-      for (let i = 0; i < pageUsers.length; i++) {
-        const userData = pageUsers[i];
-        const rank = startIndex + i + 1;
-        
-        try {
-          const member = interaction.guild.members.cache.get(userData.user_id);
-          const username = member ? member.displayName : `<@${userData.user_id}>`;
+        let description = '';
+        for (let i = 0; i < pageUsers.length; i++) {
+          const userData = pageUsers[i];
+          const rank = startIndex + i + 1;
           
-          let value = '';
-          if (statsType === 'messages') {
-            value = `${userData.messages || 0} 💬`;
-          } else {
-            const voiceSeconds = userData.voiceTime || 0;
-            value = `${formatTime(voiceSeconds)} 🎙️`;
+          try {
+            const member = interaction.guild.members.cache.get(userData.user_id);
+            const username = member ? member.displayName : `<@${userData.user_id}>`;
+            
+            let value = '';
+            if (statsType === 'messages') {
+              value = `${userData.messages || 0} 💬`;
+            } else {
+              const voiceSeconds = userData.voiceTime || 0;
+              value = `${formatTime(voiceSeconds)} 🎙️`;
+            }
+            
+            description += `${rank}. ${username} - ${value}\n`;
+          } catch (error) {
+            description += `${rank}. <@${userData.user_id}> - ${statsType === 'messages' ? (userData.messages || 0) + ' 💬' : formatTime(userData.voiceTime || 0) + ' 🎙️'}\n`;
           }
-          
-          description += `${rank}. ${username} - ${value}\n`;
-        } catch (error) {
-          description += `${rank}. <@${userData.user_id}> - ${statsType === 'messages' ? (userData.messages || 0) + ' 💬' : formatTime(userData.voiceTime || 0) + ' 🎙️'}\n`;
         }
-      }
 
-      const embed = new EmbedBuilder()
-        .setColor('#5865F2')
-        .setTitle(title)
-        .setDescription(description)
-        .setFooter({ 
-          text: `Вызвал: ${interaction.user.displayName} • Страница ${page + 1}/${totalPages}`,
-          iconURL: interaction.user.displayAvatarURL()
-        })
-        .setTimestamp();
+        const embed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle(title)
+          .setDescription(description)
+          .setFooter({ 
+            text: `Вызвал: ${interaction.user.displayName} • Страница ${page + 1}/${totalPages}`,
+            iconURL: interaction.user.displayAvatarURL()
+          })
+          .setTimestamp();
 
-      return { embed, totalPages, currentPage: page };
-    };
+        return { embed, totalPages, currentPage: page };
+      };
 
       // Создаем первую страницу
       const { embed, totalPages } = createEmbed(0);

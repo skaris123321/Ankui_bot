@@ -364,8 +364,11 @@ client.on(Events.InteractionCreate, async interaction => {
 
   if (!command) {
     console.error(`❌ Команда ${interaction.commandName} не найдена`);
+    console.log(`Доступные команды: ${Array.from(client.commands.keys()).join(', ')}`);
     return;
   }
+  
+  console.log(`✅ Команда ${interaction.commandName} найдена, начинаем выполнение...`);
 
   try {
     console.log(`📝 Выполняется команда: /${interaction.commandName} пользователем ${interaction.user.tag}`);
