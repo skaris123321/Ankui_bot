@@ -146,6 +146,143 @@ client.on(Events.InteractionCreate, async interaction => {
     try {
       const customId = interaction.customId;
       
+      // Проверяем, что это кнопка статистики (начинается с "stats_")
+      if (customId.startsWith('stats_')) {
+        const parts = customId.split('_');
+        const action = parts[1]; // back, next, delete
+        const statsType = parts[2]; // messages или voice
+        const userId = parts[parts.length - 1]; // ID пользователя, который вызвал команду
+        
+        // Проверяем, что кнопку нажал тот же пользователь, который вызвал команду
+        if (interaction.user.id !== userId) {
+          await interaction.reply({ 
+            content: '❌ Только пользователь, вызвавший команду, может управлять статистикой.', 
+            ephemeral: true 
+          });
+          return;
+        }
+
+        // Проверяем, что команда используется в канале spam-chat
+        if (interaction.channel.name !== 'spam-chat' && !interaction.channel.name.includes('spam')) {
+          await interaction.reply({ 
+            content: '❌ Эта команда доступна только в канале spam-chat!', 
+            ephemeral: true 
+          });
+          return;
+        }
+
+        if (action === 'delete') {
+          await interaction.message.delete();
+          return;
+        }
+
+        // Получаем текущую страницу из customId
+        const currentPage = parseInt(parts[3]) || 0;
+        let newPage = currentPage;
+
+        if (action === 'back') {
+          newPage = Math.max(0, currentPage - 1);
+        } else if (action === 'next') {
+          newPage = currentPage + 1;
+        }
+
+        // Получаем всех пользователей
+        client.db.load();
+        const allUsers = Object.values(client.db.data.userLevels || {})
+          .filter(user => user.guild_id === interaction.guild.id);
+
+        let sortedUsers = [];
+        let title = '';
+
+        if (statsType === 'messages') {
+          sortedUsers = allUsers
+            .sort((a, b) => (b.messages || 0) - (a.messages || 0))
+            .slice(0, 140);
+          title = 'Топ пользователей по сообщениям';
+        } else if (statsType === 'voice') {
+          sortedUsers = allUsers
+            .sort((a, b) => (b.voiceTime || 0) - (a.voiceTime || 0))
+            .slice(0, 140);
+          title = 'Топ пользователей по онлайну';
+        }
+
+        // Функция для форматирования времени
+        const formatTime = (seconds) => {
+          const days = Math.floor(seconds / 86400);
+          const hours = Math.floor((seconds % 86400) / 3600);
+          const minutes = Math.floor((seconds % 3600) / 60);
+          const secs = seconds % 60;
+          
+          if (days > 0) {
+            return `${days} дней, ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          } else {
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+          }
+        };
+
+        // Создаем embed для новой страницы
+        const itemsPerPage = 20;
+        const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
+        const startIndex = newPage * itemsPerPage;
+        const endIndex = Math.min(startIndex + itemsPerPage, sortedUsers.length);
+        const pageUsers = sortedUsers.slice(startIndex, endIndex);
+
+        let description = '';
+        for (let i = 0; i < pageUsers.length; i++) {
+          const userData = pageUsers[i];
+          const rank = startIndex + i + 1;
+          
+          try {
+            const member = interaction.guild.members.cache.get(userData.user_id);
+            const username = member ? member.displayName : `<@${userData.user_id}>`;
+            
+            let value = '';
+            if (statsType === 'messages') {
+              value = `${userData.messages || 0} 💬`;
+            } else {
+              const voiceSeconds = userData.voiceTime || 0;
+              value = `${formatTime(voiceSeconds)} 🎙️`;
+            }
+            
+            description += `${rank}. ${username} - ${value}\n`;
+          } catch (error) {
+            description += `${rank}. <@${userData.user_id}> - ${statsType === 'messages' ? (userData.messages || 0) + ' 💬' : formatTime(userData.voiceTime || 0) + ' 🎙️'}\n`;
+          }
+        }
+
+        const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+        const embed = new EmbedBuilder()
+          .setColor('#5865F2')
+          .setTitle(title)
+          .setDescription(description)
+          .setFooter({ 
+            text: `Вызвал: ${interaction.user.displayName} • Страница ${newPage + 1}/${totalPages}`,
+            iconURL: interaction.user.displayAvatarURL()
+          })
+          .setTimestamp();
+
+        const row = new ActionRowBuilder()
+          .addComponents(
+            new ButtonBuilder()
+              .setCustomId(`stats_back_${statsType}_${newPage}_${userId}`)
+              .setLabel('Назад')
+              .setStyle(ButtonStyle.Primary)
+              .setDisabled(newPage === 0),
+            new ButtonBuilder()
+              .setCustomId(`stats_delete_${statsType}_${userId}`)
+              .setLabel('Удалить')
+              .setStyle(ButtonStyle.Danger),
+            new ButtonBuilder()
+              .setCustomId(`stats_next_${statsType}_${newPage}_${userId}`)
+              .setLabel('Вперед')
+              .setStyle(ButtonStyle.Primary)
+              .setDisabled(newPage >= totalPages - 1)
+          );
+
+        await interaction.update({ embeds: [embed], components: [row] });
+        return;
+      }
+
       // Проверяем, что это кнопка выбора роли (начинается с "role_select_")
       if (customId.startsWith('role_select_')) {
         const roleId = customId.replace('role_select_', '');
