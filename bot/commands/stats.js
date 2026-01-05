@@ -6,16 +6,24 @@ module.exports = {
     .setDescription('Показать статистику пользователей')
     .addStringOption(option =>
       option.setName('тип')
-        .setDescription('Тип статистики')
-        .setRequired(true)
+        .setDescription('Тип статистики (по умолчанию: сообщения)')
+        .setRequired(false)
         .addChoices(
           { name: 'Топ по сообщениям', value: 'messages' },
           { name: 'Топ по онлайну', value: 'voice' }
         )),
   
   async execute(interaction, client) {
+    console.log(`🚀 Команда /stats вызвана пользователем ${interaction.user.tag}`);
+    
     // Откладываем ответ ПЕРВЫМ делом, до любых других операций
-    await interaction.deferReply();
+    try {
+      await interaction.deferReply();
+      console.log(`✅ deferReply выполнен успешно`);
+    } catch (error) {
+      console.error(`❌ Ошибка при deferReply:`, error);
+      return;
+    }
     
     try {
       const guildId = interaction.guild.id;
@@ -39,12 +47,9 @@ module.exports = {
       
       console.log(`✅ Канал разрешен, продолжаем выполнение команды`);
 
-      const statsType = interaction.options.getString('тип');
-      if (!statsType) {
-        return interaction.editReply({ 
-          content: '❌ Укажите тип статистики (Топ по сообщениям или Топ по онлайну)'
-        });
-      }
+      // Получаем тип статистики, по умолчанию - сообщения
+      const statsType = interaction.options.getString('тип') || 'messages';
+      console.log(`📊 Тип статистики: ${statsType}`);
 
       const db = client.db;
 

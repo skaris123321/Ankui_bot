@@ -22,7 +22,7 @@ module.exports = {
         .setTimestamp();
 
       // Отвечаем сразу, без deferReply (команда быстрая)
-      await interaction.reply({ embeds: [embed], ephemeral: false });
+      await interaction.reply({ embeds: [embed] });
     } catch (error) {
       console.error('❌ Ошибка в команде /help:', error);
       if (!interaction.replied && !interaction.deferred) {

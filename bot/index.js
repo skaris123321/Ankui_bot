@@ -360,6 +360,7 @@ client.on(Events.InteractionCreate, async interaction => {
   // Обработка slash команд
   if (!interaction.isChatInputCommand()) return;
 
+  console.log(`🔍 Получена команда: /${interaction.commandName} от ${interaction.user.tag}`);
   const command = client.commands.get(interaction.commandName);
 
   if (!command) {
@@ -369,7 +370,7 @@ client.on(Events.InteractionCreate, async interaction => {
   }
   
   try {
-    // Выполняем команду сразу, без лишних логов (команда сама вызовет deferReply)
+    // Выполняем команду сразу (команда сама вызовет deferReply)
     await command.execute(interaction, client);
   } catch (error) {
     console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error);
