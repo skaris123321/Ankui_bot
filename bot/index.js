@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, ActivityType, InteractionResponseFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const Database = require('../database/database');
@@ -157,7 +157,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.user.id !== userId) {
           await interaction.reply({ 
             content: '❌ Только пользователь, вызвавший команду, может управлять статистикой.', 
-            ephemeral: true 
+            flags: InteractionResponseFlags.Ephemeral
           });
           return;
         }
@@ -169,7 +169,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.channel.id !== allowedChannelId && interaction.channel.name !== 'spam-chat' && !interaction.channel.name.includes('spam')) {
           await interaction.reply({ 
             content: '❌ Эта команда доступна только в канале spam-chat!', 
-            ephemeral: true 
+            flags: InteractionResponseFlags.Ephemeral
           });
           return;
         }
@@ -373,12 +373,19 @@ client.on(Events.InteractionCreate, async interaction => {
   } catch (error) {
     console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error);
     console.error(error.stack);
-    const errorMessage = { content: 'Произошла ошибка при выполнении команды!', ephemeral: true };
+    
+    // Проверяем, не истекло ли время взаимодействия
+    if (error.code === 10062) {
+      console.log(`⚠️ Взаимодействие истекло для команды ${interaction.commandName}`);
+      return;
+    }
+    
+    const errorMessage = { content: 'Произошла ошибка при выполнении команды!', flags: InteractionResponseFlags.Ephemeral };
     
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(errorMessage).catch(() => {});
     } else {
-      await interaction.reply(errorMessage).catch(() => {});
+      await interaction.reply(errorMessage).catch(() => {}).catch(() => {});
     }
   }
 });

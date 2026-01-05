@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, InteractionResponseFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -31,7 +31,7 @@ module.exports = {
         console.log(`❌ Команда /stats отклонена: канал не разрешен (ID: ${channelIdStr}, разрешенный: ${allowedIdStr})`);
         return interaction.reply({ 
           content: '❌ Эта команда доступна только в канале spam-chat!', 
-          ephemeral: true 
+          flags: InteractionResponseFlags.Ephemeral
         });
       }
       
@@ -76,7 +76,7 @@ module.exports = {
       if (sortedUsers.length === 0) {
         return interaction.reply({ 
           content: '❌ Нет данных для отображения статистики.', 
-          ephemeral: true 
+          flags: InteractionResponseFlags.Ephemeral
         });
       }
 
