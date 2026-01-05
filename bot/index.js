@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require('discord.js');
+const { Client, GatewayIntentBits, Collection, Events, ActivityType, MessageFlags } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
 const Database = require('../database/database');
@@ -157,7 +157,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.user.id !== userId) {
           await interaction.reply({ 
             content: '❌ Только пользователь, вызвавший команду, может управлять статистикой.', 
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
           return;
         }
@@ -169,7 +169,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (interaction.channel.id !== allowedChannelId && interaction.channel.name !== 'spam-chat' && !interaction.channel.name.includes('spam')) {
           await interaction.reply({ 
             content: '❌ Эта команда доступна только в канале spam-chat!', 
-            ephemeral: true
+            flags: MessageFlags.Ephemeral
           });
           return;
         }
@@ -293,7 +293,7 @@ client.on(Events.InteractionCreate, async interaction => {
         const guild = interaction.guild;
         
         if (!member || !guild) {
-          await interaction.reply({ content: '❌ Ошибка: не удалось получить информацию о пользователе или сервере.', ephemeral: true });
+          await interaction.reply({ content: '❌ Ошибка: не удалось получить информацию о пользователе или сервере.', flags: MessageFlags.Ephemeral });
           return;
         }
         
@@ -314,14 +314,14 @@ client.on(Events.InteractionCreate, async interaction => {
         }
         
         if (!roleGroup || !roleGroup.roles) {
-          await interaction.reply({ content: '❌ Ошибка: группа ролей не найдена.', ephemeral: true });
+          await interaction.reply({ content: '❌ Ошибка: группа ролей не найдена.', flags: MessageFlags.Ephemeral });
           return;
         }
         
         // Получаем роль
         const role = await guild.roles.fetch(roleId).catch(() => null);
         if (!role) {
-          await interaction.reply({ content: '❌ Ошибка: роль не найдена на сервере.', ephemeral: true });
+          await interaction.reply({ content: '❌ Ошибка: роль не найдена на сервере.', flags: MessageFlags.Ephemeral });
           return;
         }
         
@@ -331,7 +331,7 @@ client.on(Events.InteractionCreate, async interaction => {
         if (hasRole) {
           // Убираем роль
           await member.roles.remove(role);
-          await interaction.reply({ content: `✅ Роль ${role.name} удалена.`, ephemeral: true });
+          await interaction.reply({ content: `✅ Роль ${role.name} удалена.`, flags: MessageFlags.Ephemeral });
         } else {
           // Убираем все роли из группы (взаимоисключающий выбор)
           for (const roleData of roleGroup.roles) {
@@ -345,13 +345,13 @@ client.on(Events.InteractionCreate, async interaction => {
           
           // Выдаем выбранную роль
           await member.roles.add(role);
-          await interaction.reply({ content: `✅ Роль ${role.name} выдана.`, ephemeral: true });
+          await interaction.reply({ content: `✅ Роль ${role.name} выдана.`, flags: MessageFlags.Ephemeral });
         }
       }
     } catch (error) {
       console.error('❌ Ошибка обработки кнопки:', error);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '❌ Произошла ошибка при обработке кнопки.', ephemeral: true });
+        await interaction.reply({ content: '❌ Произошла ошибка при обработке кнопки.', flags: MessageFlags.Ephemeral });
       }
     }
     return;
@@ -381,7 +381,7 @@ client.on(Events.InteractionCreate, async interaction => {
       return;
     }
     
-    const errorMessage = { content: 'Произошла ошибка при выполнении команды!', ephemeral: true };
+    const errorMessage = { content: 'Произошла ошибка при выполнении команды!', flags: MessageFlags.Ephemeral };
     
     if (interaction.replied || interaction.deferred) {
       await interaction.followUp(errorMessage).catch(() => {});

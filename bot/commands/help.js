@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -26,7 +26,7 @@ module.exports = {
     } catch (error) {
       console.error('❌ Ошибка в команде /help:', error);
       if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: '❌ Произошла ошибка!', ephemeral: true }).catch(() => {});
+        await interaction.reply({ content: '❌ Произошла ошибка!', flags: MessageFlags.Ephemeral }).catch(() => {});
       }
     }
   },

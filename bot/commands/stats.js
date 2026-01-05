@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
@@ -171,7 +171,7 @@ module.exports = {
       } else if (!interaction.replied) {
         await interaction.reply({ 
           content: '❌ Произошла ошибка при выполнении команды статистики!', 
-          ephemeral: true 
+          flags: MessageFlags.Ephemeral 
         }).catch(() => {});
       }
     }
