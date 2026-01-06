@@ -5,7 +5,8 @@ module.exports = {
     .setName('stats')
     .setDescription('Показать статистику пользователей')
     .addStringOption(option =>
-      option.setName('тип')
+      option
+        .setName('тип')
         .setDescription('Тип статистики (по умолчанию: сообщения)')
         .setRequired(false)
         .addChoices(
@@ -14,69 +15,39 @@ module.exports = {
         )),
   
   async execute(interaction, client) {
-    console.log(`🚀 Команда /stats вызвана пользователем ${interaction.user.tag}`);
-    
-    // Откладываем ответ ПЕРВЫМ делом, до любых других операций
-    try {
-      await interaction.deferReply();
-      console.log(`✅ deferReply выполнен успешно`);
-    } catch (error) {
-      console.error(`❌ Ошибка при deferReply:`, error);
-      return;
-    }
+    await interaction.deferReply();
     
     try {
       const guildId = interaction.guild.id;
       const channel = interaction.channel;
-      
-      // ID разрешенного канала spam-chat
       const allowedChannelId = '1444744987677032538';
       
-      console.log(`📊 Команда /stats вызвана в канале: ${channel.name} (ID: ${channel.id})`);
-      
-      // Проверяем, что команда используется в разрешенном канале (по ID или имени)
-      const channelIdStr = String(channel.id);
-      const allowedIdStr = String(allowedChannelId);
-      
-      if (channelIdStr !== allowedIdStr && channel.name !== 'spam-chat' && !channel.name.toLowerCase().includes('spam')) {
-        console.log(`❌ Команда /stats отклонена: канал не разрешен (ID: ${channelIdStr}, разрешенный: ${allowedIdStr})`);
+      if (channel.id !== allowedChannelId && channel.name !== 'spam-chat' && !channel.name.toLowerCase().includes('spam')) {
         return interaction.editReply({ 
           content: '❌ Эта команда доступна только в канале spam-chat!' 
         });
       }
-      
-      console.log(`✅ Канал разрешен, продолжаем выполнение команды`);
 
-      // Получаем тип статистики, по умолчанию - сообщения
       const statsType = interaction.options.getString('тип') || 'messages';
-      console.log(`📊 Тип статистики: ${statsType}`);
-
       const db = client.db;
-
-      // Загружаем актуальные данные из базы
       db.load();
 
-      // Получаем всех пользователей из базы данных для этого сервера
-      // Используем внутреннее свойство data, которое доступно после load()
       const allUsers = Object.values(db.data.userLevels || {})
         .filter(user => user.guild_id === guildId);
 
       let sortedUsers = [];
       let title = '';
-      let fieldName = '';
 
       if (statsType === 'messages') {
         sortedUsers = allUsers
           .sort((a, b) => (b.messages || 0) - (a.messages || 0))
-          .slice(0, 140); // Максимум 140 пользователей (7 страниц по 20)
+          .slice(0, 140);
         title = 'Топ пользователей по сообщениям';
-        fieldName = 'сообщений';
       } else if (statsType === 'voice') {
         sortedUsers = allUsers
           .sort((a, b) => (b.voiceTime || 0) - (a.voiceTime || 0))
           .slice(0, 140);
         title = 'Топ пользователей по онлайну';
-        fieldName = 'онлайн';
       }
 
       if (sortedUsers.length === 0) {
@@ -85,7 +56,6 @@ module.exports = {
         });
       }
 
-      // Функция для форматирования времени
       const formatTime = (seconds) => {
         const days = Math.floor(seconds / 86400);
         const hours = Math.floor((seconds % 86400) / 3600);
@@ -99,7 +69,6 @@ module.exports = {
         }
       };
 
-      // Функция для создания embed со страницей
       const createEmbed = (page = 0) => {
         const itemsPerPage = 20;
         const totalPages = Math.ceil(sortedUsers.length / itemsPerPage);
@@ -143,32 +112,29 @@ module.exports = {
         return { embed, totalPages, currentPage: page };
       };
 
-      // Создаем первую страницу
       const { embed, totalPages } = createEmbed(0);
 
-      // Создаем кнопки навигации
       const row = new ActionRowBuilder()
-      .addComponents(
-        new ButtonBuilder()
-          .setCustomId(`stats_back_${statsType}_0_${interaction.user.id}`)
-          .setLabel('Назад')
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(true),
-        new ButtonBuilder()
-          .setCustomId(`stats_delete_${statsType}_${interaction.user.id}`)
-          .setLabel('Удалить')
-          .setStyle(ButtonStyle.Danger),
-        new ButtonBuilder()
-          .setCustomId(`stats_next_${statsType}_0_${interaction.user.id}`)
-          .setLabel('Вперед')
-          .setStyle(ButtonStyle.Primary)
-          .setDisabled(totalPages <= 1)
-      );
+        .addComponents(
+          new ButtonBuilder()
+            .setCustomId(`stats_back_${statsType}_0_${interaction.user.id}`)
+            .setLabel('Назад')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(true),
+          new ButtonBuilder()
+            .setCustomId(`stats_delete_${statsType}_${interaction.user.id}`)
+            .setLabel('Удалить')
+            .setStyle(ButtonStyle.Danger),
+          new ButtonBuilder()
+            .setCustomId(`stats_next_${statsType}_0_${interaction.user.id}`)
+            .setLabel('Вперед')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(totalPages <= 1)
+        );
 
       await interaction.editReply({ embeds: [embed], components: [row] });
     } catch (error) {
       console.error('❌ Ошибка в команде /stats:', error);
-      console.error(error.stack);
       if (interaction.deferred) {
         await interaction.editReply({ 
           content: '❌ Произошла ошибка при выполнении команды статистики!'
@@ -182,4 +148,3 @@ module.exports = {
     }
   },
 };
-
