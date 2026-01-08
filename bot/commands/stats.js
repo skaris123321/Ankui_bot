@@ -16,12 +16,28 @@ module.exports = {
   
   async execute(interaction, client) {
     console.log('🔧 Команда /stats вызвана');
+    
+    // КРИТИЧЕСКИ ВАЖНО: deferReply должен быть вызван СРАЗУ, без задержек
+    // Discord дает только 3 секунды на ответ, иначе взаимодействие истекает
     try {
-      console.log('⏳ Отложенный ответ на команду /stats...');
       await interaction.deferReply();
       console.log('✅ Ответ отложен');
     } catch (deferError) {
       console.error('❌ Ошибка при отложенном ответе:', deferError);
+      // Если взаимодействие уже истекло, просто выходим
+      if (deferError.code === 10062) {
+        console.log('⚠️ Взаимодействие истекло, пропускаем выполнение команды');
+        return;
+      }
+      // Для других ошибок пытаемся отправить обычный ответ
+      try {
+        await interaction.reply({ 
+          content: '❌ Произошла ошибка при обработке команды!', 
+          flags: MessageFlags.Ephemeral 
+        });
+      } catch (replyError) {
+        console.error('❌ Не удалось отправить ответ об ошибке:', replyError);
+      }
       return;
     }
     
