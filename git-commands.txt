@@ -7,11 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Statistics collection, command debugging and interaction timeout
-
-- Add extensive logging to debug slash commands (InteractionCreate events)
-- Fix statistics collection: now always tracks messages and voice time (not only when activity roles enabled)
-- Add logging to stats command to debug empty data issue
-- Fix interaction timeout error (10062): improve error handling for expired interactions
-- Add better error handling in stats command for deferReply failures"
+git commit -m "Fix: Statistics collection, command debugging and interaction timeout - Add extensive logging to debug slash commands (InteractionCreate events) - Fix statistics collection: now always tracks messages and voice time (not only when activity roles enabled) - Add logging to stats command to debug empty data issue - Fix interaction timeout error (10062): improve error handling for expired interactions - Add better error handling in stats command for deferReply failures"
 git push origin main
