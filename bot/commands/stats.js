@@ -15,7 +15,15 @@ module.exports = {
         )),
   
   async execute(interaction, client) {
-    await interaction.deferReply();
+    console.log('🔧 Команда /stats вызвана');
+    try {
+      console.log('⏳ Отложенный ответ на команду /stats...');
+      await interaction.deferReply();
+      console.log('✅ Ответ отложен');
+    } catch (deferError) {
+      console.error('❌ Ошибка при отложенном ответе:', deferError);
+      return;
+    }
     
     try {
       const guildId = interaction.guild.id;

@@ -1,3 +1,11 @@
+# Вход в проект
+cd C:\Users\Катя\Desktop\Bot
+
+# Или клонирование репозитория (если еще не клонирован)
+# git clone https://github.com/ВАШ_ЮЗЕРНЕЙМ/ВАШ_РЕПОЗИТОРИЙ.git
+# cd Bot
+
+# Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Add extensive logging to debug why activeStreams Map is cleared between checks"
+git commit -m "Fix: Add extensive logging to debug why slash commands are not responding"
 git push origin main

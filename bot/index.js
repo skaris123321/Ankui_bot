@@ -40,17 +40,30 @@ client.events = new Collection();
 
 // Загрузка команд
 const commandsPath = path.join(__dirname, 'commands');
+console.log(`\n📂 Загрузка команд из: ${commandsPath}`);
 if (fs.existsSync(commandsPath)) {
   const commandFiles = fs.readdirSync(commandsPath).filter(file => file.endsWith('.js'));
+  console.log(`📄 Найдено файлов команд: ${commandFiles.length}`);
+  console.log(`📄 Файлы: ${commandFiles.join(', ')}\n`);
   
   for (const file of commandFiles) {
     const filePath = path.join(commandsPath, file);
-    const command = require(filePath);
-    if ('data' in command && 'execute' in command) {
-      client.commands.set(command.data.name, command);
-      console.log(`✅ Загружена команда: ${command.data.name}`);
+    try {
+      const command = require(filePath);
+      if ('data' in command && 'execute' in command) {
+        client.commands.set(command.data.name, command);
+        console.log(`✅ Загружена команда: ${command.data.name} (из файла ${file})`);
+      } else {
+        console.error(`❌ Файл ${file} не содержит data или execute`);
+      }
+    } catch (error) {
+      console.error(`❌ Ошибка загрузки команды из ${file}:`, error);
     }
   }
+  console.log(`\n📊 Итого загружено команд: ${client.commands.size}`);
+  console.log(`📋 Список команд: ${Array.from(client.commands.keys()).join(', ')}\n`);
+} else {
+  console.error(`❌ Папка команд не найдена: ${commandsPath}`);
 }
 
 // Загрузка событий
@@ -140,7 +153,10 @@ if (fs.existsSync(eventsPath)) {
 }
 
 // Обработка взаимодействий (slash команды и кнопки)
+console.log(`\n📌 Регистрация обработчика InteractionCreate...`);
 client.on(Events.InteractionCreate, async interaction => {
+  console.log(`🔔 Событие InteractionCreate получено! Тип: ${interaction.type}, isButton: ${interaction.isButton()}, isChatInputCommand: ${interaction.isChatInputCommand()}`);
+  
   // Обработка кнопок выбора роли
   if (interaction.isButton()) {
     try {
@@ -358,20 +374,35 @@ client.on(Events.InteractionCreate, async interaction => {
   }
   
   // Обработка slash команд
-  if (!interaction.isChatInputCommand()) return;
+  if (!interaction.isChatInputCommand()) {
+    console.log(`⏭️ Пропуск взаимодействия: не является ChatInputCommand (тип: ${interaction.type})`);
+    return;
+  }
 
   console.log(`🔍 Получена команда: /${interaction.commandName} от ${interaction.user.tag}`);
+  console.log(`📋 Загруженные команды в памяти: ${Array.from(client.commands.keys()).join(', ')}`);
   const command = client.commands.get(interaction.commandName);
 
   if (!command) {
     console.error(`❌ Команда ${interaction.commandName} не найдена`);
     console.log(`Доступные команды: ${Array.from(client.commands.keys()).join(', ')}`);
+    console.error(`❌ Попытка ответа на несуществующую команду...`);
+    try {
+      await interaction.reply({ 
+        content: `❌ Команда \`/${interaction.commandName}\` не найдена. Используйте \`/help\` для списка доступных команд.`, 
+        flags: MessageFlags.Ephemeral 
+      });
+    } catch (error) {
+      console.error(`❌ Ошибка при отправке ответа:`, error);
+    }
     return;
   }
   
   try {
+    console.log(`▶️ Выполнение команды ${interaction.commandName}...`);
     // Выполняем команду сразу (команда сама вызовет deferReply)
     await command.execute(interaction, client);
+    console.log(`✅ Команда ${interaction.commandName} выполнена успешно`);
   } catch (error) {
     console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error);
     console.error(error.stack);
@@ -392,9 +423,20 @@ client.on(Events.InteractionCreate, async interaction => {
   }
 });
 
+// Проверка регистрации обработчика
+console.log(`\n✅ Обработчик InteractionCreate зарегистрирован`);
+console.log(`📊 Количество обработчиков InteractionCreate: ${client.listenerCount(Events.InteractionCreate)}`);
+if (client.listenerCount(Events.InteractionCreate) === 0) {
+  console.error(`❌❌❌ КРИТИЧЕСКАЯ ОШИБКА: Обработчик InteractionCreate не зарегистрирован! ❌❌❌`);
+}
+
 // Вход в Discord
-client.login(process.env.DISCORD_TOKEN).catch(error => {
+console.log(`\n🔐 Подключение к Discord...`);
+client.login(process.env.DISCORD_TOKEN).then(() => {
+  console.log(`✅ Токен принят, ожидание подключения...`);
+}).catch(error => {
   console.error('❌ Ошибка входа в Discord:', error);
+  console.error('Stack trace:', error.stack);
   process.exit(1);
 });
 
