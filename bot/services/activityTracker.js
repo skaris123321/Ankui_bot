@@ -26,15 +26,15 @@ class ActivityTracker {
       const guildId = message.guild.id;
       const userId = message.author.id;
       
-      // Проверяем, включена ли система ролей за активность
-      const settings = this.db.getGuildSettings(guildId) || {};
-      if (!settings.activity_roles_enabled) return;
-      
-      // Добавляем сообщение
+      // ВСЕГДА собираем статистику сообщений (независимо от настроек ролей)
       const messageCount = this.db.addUserMessage(guildId, userId);
+      console.log(`📝 Сообщение от ${message.author.tag} на сервере ${guildId}: всего сообщений ${messageCount}`);
       
-      // Проверяем роли после добавления сообщения
-      await this.checkAndAssignRoles(guildId, userId);
+      // Проверяем роли только если система ролей включена
+      const settings = this.db.getGuildSettings(guildId) || {};
+      if (settings.activity_roles_enabled) {
+        await this.checkAndAssignRoles(guildId, userId);
+      }
     });
 
     // Обработчик подключения к голосовому каналу
@@ -45,9 +45,8 @@ class ActivityTracker {
       const guildId = newState.guild.id;
       const userId = newState.member.id;
       
-      // Проверяем, включена ли система ролей за активность
+      // Получаем настройки для проверки ролей (но статистика собирается всегда)
       const settings = this.db.getGuildSettings(guildId) || {};
-      if (!settings.activity_roles_enabled) return;
       
       const key = `${guildId}_${userId}`;
       const wasInChannel = oldState.channelId !== null;
@@ -62,7 +61,11 @@ class ActivityTracker {
           const timeSpent = Math.floor((Date.now() - joinTime) / 1000); // в секундах
           if (timeSpent > 0 && !isMuted && !isDeafened) {
             this.db.addUserVoiceTime(guildId, userId, timeSpent);
-            await this.checkAndAssignRoles(guildId, userId);
+            console.log(`🎙️ Пользователь ${newState.member.user.tag} провел ${timeSpent}с в голосовом канале на сервере ${guildId}`);
+            // Проверяем роли только если система ролей включена
+            if (settings.activity_roles_enabled) {
+              await this.checkAndAssignRoles(guildId, userId);
+            }
           }
           this.voiceJoinTimes.delete(key);
         }
@@ -80,6 +83,7 @@ class ActivityTracker {
           const timeSpent = Math.floor((Date.now() - joinTime) / 1000);
           if (timeSpent > 0) {
             this.db.addUserVoiceTime(guildId, userId, timeSpent);
+            console.log(`🎙️ Пользователь ${newState.member.user.tag} провел ${timeSpent}с в голосовом канале (заглушен) на сервере ${guildId}`);
           }
           this.voiceJoinTimes.delete(key);
         }
@@ -92,6 +96,7 @@ class ActivityTracker {
           const timeSpent = Math.floor((Date.now() - joinTime) / 1000);
           if (timeSpent > 0) {
             this.db.addUserVoiceTime(guildId, userId, timeSpent);
+            console.log(`🎙️ Пользователь ${newState.member.user.tag} провел ${timeSpent}с в голосовом канале (замучен) на сервере ${guildId}`);
           }
           this.voiceJoinTimes.delete(key);
         }
@@ -141,8 +146,11 @@ class ActivityTracker {
           this.db.addUserVoiceTime(guildId, userId, 60); // Добавляем ровно 60 секунд (1 минуту)
           this.voiceJoinTimes.set(key, now); // Обновляем время последнего обновления
           
-          // Проверяем роли
-          await this.checkAndAssignRoles(guildId, userId);
+          // Проверяем роли только если система ролей включена
+          const settings = this.db.getGuildSettings(guildId) || {};
+          if (settings.activity_roles_enabled) {
+            await this.checkAndAssignRoles(guildId, userId);
+          }
         }
       } catch (error) {
         console.error(`Ошибка обновления времени в войсе для ${key}:`, error);

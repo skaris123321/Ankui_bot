@@ -40,8 +40,21 @@ module.exports = {
       const db = client.db;
       db.load();
 
+      console.log(`📊 Запрос статистики для сервера: ${guildId}`);
+      console.log(`📊 Тип статистики: ${statsType}`);
+      console.log(`📊 Всего записей в userLevels: ${Object.keys(db.data.userLevels || {}).length}`);
+      console.log(`📊 Содержимое userLevels:`, JSON.stringify(db.data.userLevels, null, 2));
+
       const allUsers = Object.values(db.data.userLevels || {})
-        .filter(user => user.guild_id === guildId);
+        .filter(user => {
+          const matches = user.guild_id === guildId;
+          if (!matches) {
+            console.log(`⏭️ Пропуск пользователя ${user.user_id}: guild_id ${user.guild_id} !== ${guildId}`);
+          }
+          return matches;
+        });
+
+      console.log(`📊 Пользователей после фильтрации: ${allUsers.length}`);
 
       let sortedUsers = [];
       let title = '';

@@ -7,5 +7,9 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Add extensive logging to debug why slash commands are not responding"
+git commit -m "Fix: Statistics collection and command debugging
+
+- Add extensive logging to debug slash commands
+- Fix statistics collection: now always tracks messages and voice time (not only when activity roles enabled)
+- Add logging to stats command to debug empty data issue"
 git push origin main
