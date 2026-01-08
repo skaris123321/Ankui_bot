@@ -15,13 +15,12 @@ module.exports = {
         )),
   
   async execute(interaction, client) {
-    console.log('🔧 Команда /stats вызвана');
-    
     // КРИТИЧЕСКИ ВАЖНО: deferReply должен быть вызван СРАЗУ, без задержек
     // Discord дает только 3 секунды на ответ, иначе взаимодействие истекает
+    // НЕ ДОБАВЛЯЙТЕ ЛОГИРОВАНИЕ ПЕРЕД deferReply() - это может вызвать таймаут!
     try {
       await interaction.deferReply();
-      console.log('✅ Ответ отложен');
+      console.log('✅ Команда /stats: ответ отложен');
     } catch (deferError) {
       console.error('❌ Ошибка при отложенном ответе:', deferError);
       // Если взаимодействие уже истекло, просто выходим

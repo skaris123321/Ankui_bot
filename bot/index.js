@@ -399,8 +399,8 @@ client.on(Events.InteractionCreate, async interaction => {
   }
   
   try {
-    console.log(`▶️ Выполнение команды ${interaction.commandName}...`);
-    // Выполняем команду сразу (команда сама вызовет deferReply)
+    // ВАЖНО: Не добавляйте логирование перед execute() - это может вызвать таймаут взаимодействия!
+    // Команда должна вызвать deferReply() в течение 3 секунд
     await command.execute(interaction, client);
     console.log(`✅ Команда ${interaction.commandName} выполнена успешно`);
   } catch (error) {
