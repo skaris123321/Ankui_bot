@@ -41,7 +41,21 @@ module.exports = {
     }
     
     try {
-      const guildId = interaction.guild.id;
+      // Проверяем, что база данных доступна
+      if (!client || !client.db) {
+        console.error('❌ База данных не инициализирована');
+        return interaction.editReply({ 
+          content: '❌ Ошибка: база данных не доступна. Обратитесь к администратору.' 
+        });
+      }
+
+      const guildId = interaction.guild?.id;
+      if (!guildId) {
+        return interaction.editReply({ 
+          content: '❌ Ошибка: не удалось получить информацию о сервере.' 
+        });
+      }
+
       const channel = interaction.channel;
       const allowedChannelId = '1444744987677032538';
       
@@ -52,22 +66,28 @@ module.exports = {
       }
 
       const statsType = interaction.options.getString('тип') || 'messages';
-      const db = client.db;
-      db.load();
-
-      console.log(`📊 Запрос статистики для сервера: ${guildId}`);
-      console.log(`📊 Тип статистики: ${statsType}`);
-      console.log(`📊 Всего записей в userLevels: ${Object.keys(db.data.userLevels || {}).length}`);
-      console.log(`📊 Содержимое userLevels:`, JSON.stringify(db.data.userLevels, null, 2));
-
-      const allUsers = Object.values(db.data.userLevels || {})
-        .filter(user => {
-          const matches = user.guild_id === guildId;
-          if (!matches) {
-            console.log(`⏭️ Пропуск пользователя ${user.user_id}: guild_id ${user.guild_id} !== ${guildId}`);
-          }
-          return matches;
+      
+      // Загружаем данные из базы
+      try {
+        client.db.load();
+      } catch (dbError) {
+        console.error('❌ Ошибка загрузки базы данных:', dbError);
+        return interaction.editReply({ 
+          content: '❌ Ошибка при загрузке данных. Попробуйте позже.' 
         });
+      }
+
+      if (!client.db.data || !client.db.data.userLevels) {
+        return interaction.editReply({ 
+          content: '❌ Нет данных для отображения статистики.' 
+        });
+      }
+
+      console.log(`📊 Запрос статистики для сервера: ${guildId}, тип: ${statsType}`);
+
+      // Фильтруем пользователей по серверу
+      const allUsers = Object.values(client.db.data.userLevels)
+        .filter(user => user && user.guild_id === guildId);
 
       console.log(`📊 Пользователей после фильтрации: ${allUsers.length}`);
 
@@ -76,11 +96,13 @@ module.exports = {
 
       if (statsType === 'messages') {
         sortedUsers = allUsers
+          .filter(user => user && (user.messages || 0) > 0)
           .sort((a, b) => (b.messages || 0) - (a.messages || 0))
           .slice(0, 140);
         title = 'Топ пользователей по сообщениям';
       } else if (statsType === 'voice') {
         sortedUsers = allUsers
+          .filter(user => user && (user.voiceTime || 0) > 0)
           .sort((a, b) => (b.voiceTime || 0) - (a.voiceTime || 0))
           .slice(0, 140);
         title = 'Топ пользователей по онлайну';
@@ -88,7 +110,7 @@ module.exports = {
 
       if (sortedUsers.length === 0) {
         return interaction.editReply({ 
-          content: '❌ Нет данных для отображения статистики.'
+          content: '❌ Нет данных для отображения статистики. Начните общаться на сервере, чтобы появилась статистика!'
         });
       }
 
@@ -148,7 +170,17 @@ module.exports = {
         return { embed, totalPages, currentPage: page };
       };
 
-      const { embed, totalPages } = createEmbed(0);
+      let embed, totalPages;
+      try {
+        const result = createEmbed(0);
+        embed = result.embed;
+        totalPages = result.totalPages;
+      } catch (embedError) {
+        console.error('❌ Ошибка создания embed:', embedError);
+        return interaction.editReply({ 
+          content: '❌ Ошибка при создании статистики. Попробуйте позже.' 
+        });
+      }
 
       const row = new ActionRowBuilder()
         .addComponents(
@@ -168,7 +200,16 @@ module.exports = {
             .setDisabled(totalPages <= 1)
         );
 
-      await interaction.editReply({ embeds: [embed], components: [row] });
+      try {
+        await interaction.editReply({ embeds: [embed], components: [row] });
+        console.log('✅ Статистика успешно отправлена');
+      } catch (replyError) {
+        console.error('❌ Ошибка отправки ответа:', replyError);
+        // Если взаимодействие истекло, просто логируем
+        if (replyError.code === 10062) {
+          console.log('⚠️ Взаимодействие истекло при отправке ответа');
+        }
+      }
     } catch (error) {
       console.error('❌ Ошибка в команде /stats:', error);
       if (interaction.deferred) {

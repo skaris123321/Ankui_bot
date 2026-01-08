@@ -7,5 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Interaction timeout (10062) by removing logging before deferReply - Remove console.log before deferReply() to prevent interaction timeout - Move logging after deferReply() to ensure response within 3 seconds - Fix statistics collection: now always tracks messages and voice time - Add extensive logging to debug slash commands and stats data"
+git commit -m "Fix: Improve /stats command error handling and prevent timeouts - Add database availability checks before operations - Remove expensive JSON.stringify logging that could cause delays - Improve error handling for database loading and embed creation - Add null checks for guild and channel data - Improve user filtering with additional safety checks - Add better error messages for edge cases - Fix reply error handling to prevent unhandled exceptions"
 git push origin main
