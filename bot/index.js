@@ -154,7 +154,26 @@ if (fs.existsSync(eventsPath)) {
 
 // Обработка взаимодействий (slash команды и кнопки)
 console.log(`\n📌 Регистрация обработчика InteractionCreate...`);
+// Защита от двойной обработки одного и того же interaction внутри процесса
+const processedInteractions = new Set();
+const INTERACTION_TTL_MS = 5_000; // держим id 5 секунд
+
 client.on(Events.InteractionCreate, async interaction => {
+  // Быстрый возрастной фильтр: если событие старше 3 секунд, не трогаем (уменьшает риск 10062)
+  const ageMs = Date.now() - interaction.createdTimestamp;
+  if (ageMs > 3000) {
+    console.log(`⏭️ Пропуск interaction ${interaction.id}: возраст ${ageMs}мс > 3000мс`);
+    return;
+  }
+
+  // Дедупликация внутри одного процесса
+  if (processedInteractions.has(interaction.id)) {
+    console.log(`⏭️ Interaction ${interaction.id} уже обработан, пропускаем`);
+    return;
+  }
+  processedInteractions.add(interaction.id);
+  setTimeout(() => processedInteractions.delete(interaction.id), INTERACTION_TTL_MS);
+
   console.log(`🔔 Событие InteractionCreate получено! Тип: ${interaction.type}, isButton: ${interaction.isButton()}, isChatInputCommand: ${interaction.isChatInputCommand()}`);
   
   // Обработка кнопок выбора роли
@@ -402,23 +421,38 @@ client.on(Events.InteractionCreate, async interaction => {
     // ВАЖНО: Не добавляйте логирование перед execute() - это может вызвать таймаут взаимодействия!
     // Команда должна вызвать deferReply() в течение 3 секунд
     await command.execute(interaction, client);
-    console.log(`✅ Команда ${interaction.commandName} выполнена успешно`);
+    // Логируем успех только если взаимодействие не было пропущено (не было ошибки 10062)
+    // Проверяем, что взаимодействие было обработано
+    if (interaction.deferred || interaction.replied) {
+      console.log(`✅ Команда ${interaction.commandName} выполнена успешно`);
+    }
   } catch (error) {
-    console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error);
-    console.error(error.stack);
-    
-    // Проверяем, не истекло ли время взаимодействия
+    // Ошибка 10062 - взаимодействие уже обработано другим экземпляром или истекло
+    // Это нормальная ситуация, не логируем как ошибку
     if (error.code === 10062) {
-      console.log(`⚠️ Взаимодействие истекло для команды ${interaction.commandName}`);
+      // Тихая обработка - просто выходим
       return;
+    }
+    
+    // Для других ошибок логируем
+    console.error(`❌ Ошибка выполнения команды ${interaction.commandName}:`, error.message || error);
+    if (error.stack && error.code !== 10062) {
+      console.error('Stack trace:', error.stack);
     }
     
     const errorMessage = { content: 'Произошла ошибка при выполнении команды!', flags: MessageFlags.Ephemeral };
     
-    if (interaction.replied || interaction.deferred) {
-      await interaction.followUp(errorMessage).catch(() => {});
-    } else {
-      await interaction.reply(errorMessage).catch(() => {}).catch(() => {});
+    try {
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp(errorMessage).catch(() => {});
+      } else {
+        await interaction.reply(errorMessage).catch(() => {});
+      }
+    } catch (replyError) {
+      // Игнорируем ошибки ответа, если взаимодействие уже обработано
+      if (replyError.code !== 10062) {
+        console.error('❌ Не удалось отправить сообщение об ошибке:', replyError.message || replyError);
+      }
     }
   }
 });

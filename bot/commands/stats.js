@@ -1,5 +1,8 @@
 const { SlashCommandBuilder, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, MessageFlags } = require('discord.js');
 
+// Локальная защита от двойной обработки одной и той же интеракции
+const processedInteractions = new Set();
+
 module.exports = {
   data: new SlashCommandBuilder()
     .setName('stats')
@@ -18,24 +21,49 @@ module.exports = {
     // КРИТИЧЕСКИ ВАЖНО: deferReply должен быть вызван СРАЗУ, без задержек
     // Discord дает только 3 секунды на ответ, иначе взаимодействие истекает
     // НЕ ДОБАВЛЯЙТЕ ЛОГИРОВАНИЕ ПЕРЕД deferReply() - это может вызвать таймаут!
+    // Если интеракция уже слишком старая или была обработана, не продолжаем (защита от дубликатов/второго инстанса)
+    if (processedInteractions.has(interaction.id)) {
+      console.warn(`⚠️ Пропуск /stats: интеракция ${interaction.id} уже обработана (Set)`);
+      return;
+    }
+    processedInteractions.add(interaction.id);
+    setTimeout(() => processedInteractions.delete(interaction.id), 15000);
+
+    const interactionAge = Date.now() - (interaction.createdTimestamp || Date.now());
+    if (interactionAge > 2500) {
+      console.warn(`⚠️ Пропуск /stats: интеракция старше ${interactionAge} мс (более 2.5с)`);
+      return;
+    }
+    if (interaction.deferred || interaction.replied) {
+      console.warn('⚠️ Пропуск /stats: интеракция уже обработана (deferred/replied)');
+      return;
+    }
+
     try {
       await interaction.deferReply();
       console.log('✅ Команда /stats: ответ отложен');
     } catch (deferError) {
-      console.error('❌ Ошибка при отложенном ответе:', deferError);
-      // Если взаимодействие уже истекло, просто выходим
+      // Unknown interaction (10062) = взаимодействие уже обработано другим экземпляром или истекло
+      // Это нормальная ситуация при нескольких экземплярах бота, не логируем как ошибку
       if (deferError.code === 10062) {
-        console.log('⚠️ Взаимодействие истекло, пропускаем выполнение команды');
+        // Тихая обработка - не логируем, просто выходим
         return;
       }
+      // Для других ошибок логируем и пытаемся ответить
+      console.error('❌ Ошибка при отложенном ответе (не 10062):', deferError.message || deferError);
       // Для других ошибок пытаемся отправить обычный ответ
       try {
-        await interaction.reply({ 
-          content: '❌ Произошла ошибка при обработке команды!', 
-          flags: MessageFlags.Ephemeral 
-        });
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ 
+            content: '❌ Произошла ошибка при обработке команды!', 
+            flags: MessageFlags.Ephemeral 
+          });
+        }
       } catch (replyError) {
-        console.error('❌ Не удалось отправить ответ об ошибке:', replyError);
+        // Игнорируем ошибки ответа, если взаимодействие уже обработано
+        if (replyError.code !== 10062) {
+          console.error('❌ Не удалось отправить ответ об ошибке:', replyError.message || replyError);
+        }
       }
       return;
     }
@@ -204,23 +232,36 @@ module.exports = {
         await interaction.editReply({ embeds: [embed], components: [row] });
         console.log('✅ Статистика успешно отправлена');
       } catch (replyError) {
-        console.error('❌ Ошибка отправки ответа:', replyError);
-        // Если взаимодействие истекло, просто логируем
+        // Ошибка 10062 - взаимодействие уже обработано или истекло, это нормально
         if (replyError.code === 10062) {
-          console.log('⚠️ Взаимодействие истекло при отправке ответа');
+          // Тихая обработка - не логируем
+          return;
         }
+        // Для других ошибок логируем
+        console.error('❌ Ошибка отправки ответа (не 10062):', replyError.message || replyError);
       }
     } catch (error) {
-      console.error('❌ Ошибка в команде /stats:', error);
-      if (interaction.deferred) {
-        await interaction.editReply({ 
-          content: '❌ Произошла ошибка при выполнении команды статистики!'
-        }).catch(() => {});
-      } else if (!interaction.replied) {
-        await interaction.reply({ 
-          content: '❌ Произошла ошибка при выполнении команды статистики!', 
-          flags: MessageFlags.Ephemeral 
-        }).catch(() => {});
+      // Ошибка 10062 - взаимодействие уже обработано, не логируем как ошибку
+      if (error.code === 10062) {
+        return;
+      }
+      console.error('❌ Ошибка в команде /stats:', error.message || error);
+      try {
+        if (interaction.deferred && !interaction.replied) {
+          await interaction.editReply({ 
+            content: '❌ Произошла ошибка при выполнении команды статистики!'
+          });
+        } else if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply({ 
+            content: '❌ Произошла ошибка при выполнении команды статистики!', 
+            flags: MessageFlags.Ephemeral 
+          });
+        }
+      } catch (replyError) {
+        // Игнорируем ошибки ответа, если взаимодействие уже обработано
+        if (replyError.code !== 10062) {
+          console.error('❌ Не удалось отправить сообщение об ошибке:', replyError.message || replyError);
+        }
       }
     }
   },
