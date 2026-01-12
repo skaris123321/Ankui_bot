@@ -98,20 +98,26 @@ module.exports = {
 
       const statsType = interaction.options.getString('тип') || 'messages';
       
-      // Загружаем данные из базы
-      try {
-        client.db.load();
-      } catch (dbError) {
-        console.error('❌ Ошибка загрузки базы данных:', dbError);
-        return interaction.editReply({ 
-          content: '❌ Ошибка при загрузке данных. Попробуйте позже.' 
-        });
-      }
-
+      // НЕ перезагружаем базу данных - используем данные в памяти
+      // Перезагрузка может привести к потере несохраненных данных
+      // База данных уже загружена при инициализации и обновляется при каждом сохранении
+      
       if (!client.db.data || !client.db.data.userLevels) {
-        return interaction.editReply({ 
-          content: '❌ Нет данных для отображения статистики.' 
-        });
+        // Если данных нет в памяти, попробуем загрузить из файла один раз
+        try {
+          client.db.load();
+        } catch (dbError) {
+          console.error('❌ Ошибка загрузки базы данных:', dbError);
+          return interaction.editReply({ 
+            content: '❌ Ошибка при загрузке данных. Попробуйте позже.' 
+          });
+        }
+        
+        if (!client.db.data || !client.db.data.userLevels) {
+          return interaction.editReply({ 
+            content: '❌ Нет данных для отображения статистики.' 
+          });
+        }
       }
 
       console.log(`📊 Запрос статистики для сервера: ${guildId}, тип: ${statsType}`);

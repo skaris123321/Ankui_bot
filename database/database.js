@@ -22,8 +22,18 @@ class BotDatabase {
     if (fs.existsSync(this.dbPath)) {
       try {
         const rawData = fs.readFileSync(this.dbPath, 'utf8');
-        this.data = JSON.parse(rawData);
-        console.log('✅ База данных загружена из файла');
+        const loadedData = JSON.parse(rawData);
+        
+        // Убеждаемся, что все необходимые поля существуют
+        this.data = {
+          guilds: loadedData.guilds || {},
+          warnings: loadedData.warnings || [],
+          modLogs: loadedData.modLogs || [],
+          userLevels: loadedData.userLevels || {}
+        };
+        
+        const userLevelsCount = Object.keys(this.data.userLevels).length;
+        console.log(`✅ База данных загружена из файла (userLevels: ${userLevelsCount} записей)`);
       } catch (error) {
         console.error('⚠️  Ошибка загрузки базы данных, создаем новую:', error);
         this.data = {
@@ -48,9 +58,15 @@ class BotDatabase {
 
   save() {
     try {
+      // Убеждаемся, что userLevels существует
+      if (!this.data.userLevels) {
+        this.data.userLevels = {};
+      }
+      
       const dataString = JSON.stringify(this.data, null, 2);
       fs.writeFileSync(this.dbPath, dataString, 'utf8');
-      console.log('💾 База данных сохранена');
+      const userLevelsCount = Object.keys(this.data.userLevels || {}).length;
+      console.log(`💾 База данных сохранена (userLevels: ${userLevelsCount} записей)`);
     } catch (error) {
       console.error('❌ Ошибка сохранения базы данных:', error);
       throw error;

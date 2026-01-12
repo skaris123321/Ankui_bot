@@ -7,5 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Improve interaction duplicate handling and add comprehensive stats logging - Reorder checks to verify deferred/replied status BEFORE attempting deferReply - Add detailed logging for all users with their messages and voiceTime values - Log user filtering at each step (total users, after server filter, after sorting, after data filter) - Improve duplicate interaction detection by checking status first - Add per-user logging to debug why stats show 'no data' when users exist"
+git commit -m "Fix: Database loading issue and improve data persistence logging - Remove unnecessary db.load() call in stats command that was overwriting in-memory data - Add userLevels count logging in save() and load() methods to track data persistence - Ensure userLevels field exists when loading database to prevent data loss - Improve database initialization to always include userLevels field - Add fallback to load from file only if data is missing in memory"
 git push origin main
