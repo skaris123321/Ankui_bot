@@ -7,5 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Improve /stats command response handling and add error recovery - Add error handling for 'no data' message sending with fallback to followUp - Add logging to track if interaction was properly deferred/replied - Improve error recovery when editReply fails for empty stats - Add detailed logging for command execution status - Fix response delivery to ensure user always gets feedback"
+git commit -m "Fix: Add detailed logging and improve stats filtering logic - Add comprehensive logging for user filtering at each step (before/after sorting) - Log individual user voiceTime values for debugging voice stats - Improve 'no data' messages to be type-specific (messages vs voice) - Fix stats display logic to properly filter users with data > 0 - Add debug logging to identify why stats show 'no data' when users exist"
 git push origin main

@@ -123,25 +123,56 @@ module.exports = {
       let title = '';
 
       if (statsType === 'messages') {
+        // Показываем всех пользователей, отсортированных по сообщениям (включая 0)
         sortedUsers = allUsers
-          .filter(user => user && (user.messages || 0) > 0)
           .sort((a, b) => (b.messages || 0) - (a.messages || 0))
           .slice(0, 140);
         title = 'Топ пользователей по сообщениям';
+        console.log(`📊 Пользователей после сортировки по сообщениям: ${sortedUsers.length}`);
+        // Фильтруем только тех, у кого есть сообщения для финального отображения
+        const usersWithMessages = sortedUsers.filter(user => (user.messages || 0) > 0);
+        console.log(`📊 Пользователей с сообщениями > 0: ${usersWithMessages.length}`);
+        if (usersWithMessages.length === 0) {
+          sortedUsers = []; // Пустой массив, чтобы показать сообщение "Нет данных"
+        } else {
+          sortedUsers = usersWithMessages; // Используем только пользователей с сообщениями
+        }
       } else if (statsType === 'voice') {
+        // Показываем всех пользователей, отсортированных по времени в голосовом канале (включая 0)
         sortedUsers = allUsers
-          .filter(user => user && (user.voiceTime || 0) > 0)
           .sort((a, b) => (b.voiceTime || 0) - (a.voiceTime || 0))
           .slice(0, 140);
         title = 'Топ пользователей по онлайну';
+        console.log(`📊 Пользователей после сортировки по голосовому времени: ${sortedUsers.length}`);
+        // Логируем детали для отладки
+        sortedUsers.forEach((user, index) => {
+          console.log(`  ${index + 1}. User ${user.user_id}: voiceTime = ${user.voiceTime || 0}`);
+        });
+        // Фильтруем только тех, у кого есть время в голосовом канале для финального отображения
+        const usersWithVoiceTime = sortedUsers.filter(user => (user.voiceTime || 0) > 0);
+        console.log(`📊 Пользователей с голосовым временем > 0: ${usersWithVoiceTime.length}`);
+        if (usersWithVoiceTime.length === 0) {
+          sortedUsers = []; // Пустой массив, чтобы показать сообщение "Нет данных"
+        } else {
+          sortedUsers = usersWithVoiceTime; // Используем только пользователей с голосовым временем
+        }
       }
 
       if (sortedUsers.length === 0) {
+        let noDataMessage = '';
+        if (statsType === 'messages') {
+          noDataMessage = '❌ Нет данных для отображения статистики по сообщениям. Начните общаться на сервере, чтобы появилась статистика!';
+        } else if (statsType === 'voice') {
+          noDataMessage = '❌ Нет данных для отображения статистики по онлайну. Зайдите в голосовой канал, чтобы появилась статистика!';
+        } else {
+          noDataMessage = '❌ Нет данных для отображения статистики. Начните общаться на сервере, чтобы появилась статистика!';
+        }
+        
         try {
           await interaction.editReply({ 
-            content: '❌ Нет данных для отображения статистики. Начните общаться на сервере, чтобы появилась статистика!'
+            content: noDataMessage
           });
-          console.log('✅ Сообщение "Нет данных" отправлено пользователю');
+          console.log(`✅ Сообщение "Нет данных" отправлено пользователю (тип: ${statsType})`);
         } catch (error) {
           console.error('❌ Ошибка отправки сообщения "Нет данных":', error.message || error);
           if (error.code !== 10062) {
