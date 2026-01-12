@@ -440,7 +440,9 @@ client.on(Events.InteractionCreate, async interaction => {
     // Логируем успех только если взаимодействие не было пропущено (не было ошибки 10062)
     // Проверяем, что взаимодействие было обработано
     if (interaction.deferred || interaction.replied) {
-      console.log(`✅ Команда ${interaction.commandName} выполнена успешно`);
+      console.log(`✅ Команда ${interaction.commandName} выполнена успешно (deferred: ${interaction.deferred}, replied: ${interaction.replied})`);
+    } else {
+      console.warn(`⚠️ Команда ${interaction.commandName} выполнена, но взаимодействие не было обработано (deferred: ${interaction.deferred}, replied: ${interaction.replied})`);
     }
   } catch (error) {
     // Ошибка 10062 - взаимодействие уже обработано другим экземпляром или истекло

@@ -137,9 +137,26 @@ module.exports = {
       }
 
       if (sortedUsers.length === 0) {
-        return interaction.editReply({ 
-          content: '❌ Нет данных для отображения статистики. Начните общаться на сервере, чтобы появилась статистика!'
-        });
+        try {
+          await interaction.editReply({ 
+            content: '❌ Нет данных для отображения статистики. Начните общаться на сервере, чтобы появилась статистика!'
+          });
+          console.log('✅ Сообщение "Нет данных" отправлено пользователю');
+        } catch (error) {
+          console.error('❌ Ошибка отправки сообщения "Нет данных":', error.message || error);
+          if (error.code !== 10062) {
+            // Для ошибок кроме 10062 пытаемся отправить через followUp
+            try {
+              await interaction.followUp({ 
+                content: '❌ Нет данных для отображения статистики. Начните общаться на сервере, чтобы появилась статистика!',
+                flags: MessageFlags.Ephemeral
+              });
+            } catch (followUpError) {
+              console.error('❌ Не удалось отправить сообщение через followUp:', followUpError.message || followUpError);
+            }
+          }
+        }
+        return;
       }
 
       const formatTime = (seconds) => {
