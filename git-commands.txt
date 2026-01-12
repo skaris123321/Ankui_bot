@@ -7,5 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Database loading issue and improve data persistence logging - Remove unnecessary db.load() call in stats command that was overwriting in-memory data - Add userLevels count logging in save() and load() methods to track data persistence - Ensure userLevels field exists when loading database to prevent data loss - Improve database initialization to always include userLevels field - Add fallback to load from file only if data is missing in memory"
+git commit -m "Fix: Add comprehensive database diagnostics and improve data tracking - Add detailed logging in addUserMessage to track when users are saved - Add database file path logging in stats command for debugging - Add key listing and server-specific key counting for diagnostics - Ensure userLevels exists before adding messages to prevent data loss - Add logging of total users in database after each save operation"
 git push origin main

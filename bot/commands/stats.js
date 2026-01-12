@@ -122,6 +122,18 @@ module.exports = {
 
       console.log(`📊 Запрос статистики для сервера: ${guildId}, тип: ${statsType}`);
       console.log(`📊 Всего записей в userLevels: ${Object.keys(client.db.data.userLevels || {}).length}`);
+      console.log(`📊 Путь к файлу базы данных: ${client.db.dbPath}`);
+      
+      // Дополнительная диагностика: проверяем все ключи в userLevels
+      const allKeys = Object.keys(client.db.data.userLevels || {});
+      console.log(`📊 Все ключи в userLevels: ${allKeys.slice(0, 10).join(', ')}${allKeys.length > 10 ? '...' : ''}`);
+      
+      // Проверяем, есть ли записи для этого сервера
+      const serverKeys = allKeys.filter(key => {
+        const user = client.db.data.userLevels[key];
+        return user && user.guild_id === guildId;
+      });
+      console.log(`📊 Ключей для сервера ${guildId}: ${serverKeys.length}`);
 
       // Фильтруем пользователей по серверу
       const allUsers = Object.values(client.db.data.userLevels || {})

@@ -198,12 +198,19 @@ class BotDatabase {
 
   // Добавляем сообщение пользователю
   addUserMessage(guildId, userId) {
+    // Убеждаемся, что userLevels существует
+    if (!this.data.userLevels) {
+      this.data.userLevels = {};
+    }
+    
     const key = `${guildId}_${userId}`;
     const user = this.getUserLevel(guildId, userId);
     
     if (user) {
       this.data.userLevels[key].messages = (this.data.userLevels[key].messages || 0) + 1;
       this.save();
+      const totalUsers = Object.keys(this.data.userLevels).length;
+      console.log(`💾 Сохранено сообщение для ${userId} на сервере ${guildId}. Всего пользователей в базе: ${totalUsers}`);
       return this.data.userLevels[key].messages;
     } else {
       this.data.userLevels[key] = {
@@ -215,6 +222,8 @@ class BotDatabase {
         voiceTime: 0
       };
       this.save();
+      const totalUsers = Object.keys(this.data.userLevels).length;
+      console.log(`💾 Создан новый пользователь ${userId} на сервере ${guildId}. Всего пользователей в базе: ${totalUsers}`);
       return 1;
     }
   }
