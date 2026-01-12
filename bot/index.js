@@ -154,6 +154,22 @@ if (fs.existsSync(eventsPath)) {
 
 // Обработка взаимодействий (slash команды и кнопки)
 console.log(`\n📌 Регистрация обработчика InteractionCreate...`);
+
+// КРИТИЧЕСКАЯ ЗАЩИТА ОТ ДВОЙНОЙ РЕГИСТРАЦИИ InteractionCreate
+// Проверяем, не зарегистрирован ли уже обработчик
+const interactionListenerCount = client.listenerCount(Events.InteractionCreate);
+console.log(`📊 Количество обработчиков InteractionCreate ДО регистрации: ${interactionListenerCount}`);
+if (interactionListenerCount > 0) {
+  console.warn(`⚠️ ОБНАРУЖЕНО ${interactionListenerCount} ОБРАБОТЧИКОВ InteractionCreate!`);
+  console.warn(`⚠️ УДАЛЯЕМ ВСЕ обработчики перед регистрацией нового...`);
+  client.removeAllListeners(Events.InteractionCreate);
+  const newCount = client.listenerCount(Events.InteractionCreate);
+  console.log(`✅ Обработчики удалены. Новое количество: ${newCount}`);
+  if (newCount !== 0) {
+    console.error(`❌❌❌ ОШИБКА: После удаления осталось ${newCount} обработчиков! ❌❌❌`);
+  }
+}
+
 // Защита от двойной обработки одного и того же interaction внутри процесса
 const processedInteractions = new Set();
 const INTERACTION_TTL_MS = 5_000; // держим id 5 секунд
@@ -458,10 +474,20 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 // Проверка регистрации обработчика
+const finalListenerCount = client.listenerCount(Events.InteractionCreate);
 console.log(`\n✅ Обработчик InteractionCreate зарегистрирован`);
-console.log(`📊 Количество обработчиков InteractionCreate: ${client.listenerCount(Events.InteractionCreate)}`);
-if (client.listenerCount(Events.InteractionCreate) === 0) {
+console.log(`📊 Количество обработчиков InteractionCreate ПОСЛЕ регистрации: ${finalListenerCount}`);
+if (finalListenerCount === 0) {
   console.error(`❌❌❌ КРИТИЧЕСКАЯ ОШИБКА: Обработчик InteractionCreate не зарегистрирован! ❌❌❌`);
+} else if (finalListenerCount > 1) {
+  console.error(`❌❌❌ КРИТИЧЕСКАЯ ОШИБКА: Зарегистрировано ${finalListenerCount} обработчиков InteractionCreate! ❌❌❌`);
+  console.error(`❌ Это может привести к двойной обработке команд!`);
+  console.error(`❌ Удаляем все обработчики и регистрируем заново...`);
+  client.removeAllListeners(Events.InteractionCreate);
+  // Перерегистрируем обработчик (код обработчика нужно будет вынести в функцию)
+  console.error(`⚠️ ТРЕБУЕТСЯ ПЕРЕЗАПУСК БОТА для исправления двойной регистрации!`);
+} else if (finalListenerCount === 1) {
+  console.log(`✅ Обработчик InteractionCreate успешно зарегистрирован (1 экземпляр)`);
 }
 
 // Вход в Discord

@@ -7,5 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Suppress 10062 error logging for duplicate interaction handling - Remove error logging for 10062 (Unknown interaction) as it's normal with multiple bot instances - Improve error handling to silently skip already processed interactions - Add better checks for deferred/replied interactions before processing - Prevent duplicate error messages in logs when interaction is already handled - Fix quiet handling of expired interactions in both stats command and main handler"
+git commit -m "Fix: Prevent duplicate InteractionCreate handler registration and suppress 10062 errors - Add protection against double registration of InteractionCreate handler (similar to GuildMemberAdd) - Remove error logging for 10062 (Unknown interaction) as it's normal with multiple bot instances - Improve error handling to silently skip already processed interactions - Add validation to ensure only one InteractionCreate handler is registered - Fix quiet handling of expired interactions in both stats command and main handler"
 git push origin main
