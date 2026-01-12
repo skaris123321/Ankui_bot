@@ -20,24 +20,27 @@ module.exports = {
   async execute(interaction, client) {
     // КРИТИЧЕСКИ ВАЖНО: deferReply должен быть вызван СРАЗУ, без задержек
     // Discord дает только 3 секунды на ответ, иначе взаимодействие истекает
-    // НЕ ДОБАВЛЯЙТЕ ЛОГИРОВАНИЕ ПЕРЕД deferReply() - это может вызвать таймаут!
-    // Если интеракция уже слишком старая или была обработана, не продолжаем (защита от дубликатов/второго инстанса)
+    
+    // ПЕРВАЯ ПРОВЕРКА: Если взаимодействие уже обработано, не продолжаем
+    if (interaction.deferred || interaction.replied) {
+      console.warn(`⚠️ Пропуск /stats: интеракция ${interaction.id} уже обработана (deferred: ${interaction.deferred}, replied: ${interaction.replied})`);
+      return;
+    }
+    
+    // ВТОРАЯ ПРОВЕРКА: Если интеракция уже слишком старая, не продолжаем
+    const interactionAge = Date.now() - (interaction.createdTimestamp || Date.now());
+    if (interactionAge > 2500) {
+      console.warn(`⚠️ Пропуск /stats: интеракция ${interaction.id} старше ${interactionAge} мс (более 2.5с)`);
+      return;
+    }
+    
+    // ТРЕТЬЯ ПРОВЕРКА: Дедупликация внутри одного процесса
     if (processedInteractions.has(interaction.id)) {
       console.warn(`⚠️ Пропуск /stats: интеракция ${interaction.id} уже обработана (Set)`);
       return;
     }
     processedInteractions.add(interaction.id);
     setTimeout(() => processedInteractions.delete(interaction.id), 15000);
-
-    const interactionAge = Date.now() - (interaction.createdTimestamp || Date.now());
-    if (interactionAge > 2500) {
-      console.warn(`⚠️ Пропуск /stats: интеракция старше ${interactionAge} мс (более 2.5с)`);
-      return;
-    }
-    if (interaction.deferred || interaction.replied) {
-      console.warn('⚠️ Пропуск /stats: интеракция уже обработана (deferred/replied)');
-      return;
-    }
 
     try {
       await interaction.deferReply();
@@ -112,12 +115,21 @@ module.exports = {
       }
 
       console.log(`📊 Запрос статистики для сервера: ${guildId}, тип: ${statsType}`);
+      console.log(`📊 Всего записей в userLevels: ${Object.keys(client.db.data.userLevels || {}).length}`);
 
       // Фильтруем пользователей по серверу
-      const allUsers = Object.values(client.db.data.userLevels)
+      const allUsers = Object.values(client.db.data.userLevels || {})
         .filter(user => user && user.guild_id === guildId);
 
-      console.log(`📊 Пользователей после фильтрации: ${allUsers.length}`);
+      console.log(`📊 Пользователей после фильтрации по серверу: ${allUsers.length}`);
+      
+      // Логируем детали пользователей для отладки
+      if (allUsers.length > 0) {
+        console.log(`📊 Детали пользователей:`);
+        allUsers.forEach((user, index) => {
+          console.log(`  ${index + 1}. User ID: ${user.user_id}, messages: ${user.messages || 0}, voiceTime: ${user.voiceTime || 0}`);
+        });
+      }
 
       let sortedUsers = [];
       let title = '';

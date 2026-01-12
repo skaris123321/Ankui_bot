@@ -7,5 +7,5 @@ cd C:\Users\Катя\Desktop\Bot
 
 # Коммит и пуш изменений
 git add -A
-git commit -m "Fix: Add detailed logging and improve stats filtering logic - Add comprehensive logging for user filtering at each step (before/after sorting) - Log individual user voiceTime values for debugging voice stats - Improve 'no data' messages to be type-specific (messages vs voice) - Fix stats display logic to properly filter users with data > 0 - Add debug logging to identify why stats show 'no data' when users exist"
+git commit -m "Fix: Improve interaction duplicate handling and add comprehensive stats logging - Reorder checks to verify deferred/replied status BEFORE attempting deferReply - Add detailed logging for all users with their messages and voiceTime values - Log user filtering at each step (total users, after server filter, after sorting, after data filter) - Improve duplicate interaction detection by checking status first - Add per-user logging to debug why stats show 'no data' when users exist"
 git push origin main
