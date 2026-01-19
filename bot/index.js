@@ -2,6 +2,7 @@ const { Client, GatewayIntentBits, Collection, Events, ActivityType } = require(
 const fs = require('fs');
 const path = require('path');
 const Database = require('../database/database');
+const ActivityTracker = require('./services/activityTracker');
 
 // КРИТИЧЕСКОЕ ЛОГИРОВАНИЕ - начало инициализации бота
 console.log(`\n🚀🚀🚀 ===== ИНИЦИАЛИЗАЦИЯ БОТА - bot/index.js загружен ===== 🚀🚀🚀\n`);
@@ -23,6 +24,9 @@ console.log(`✅ Клиент Discord создан\n`);
 // Инициализация базы данных
 const db = new Database();
 client.db = db;
+
+// Инициализация ActivityTracker
+let activityTracker = null;
 
 // Коллекции для команд и событий
 client.commands = new Collection();
@@ -235,6 +239,37 @@ client.on(Events.InteractionCreate, async interaction => {
 client.login(process.env.DISCORD_TOKEN).catch(error => {
   console.error('❌ Ошибка входа в Discord:', error);
   process.exit(1);
+});
+
+// Обработка выключения бота для сохранения активных голосовых сессий
+process.on('SIGINT', () => {
+  console.log('\n🛑 Получен сигнал SIGINT, завершение работы...');
+  
+  if (client.activityTracker) {
+    client.activityTracker.saveActiveVoiceSessions();
+  }
+  
+  if (client.db) {
+    client.db.close();
+  }
+  
+  console.log('✅ Бот корректно завершил работу');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Получен сигнал SIGTERM, завершение работы...');
+  
+  if (client.activityTracker) {
+    client.activityTracker.saveActiveVoiceSessions();
+  }
+  
+  if (client.db) {
+    client.db.close();
+  }
+  
+  console.log('✅ Бот корректно завершил работу');
+  process.exit(0);
 });
 
 module.exports = client;

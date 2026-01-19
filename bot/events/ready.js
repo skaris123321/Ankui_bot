@@ -1,4 +1,5 @@
 const { Events, ActivityType } = require('discord.js');
+const ActivityTracker = require('../services/activityTracker');
 
 module.exports = {
   name: Events.ClientReady,
@@ -7,6 +8,17 @@ module.exports = {
     console.log(`\n✅ Бот ${client.user.tag} успешно запущен!`);
     console.log(`📊 Серверов: ${client.guilds.cache.size}`);
     console.log(`👥 Пользователей: ${client.users.cache.size}`);
+    
+    // Инициализируем ActivityTracker после готовности клиента
+    if (!client.activityTracker) {
+      client.activityTracker = new ActivityTracker(client, client.db);
+      console.log('🎯 ActivityTracker инициализирован');
+      
+      // Инициализируем голосовые состояния для пользователей, уже находящихся в каналах
+      setTimeout(() => {
+        client.activityTracker.initializeVoiceStates();
+      }, 2000); // Небольшая задержка для полной загрузки
+    }
     
     // Устанавливаем статус бота
     const activities = [
