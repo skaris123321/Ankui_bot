@@ -4,10 +4,11 @@
   "description": "Многофункциональный Discord бот с веб-панелью управления",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js",
+    "start": "node server-production.js",
     "dev": "nodemon index.js",
     "bot": "node bot/index.js",
-    "web": "node web/server.js"
+    "web": "node web/server.js",
+    "local": "node index.js"
   },
   "keywords": [
     "discord",
