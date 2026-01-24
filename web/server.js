@@ -74,9 +74,23 @@ app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
 app.use(session({
   secret: process.env.SESSION_SECRET || 'your-secret-key',
   resave: false,
-  saveUninitialized: false,
+  saveUninitialized: true, // Изменено на true для создания сессий
   cookie: { maxAge: 24 * 60 * 60 * 1000 } // 24 часа
 }));
+
+// Middleware для генерации уникального ID пользователя
+app.use((req, res, next) => {
+  // Если у пользователя нет уникального ID, создаем его
+  if (!req.session.uniqueUserId) {
+    req.session.uniqueUserId = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    console.log(`🆔 Создан новый ID пользователя: ${req.session.uniqueUserId} (IP: ${req.ip})`);
+  }
+  
+  // Добавляем ID в каждый запрос для удобства
+  req.userId = req.session.uniqueUserId;
+  
+  next();
+});
 
 // Маршруты
 app.get('/', (req, res) => {
@@ -540,23 +554,16 @@ app.post('/api/upload-image-base64', (req, res) => {
 // API для сохранения пользовательского черновика embed
 app.post('/api/user-draft/embed', (req, res) => {
   try {
-    // Более надежное получение ID пользователя
-    let userId = req.session.userId || req.session.user?.id || req.sessionID;
-    
-    // Если sessionID не определен, создаем временный ID
-    if (!userId) {
-      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`⚠️ Создан временный ID пользователя: ${userId}`);
-    }
-    
+    // Используем надежный ID пользователя из middleware
+    const userId = req.userId;
     const { guildId, embedData } = req.body;
     
     console.log(`📝 Попытка сохранения черновика:`, {
       userId: userId,
       guildId: guildId,
       hasEmbedData: !!embedData,
-      sessionExists: !!req.session,
-      sessionId: req.sessionID
+      sessionId: req.sessionID,
+      userAgent: req.get('User-Agent')?.substring(0, 50)
     });
     
     if (!guildId || !embedData) {
@@ -579,7 +586,8 @@ app.post('/api/user-draft/embed', (req, res) => {
       userId: userId,
       guildId: guildId,
       embedData: embedData,
-      lastModified: Date.now()
+      lastModified: Date.now(),
+      sessionId: req.sessionID
     };
     
     db.save();
@@ -588,14 +596,15 @@ app.post('/api/user-draft/embed', (req, res) => {
     
     res.json({ 
       success: true, 
-      message: 'Черновик сохранен' 
+      message: 'Черновик сохранен',
+      userId: userId // Возвращаем ID для отладки
     });
   } catch (error) {
     console.error('❌ Ошибка сохранения черновика:', error);
     console.error('❌ Stack trace:', error.stack);
     console.error('❌ Request data:', {
       sessionId: req.sessionID,
-      session: req.session,
+      userId: req.userId,
       body: req.body
     });
     res.status(500).json({ 
@@ -608,22 +617,15 @@ app.post('/api/user-draft/embed', (req, res) => {
 // API для загрузки пользовательского черновика embed
 app.get('/api/user-draft/embed/:guildId', (req, res) => {
   try {
-    // Более надежное получение ID пользователя
-    let userId = req.session.userId || req.session.user?.id || req.sessionID;
-    
-    // Если sessionID не определен, создаем временный ID
-    if (!userId) {
-      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`⚠️ Создан временный ID пользователя для загрузки: ${userId}`);
-    }
-    
+    // Используем надежный ID пользователя из middleware
+    const userId = req.userId;
     const guildId = req.params.guildId;
     
     console.log(`📖 Попытка загрузки черновика:`, {
       userId: userId,
       guildId: guildId,
-      sessionExists: !!req.session,
-      sessionId: req.sessionID
+      sessionId: req.sessionID,
+      userAgent: req.get('User-Agent')?.substring(0, 50)
     });
     
     // Создаем ключ для черновика
@@ -635,7 +637,8 @@ app.get('/api/user-draft/embed/:guildId', (req, res) => {
       return res.json({ 
         success: true, 
         draft: null,
-        message: 'Черновик не найден' 
+        message: 'Черновик не найден',
+        userId: userId // Возвращаем ID для отладки
       });
     }
     
@@ -646,14 +649,15 @@ app.get('/api/user-draft/embed/:guildId', (req, res) => {
     res.json({ 
       success: true, 
       draft: draft.embedData,
-      lastModified: draft.lastModified
+      lastModified: draft.lastModified,
+      userId: userId // Возвращаем ID для отладки
     });
   } catch (error) {
     console.error('❌ Ошибка загрузки черновика:', error);
     console.error('❌ Stack trace:', error.stack);
     console.error('❌ Request data:', {
       sessionId: req.sessionID,
-      session: req.session,
+      userId: req.userId,
       params: req.params
     });
     res.status(500).json({ 
@@ -666,22 +670,15 @@ app.get('/api/user-draft/embed/:guildId', (req, res) => {
 // API для очистки пользовательского черновика
 app.delete('/api/user-draft/embed/:guildId', (req, res) => {
   try {
-    // Более надежное получение ID пользователя
-    let userId = req.session.userId || req.session.user?.id || req.sessionID;
-    
-    // Если sessionID не определен, создаем временный ID
-    if (!userId) {
-      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`⚠️ Создан временный ID пользователя для удаления: ${userId}`);
-    }
-    
+    // Используем надежный ID пользователя из middleware
+    const userId = req.userId;
     const guildId = req.params.guildId;
     
     console.log(`🗑️ Попытка удаления черновика:`, {
       userId: userId,
       guildId: guildId,
-      sessionExists: !!req.session,
-      sessionId: req.sessionID
+      sessionId: req.sessionID,
+      userAgent: req.get('User-Agent')?.substring(0, 50)
     });
     
     // Создаем ключ для черновика
@@ -699,14 +696,15 @@ app.delete('/api/user-draft/embed/:guildId', (req, res) => {
     
     res.json({ 
       success: true, 
-      message: 'Черновик очищен' 
+      message: 'Черновик очищен',
+      userId: userId // Возвращаем ID для отладки
     });
   } catch (error) {
     console.error('❌ Ошибка очистки черновика:', error);
     console.error('❌ Stack trace:', error.stack);
     console.error('❌ Request data:', {
       sessionId: req.sessionID,
-      session: req.session,
+      userId: req.userId,
       params: req.params
     });
     res.status(500).json({ 
