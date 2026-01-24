@@ -29,6 +29,15 @@ module.exports = {
       const limit = interaction.options.getInteger('limit') || 10;
       const guildId = interaction.guild.id;
 
+      console.log(`📊 Команда /stats вызвана: тип=${type}, лимит=${limit}, сервер=${guildId}`);
+
+      // Проверяем, что база данных доступна
+      if (!client.db) {
+        console.error('❌ База данных не инициализирована');
+        await interaction.editReply({ content: '❌ Ошибка: база данных не доступна.' });
+        return;
+      }
+
       // Получаем всех участников сервера
       const guild = interaction.guild;
       await guild.members.fetch(); // Загружаем всех участников
@@ -36,6 +45,8 @@ module.exports = {
       // Получаем статистику из базы данных
       const db = client.db;
       const allMembers = Array.from(guild.members.cache.values());
+
+      console.log(`👥 Найдено участников на сервере: ${allMembers.length}`);
 
       // Создаем массив статистики для всех участников
       const memberStats = [];
@@ -59,11 +70,15 @@ module.exports = {
         });
       }
 
+      console.log(`📊 Обработано пользователей: ${memberStats.length}`);
+
       // Сортируем в зависимости от типа статистики
       if (type === 'messages') {
         memberStats.sort((a, b) => b.messages - a.messages);
+        console.log(`📊 Сортировка по сообщениям. Топ-3: ${memberStats.slice(0, 3).map(s => `${s.user.username}:${s.messages}`).join(', ')}`);
       } else if (type === 'voice') {
         memberStats.sort((a, b) => b.voiceTime - a.voiceTime);
+        console.log(`📊 Сортировка по войсу. Топ-3: ${memberStats.slice(0, 3).map(s => `${s.user.username}:${Math.floor(s.voiceTime/60000)}м`).join(', ')}`);
       }
 
       // Берем топ пользователей
@@ -78,23 +93,24 @@ module.exports = {
           iconURL: guild.iconURL() || undefined
         });
 
+      let title = '';
+      let description = '';
+
       if (type === 'messages') {
-        embed.setTitle(`💬 Топ по сообщениям`)
-          .setDescription(`Самые активные в чате (топ-${limit})`);
+        title = `💬 Топ по сообщениям`;
+        description = `Самые активные в чате (топ-${limit})`;
       } else if (type === 'voice') {
-        embed.setTitle(`🎤 Топ по времени в войсе`)
-          .setDescription(`Больше всего времени в голосовых каналах (топ-${limit})`);
+        title = `🎤 Топ по времени в войсе`;
+        description = `Больше всего времени в голосовых каналах (топ-${limit})`;
       }
+
+      embed.setTitle(title);
 
       // Добавляем поля со статистикой
       if (topMembers.length === 0) {
-        embed.addFields({
-          name: '📭 Нет данных',
-          value: 'Статистика активности пока не собрана.',
-          inline: false
-        });
+        embed.setDescription('📭 Нет данных\n\nСтатистика активности пока не собрана.');
       } else {
-        let description = '';
+        let statsText = description + '\n\n';
 
         topMembers.forEach((stats, index) => {
           const position = index + 1;
@@ -103,9 +119,9 @@ module.exports = {
           if (type === 'messages') {
             // Статистика по сообщениям
             if (stats.messages > 0) {
-              description += `${medal} <@${stats.user.id}> — **${stats.messages}** сообщений\n`;
+              statsText += `${medal} <@${stats.user.id}> — **${stats.messages}** сообщений\n`;
             } else {
-              description += `${medal} <@${stats.user.id}> — нет сообщений\n`;
+              statsText += `${medal} <@${stats.user.id}> — нет сообщений\n`;
             }
           } else if (type === 'voice') {
             // Статистика по времени в войсе
@@ -114,17 +130,17 @@ module.exports = {
             
             if (stats.voiceTime > 0) {
               if (voiceHours > 0) {
-                description += `${medal} <@${stats.user.id}> — **${voiceHours}ч ${voiceMinutes}м**\n`;
+                statsText += `${medal} <@${stats.user.id}> — **${voiceHours}ч ${voiceMinutes}м**\n`;
               } else {
-                description += `${medal} <@${stats.user.id}> — **${voiceMinutes}м**\n`;
+                statsText += `${medal} <@${stats.user.id}> — **${voiceMinutes}м**\n`;
               }
             } else {
-              description += `${medal} <@${stats.user.id}> — не был в войсе\n`;
+              statsText += `${medal} <@${stats.user.id}> — не был в войсе\n`;
             }
           }
         });
 
-        embed.setDescription(embed.data.description + '\n' + description);
+        embed.setDescription(statsText);
       }
 
       // Добавляем общую статистику сервера
@@ -148,17 +164,23 @@ module.exports = {
         });
       }
 
+      console.log(`✅ Отправка embed со статистикой`);
       await interaction.editReply({ embeds: [embed] });
 
     } catch (error) {
       console.error('❌ Ошибка выполнения команды /stats:', error);
+      console.error('❌ Stack trace:', error.stack);
 
-      const errorMessage = 'Произошла ошибка при получении статистики.';
+      const errorMessage = 'Произошла ошибка при получении статистики: ' + error.message;
 
-      if (interaction.deferred) {
-        await interaction.editReply({ content: errorMessage });
-      } else {
-        await interaction.reply({ content: errorMessage, ephemeral: true });
+      try {
+        if (interaction.deferred) {
+          await interaction.editReply({ content: errorMessage });
+        } else {
+          await interaction.reply({ content: errorMessage, ephemeral: true });
+        }
+      } catch (replyError) {
+        console.error('❌ Ошибка отправки сообщения об ошибке:', replyError);
       }
     }
   },
