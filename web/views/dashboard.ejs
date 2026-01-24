@@ -2575,13 +2575,18 @@
             requestBody.messageIndex = messageIndexForButtons;
           }
           
+          console.log('📤 Отправка embeds:', requestBody);
+          
           const response = await fetch('/api/send-embed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestBody)
           });
           
+          console.log('📥 Ответ сервера:', response.status, response.statusText);
+          
           const result = await response.json();
+          console.log('📋 Результат:', result);
           
           if (result.success) {
             showMessage('success', '✅ Embed сообщение отправлено в Discord!' + (buttonsToSend && buttonsToSend.length > 0 ? ' Кнопки добавлены.' : ''));
@@ -2589,7 +2594,7 @@
             showMessage('error', `❌ Ошибка: ${result.message}`);
           }
         } catch (error) {
-          console.error('Error:', error);
+          console.error('❌ Ошибка отправки embeds:', error);
           showMessage('error', '❌ Не удалось отправить сообщение');
         }
       } else {
@@ -2602,13 +2607,18 @@
         }
         
         try {
+          console.log('📤 Отправка одного embed:', { channelId, embed: embedData });
+          
           const response = await fetch('/api/send-embed', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ channelId, embed: embedData })
           });
           
+          console.log('📥 Ответ сервера:', response.status, response.statusText);
+          
           const result = await response.json();
+          console.log('📋 Результат:', result);
           
           if (result.success) {
             showMessage('success', '✅ Сообщение отправлено в Discord!');

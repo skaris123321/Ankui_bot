@@ -919,7 +919,18 @@ app.post('/api/send-embed', async (req, res) => {
     // Получаем клиента бота
     const client = require('../bot/client');
     
+    console.log('🤖 Проверка состояния бота:', {
+      clientExists: !!client,
+      isReady: client ? client.isReady() : false,
+      readyAt: client ? client.readyAt : null,
+      user: client && client.user ? client.user.tag : null
+    });
+    
     if (!client || !client.isReady()) {
+      console.error('❌ Бот не готов:', {
+        client: !!client,
+        isReady: client ? client.isReady() : false
+      });
       return res.status(503).json({ 
         success: false, 
         message: 'Бот не подключен к Discord' 
