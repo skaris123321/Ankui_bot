@@ -9,7 +9,8 @@ class BotDatabase {
       warnings: [],
       modLogs: [],
       userLevels: {},
-      userStats: {}
+      userStats: {},
+      images: {}
     };
     this.initialize();
   }
@@ -32,7 +33,8 @@ class BotDatabase {
           warnings: [],
           modLogs: [],
           userLevels: {},
-          userStats: {}
+          userStats: {},
+          images: {}
         };
         this.save();
       }
@@ -42,7 +44,8 @@ class BotDatabase {
         warnings: [],
         modLogs: [],
         userLevels: {},
-        userStats: {}
+        userStats: {},
+        images: {}
       };
       this.save();
       console.log('✅ База данных инициализирована');

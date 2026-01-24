@@ -372,7 +372,7 @@ app.get('/api/guild/:guildId/emojis', async (req, res) => {
   }
 });
 
-// API для загрузки изображений (через файл)
+// API для загрузки изображений (через файл) - сохраняем в базу данных
 app.post('/api/upload-image', upload.single('image'), (req, res) => {
   try {
     if (!req.file) {
@@ -382,14 +382,41 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
       });
     }
     
-    // Возвращаем URL для доступа к файлу
-    const fileUrl = `/uploads/${req.file.filename}`;
+    // Читаем файл и конвертируем в base64
+    const fileBuffer = fs.readFileSync(req.file.path);
+    const base64Data = fileBuffer.toString('base64');
+    const mimeType = req.file.mimetype;
+    
+    // Создаем уникальный ID для изображения
+    const imageId = `img_${Date.now()}_${Math.round(Math.random() * 1E9)}`;
+    
+    // Сохраняем в базу данных
+    const imageData = {
+      id: imageId,
+      data: base64Data,
+      mimeType: mimeType,
+      originalName: req.file.originalname,
+      uploadDate: Date.now()
+    };
+    
+    // Сохраняем изображение в базу данных
+    if (!db.data.images) {
+      db.data.images = {};
+    }
+    db.data.images[imageId] = imageData;
+    db.save();
+    
+    // Удаляем временный файл
+    fs.unlinkSync(req.file.path);
+    
+    // Возвращаем URL для доступа к изображению через API
+    const fileUrl = `/api/image/${imageId}`;
     
     res.json({ 
       success: true, 
       url: fileUrl,
-      filename: req.file.filename,
-      message: 'Изображение успешно загружено и сохранено на сервере.' 
+      filename: imageId,
+      message: 'Изображение успешно загружено и сохранено в базе данных.' 
     });
   } catch (error) {
     console.error('Ошибка загрузки изображения:', error);
@@ -400,7 +427,7 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
   }
 });
 
-// API для загрузки изображений из base64 (для обратной совместимости)
+// API для загрузки изображений из base64 - также сохраняем в базу данных
 app.post('/api/upload-image-base64', (req, res) => {
   try {
     const { imageData } = req.body; // base64 data URL
@@ -421,7 +448,7 @@ app.post('/api/upload-image-base64', (req, res) => {
       });
     }
     
-    const ext = matches[1] === 'jpeg' ? 'jpg' : matches[1];
+    const mimeType = `image/${matches[1]}`;
     const base64Data = matches[2];
     
     // Проверка размера (максимум 10 МБ)
@@ -433,27 +460,70 @@ app.post('/api/upload-image-base64', (req, res) => {
       });
     }
     
-    // Сохраняем файл
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const filename = `upload-${uniqueSuffix}.${ext}`;
-    const filepath = path.join(uploadsDir, filename);
+    // Создаем уникальный ID для изображения
+    const imageId = `img_${Date.now()}_${Math.round(Math.random() * 1E9)}`;
     
-    fs.writeFileSync(filepath, base64Data, 'base64');
+    // Сохраняем в базу данных
+    const imageDataObj = {
+      id: imageId,
+      data: base64Data,
+      mimeType: mimeType,
+      originalName: 'base64-upload',
+      uploadDate: Date.now()
+    };
     
-    // Возвращаем URL для доступа к файлу
-    const fileUrl = `/uploads/${filename}`;
+    // Сохраняем изображение в базу данных
+    if (!db.data.images) {
+      db.data.images = {};
+    }
+    db.data.images[imageId] = imageDataObj;
+    db.save();
+    
+    // Возвращаем URL для доступа к изображению через API
+    const fileUrl = `/api/image/${imageId}`;
     
     res.json({ 
       success: true, 
       url: fileUrl,
-      filename: filename,
-      message: 'Изображение успешно загружено и сохранено на сервере.' 
+      filename: imageId,
+      message: 'Изображение успешно загружено и сохранено в базе данных.' 
     });
   } catch (error) {
     console.error('Ошибка загрузки изображения из base64:', error);
     res.status(500).json({ 
       success: false, 
       message: 'Ошибка при загрузке изображения' 
+    });
+  }
+});
+
+// API для получения изображений из базы данных
+app.get('/api/image/:imageId', (req, res) => {
+  try {
+    const imageId = req.params.imageId;
+    
+    if (!db.data.images || !db.data.images[imageId]) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Изображение не найдено' 
+      });
+    }
+    
+    const imageData = db.data.images[imageId];
+    const buffer = Buffer.from(imageData.data, 'base64');
+    
+    res.set({
+      'Content-Type': imageData.mimeType,
+      'Content-Length': buffer.length,
+      'Cache-Control': 'public, max-age=31536000' // Кэшируем на год
+    });
+    
+    res.send(buffer);
+  } catch (error) {
+    console.error('Ошибка получения изображения:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ошибка при получении изображения' 
     });
   }
 });

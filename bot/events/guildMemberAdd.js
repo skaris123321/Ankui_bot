@@ -222,7 +222,7 @@ module.exports = {
       if (imageEnabled) {
         let welcomeImageUrl = settings.welcome_image_background || '';
         
-        if (welcomeImageUrl && welcomeImageUrl.startsWith('/uploads/')) {
+        if (welcomeImageUrl && (welcomeImageUrl.startsWith('/uploads/') || welcomeImageUrl.startsWith('/api/image/'))) {
           // Определяем базовый URL - проверяем переменные окружения Render/Railway/etc
           let baseUrl = process.env.WEB_SERVER_URL || process.env.RENDER_EXTERNAL_URL || process.env.RAILWAY_STATIC_URL;
           
