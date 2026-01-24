@@ -10,7 +10,8 @@ class BotDatabase {
       modLogs: [],
       userLevels: {},
       userStats: {},
-      images: {}
+      images: {},
+      userDrafts: {}
     };
     this.initialize();
   }
@@ -34,7 +35,8 @@ class BotDatabase {
           modLogs: [],
           userLevels: {},
           userStats: {},
-          images: {}
+          images: {},
+          userDrafts: {}
         };
         this.save();
       }
@@ -45,7 +47,8 @@ class BotDatabase {
         modLogs: [],
         userLevels: {},
         userStats: {},
-        images: {}
+        images: {},
+        userDrafts: {}
       };
       this.save();
       console.log('✅ База данных инициализирована');

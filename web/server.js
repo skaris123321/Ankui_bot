@@ -537,6 +537,117 @@ app.post('/api/upload-image-base64', (req, res) => {
   }
 });
 
+// API для сохранения пользовательского черновика embed
+app.post('/api/user-draft/embed', (req, res) => {
+  try {
+    const userId = req.session.userId || req.sessionID; // Используем ID пользователя или ID сессии
+    const { guildId, embedData } = req.body;
+    
+    if (!guildId || !embedData) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Не указан ID сервера или данные embed' 
+      });
+    }
+    
+    // Создаем ключ для черновика
+    const draftKey = `draft_${guildId}_${userId}`;
+    
+    // Сохраняем черновик в базе данных
+    if (!db.data.userDrafts) {
+      db.data.userDrafts = {};
+    }
+    
+    db.data.userDrafts[draftKey] = {
+      userId: userId,
+      guildId: guildId,
+      embedData: embedData,
+      lastModified: Date.now()
+    };
+    
+    db.save();
+    
+    console.log(`💾 Сохранен черновик для пользователя ${userId} на сервере ${guildId}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Черновик сохранен' 
+    });
+  } catch (error) {
+    console.error('❌ Ошибка сохранения черновика:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ошибка при сохранении черновика' 
+    });
+  }
+});
+
+// API для загрузки пользовательского черновика embed
+app.get('/api/user-draft/embed/:guildId', (req, res) => {
+  try {
+    const userId = req.session.userId || req.sessionID;
+    const guildId = req.params.guildId;
+    
+    // Создаем ключ для черновика
+    const draftKey = `draft_${guildId}_${userId}`;
+    
+    // Загружаем черновик из базы данных
+    if (!db.data.userDrafts || !db.data.userDrafts[draftKey]) {
+      return res.json({ 
+        success: true, 
+        draft: null,
+        message: 'Черновик не найден' 
+      });
+    }
+    
+    const draft = db.data.userDrafts[draftKey];
+    
+    console.log(`📖 Загружен черновик для пользователя ${userId} на сервере ${guildId}`);
+    
+    res.json({ 
+      success: true, 
+      draft: draft.embedData,
+      lastModified: draft.lastModified
+    });
+  } catch (error) {
+    console.error('❌ Ошибка загрузки черновика:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ошибка при загрузке черновика' 
+    });
+  }
+});
+
+// API для очистки пользовательского черновика
+app.delete('/api/user-draft/embed/:guildId', (req, res) => {
+  try {
+    const userId = req.session.userId || req.sessionID;
+    const guildId = req.params.guildId;
+    
+    // Создаем ключ для черновика
+    const draftKey = `draft_${guildId}_${userId}`;
+    
+    // Удаляем черновик из базы данных
+    if (db.data.userDrafts && db.data.userDrafts[draftKey]) {
+      delete db.data.userDrafts[draftKey];
+      db.save();
+      
+      console.log(`🗑️ Удален черновик для пользователя ${userId} на сервере ${guildId}`);
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Черновик очищен' 
+    });
+  } catch (error) {
+    console.error('❌ Ошибка очистки черновика:', error);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Ошибка при очистке черновика' 
+    });
+  }
+});
+
 // Прокси для Discord CDN изображений
 app.get('/discord-avatar/:id', async (req, res) => {
   try {
@@ -680,6 +791,32 @@ app.get('/*.jpeg', (req, res) => {
   });
   
   res.send(transparentPixel);
+});
+
+// Обработка любых файлов с URL-encoded символами (например, имена пользователей Discord)
+app.get('/*', (req, res, next) => {
+  const path = req.path;
+  
+  // Проверяем, содержит ли путь URL-encoded символы и выглядит как имя файла
+  if (path.includes('%') && (path.includes('.') || path.length > 50)) {
+    console.log(`⚠️ Попытка доступа к файлу с URL-encoded символами: ${path.substring(0, 100)}...`);
+    console.log(`⚠️ User-Agent: ${req.get('User-Agent')?.substring(0, 100)}`);
+    console.log(`⚠️ Referer: ${req.get('Referer')}`);
+    
+    // Возвращаем прозрачный пиксель для любых изображений
+    const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': transparentPixel.length,
+      'Cache-Control': 'public, max-age=3600'
+    });
+    
+    return res.send(transparentPixel);
+  }
+  
+  // Продолжаем обычную обработку
+  next();
 });
 
 // API для получения изображений из базы данных

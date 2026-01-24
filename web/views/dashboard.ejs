@@ -1303,7 +1303,9 @@
           <% } %>
         </div>
         <div class="editor-toolbar-actions">
+          <span id="draftStatus" style="color: var(--text-secondary); font-size: 0.875rem; margin-right: 1rem;"></span>
           <button type="button" class="btn btn-secondary" onclick="resetEmbed()">Сбросить</button>
+          <button type="button" class="btn btn-secondary" onclick="clearDraft()" title="Очистить личный черновик">🗑️ Черновик</button>
           <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="sendEmbed()">Отправить</button>
         </div>
       </div>
@@ -1520,6 +1522,147 @@
   <script>
     let selectedGuildId = null;
     let selectedChannelId = null;
+    let draftSaveTimeout = null; // Таймер для автосохранения
+    
+    // Функции для работы с пользовательскими черновиками
+    async function saveDraft() {
+      if (!selectedGuildId) return;
+      
+      const statusEl = document.getElementById('draftStatus');
+      if (statusEl) statusEl.textContent = '💾 Сохранение...';
+      
+      try {
+        const embedData = {
+          embedImageBlock: embedImageBlock,
+          embedBlocks: embedBlocks,
+          // Сохраняем основные поля embed
+          title: document.getElementById('embedTitle')?.value || '',
+          description: document.getElementById('embedDescription')?.value || '',
+          color: document.getElementById('embedColor')?.value || '#5865F2',
+          image: document.getElementById('embedImage')?.value || '',
+          thumbnail: document.getElementById('embedThumbnail')?.value || '',
+          author: document.getElementById('embedAuthor')?.value || '',
+          footer: document.getElementById('embedFooter')?.value || ''
+        };
+        
+        const response = await fetch('/api/user-draft/embed', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            guildId: selectedGuildId,
+            embedData: embedData
+          })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Черновик автоматически сохранен');
+          if (statusEl) {
+            statusEl.textContent = '✅ Сохранено';
+            setTimeout(() => {
+              if (statusEl) statusEl.textContent = '';
+            }, 2000);
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка сохранения черновика:', error);
+        if (statusEl) {
+          statusEl.textContent = '❌ Ошибка сохранения';
+          setTimeout(() => {
+            if (statusEl) statusEl.textContent = '';
+          }, 3000);
+        }
+      }
+    }
+    
+    async function loadDraft() {
+      if (!selectedGuildId) return;
+      
+      try {
+        const response = await fetch(`/api/user-draft/embed/${selectedGuildId}`);
+        const result = await response.json();
+        
+        if (result.success && result.draft) {
+          const draft = result.draft;
+          
+          // Загружаем блок с картинкой
+          if (draft.embedImageBlock) {
+            embedImageBlock = draft.embedImageBlock;
+            
+            const titleEl = document.getElementById('embedImageBlockTitle');
+            const imageEl = document.getElementById('embedImageBlockImage');
+            const imageUrlEl = document.getElementById('embedImageBlockImageUrl');
+            const fileNameEl = document.getElementById('embedImageBlockImageFileName');
+            
+            if (titleEl) titleEl.value = embedImageBlock.title || '';
+            if (imageEl) imageEl.value = embedImageBlock.image || '';
+            if (imageUrlEl && embedImageBlock.image) {
+              if (embedImageBlock.image.startsWith('http') && !embedImageBlock.image.includes('/api/image/')) {
+                imageUrlEl.value = embedImageBlock.image;
+                if (fileNameEl) fileNameEl.textContent = '🌐 URL изображения';
+              } else if (embedImageBlock.image) {
+                if (fileNameEl) fileNameEl.textContent = '✅ Изображение загружено';
+              }
+            }
+          }
+          
+          // Загружаем блоки embed
+          if (draft.embedBlocks) {
+            embedBlocks = draft.embedBlocks;
+            loadEmbedBlocks();
+          }
+          
+          // Загружаем основные поля
+          if (document.getElementById('embedTitle')) document.getElementById('embedTitle').value = draft.title || '';
+          if (document.getElementById('embedDescription')) document.getElementById('embedDescription').value = draft.description || '';
+          if (document.getElementById('embedColor')) document.getElementById('embedColor').value = draft.color || '#5865F2';
+          if (document.getElementById('embedImage')) document.getElementById('embedImage').value = draft.image || '';
+          if (document.getElementById('embedThumbnail')) document.getElementById('embedThumbnail').value = draft.thumbnail || '';
+          if (document.getElementById('embedAuthor')) document.getElementById('embedAuthor').value = draft.author || '';
+          if (document.getElementById('embedFooter')) document.getElementById('embedFooter').value = draft.footer || '';
+          
+          updateEmbedPreview();
+          
+          console.log('✅ Черновик загружен');
+          showMessage('info', '📝 Загружен ваш личный черновик');
+        }
+      } catch (error) {
+        console.error('❌ Ошибка загрузки черновика:', error);
+      }
+    }
+    
+    async function clearDraft() {
+      if (!selectedGuildId) return;
+      
+      if (!confirm('Вы уверены, что хотите очистить свой личный черновик?')) {
+        return;
+      }
+      
+      try {
+        await fetch(`/api/user-draft/embed/${selectedGuildId}`, {
+          method: 'DELETE'
+        });
+        
+        // Очищаем форму
+        resetEmbed();
+        
+        console.log('✅ Черновик очищен');
+        showMessage('success', '🗑️ Личный черновик очищен');
+      } catch (error) {
+        console.error('❌ Ошибка очистки черновика:', error);
+        showMessage('error', '❌ Ошибка при очистке черновика');
+      }
+    }
+    
+    // Функция для автосохранения с задержкой
+    function scheduleDraftSave() {
+      if (draftSaveTimeout) {
+        clearTimeout(draftSaveTimeout);
+      }
+      
+      draftSaveTimeout = setTimeout(() => {
+        saveDraft();
+      }, 2000); // Сохраняем через 2 секунды после последнего изменения
+    }
     
     // Обработчик выбора сервера из тулбара
     async function handleServerSelect(guildId) {
@@ -1560,6 +1703,9 @@
     async function selectGuild(guildId, guildName) {
       selectedGuildId = guildId;
       selectedChannelId = null;
+      
+      // Загружаем пользовательский черновик
+      await loadDraft();
       
       // Загружаем блоки embed
       loadEmbedBlocks();
@@ -1879,6 +2025,7 @@
       if (imageEl) embedImageBlock.image = imageEl.value;
       
       updateEmbedPreview();
+      scheduleDraftSave(); // Автосохранение
     }
     
     // Функции для обработки URL полей
@@ -1897,6 +2044,7 @@
           }
         }
         updateEmbedImageBlock();
+        scheduleDraftSave(); // Автосохранение
       }
     }
     
@@ -1917,6 +2065,7 @@
         if (typeof updatePreview === 'function') {
           updatePreview();
         }
+        scheduleDraftSave(); // Автосохранение
       }
     }
     
@@ -1937,6 +2086,7 @@
         if (typeof updatePreview === 'function') {
           updatePreview();
         }
+        scheduleDraftSave(); // Автосохранение
       }
     }
     
