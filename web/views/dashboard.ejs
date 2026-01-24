@@ -1664,6 +1664,51 @@
       }, 2000); // Сохраняем через 2 секунды после последнего изменения
     }
     
+    // Функция для получения данных embed (локальная версия для dashboard)
+    function getEmbedData() {
+      const titleEl = document.getElementById('embedTitle');
+      const descriptionEl = document.getElementById('embedDescription');
+      const colorEl = document.getElementById('embedColor');
+      const imageEl = document.getElementById('embedImage');
+      const thumbnailEl = document.getElementById('embedThumbnail');
+      const authorEl = document.getElementById('embedAuthor');
+      const footerEl = document.getElementById('embedFooter');
+      const timestampEl = document.getElementById('embedTimestamp');
+      
+      const embedData = {
+        title: titleEl ? titleEl.value : '',
+        description: descriptionEl ? descriptionEl.value : '',
+        color: colorEl ? parseInt(colorEl.value.replace('#', ''), 16) : 0x5865F2,
+        timestamp: (timestampEl && timestampEl.checked) ? new Date().toISOString() : null
+      };
+      
+      // Добавляем изображение, если есть
+      const image = imageEl ? imageEl.value.trim() : '';
+      if (image && !image.startsWith('data:')) {
+        embedData.image = { url: image };
+      }
+      
+      // Добавляем миниатюру, если есть
+      const thumbnail = thumbnailEl ? thumbnailEl.value.trim() : '';
+      if (thumbnail && !thumbnail.startsWith('data:')) {
+        embedData.thumbnail = { url: thumbnail };
+      }
+      
+      // Добавляем автора, если есть
+      const author = authorEl ? authorEl.value : '';
+      if (author) {
+        embedData.author = { name: author };
+      }
+      
+      // Добавляем футер, если есть
+      const footer = footerEl ? footerEl.value : '';
+      if (footer) {
+        embedData.footer = { text: footer };
+      }
+      
+      return embedData;
+    }
+    
     // Обработчик выбора сервера из тулбара
     async function handleServerSelect(guildId) {
       if (!guildId) {
@@ -3117,6 +3162,27 @@
         });
       }
       
+    });
+    
+    // Добавляем обработчики событий для автосохранения
+    document.addEventListener('DOMContentLoaded', function() {
+      // Основные поля embed
+      const embedTitle = document.getElementById('embedTitle');
+      const embedDescription = document.getElementById('embedDescription');
+      const embedColor = document.getElementById('embedColor');
+      const embedAuthor = document.getElementById('embedAuthor');
+      const embedFooter = document.getElementById('embedFooter');
+      const embedTimestamp = document.getElementById('embedTimestamp');
+      
+      // Добавляем автосохранение для всех полей
+      if (embedTitle) embedTitle.addEventListener('input', scheduleDraftSave);
+      if (embedDescription) embedDescription.addEventListener('input', scheduleDraftSave);
+      if (embedColor) embedColor.addEventListener('input', scheduleDraftSave);
+      if (embedAuthor) embedAuthor.addEventListener('input', scheduleDraftSave);
+      if (embedFooter) embedFooter.addEventListener('input', scheduleDraftSave);
+      if (embedTimestamp) embedTimestamp.addEventListener('change', scheduleDraftSave);
+      
+      console.log('✅ Обработчики автосохранения добавлены');
     });
   </script>
 </body>
