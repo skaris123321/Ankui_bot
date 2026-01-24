@@ -4,6 +4,15 @@ module.exports = {
   data: new SlashCommandBuilder()
     .setName('stats')
     .setDescription('Показать статистику активности пользователей на сервере')
+    .addStringOption(option =>
+      option.setName('type')
+        .setDescription('Тип статистики')
+        .setRequired(true)
+        .addChoices(
+          { name: '💬 По сообщениям', value: 'messages' },
+          { name: '🎤 По времени в войсе', value: 'voice' }
+        )
+    )
     .addIntegerOption(option =>
       option.setName('limit')
         .setDescription('Количество пользователей для отображения (по умолчанию 10)')
@@ -16,6 +25,7 @@ module.exports = {
     try {
       await interaction.deferReply();
 
+      const type = interaction.options.getString('type');
       const limit = interaction.options.getInteger('limit') || 10;
       const guildId = interaction.guild.id;
 
@@ -49,26 +59,32 @@ module.exports = {
         });
       }
 
-      // Сортируем по общей активности (сообщения + время в голосовых каналах)
-      memberStats.sort((a, b) => {
-        const scoreA = a.messages + Math.floor(a.voiceTime / 60000); // 1 минута = 1 очко
-        const scoreB = b.messages + Math.floor(b.voiceTime / 60000);
-        return scoreB - scoreA;
-      });
+      // Сортируем в зависимости от типа статистики
+      if (type === 'messages') {
+        memberStats.sort((a, b) => b.messages - a.messages);
+      } else if (type === 'voice') {
+        memberStats.sort((a, b) => b.voiceTime - a.voiceTime);
+      }
 
       // Берем топ пользователей
       const topMembers = memberStats.slice(0, limit);
 
-      // Создаем embed
+      // Создаем embed в зависимости от типа
       const embed = new EmbedBuilder()
-        .setTitle(`📊 Статистика активности сервера`)
-        .setDescription(`Топ-${limit} самых активных участников`)
         .setColor(0x5865F2)
         .setTimestamp()
         .setFooter({
           text: `Всего участников: ${memberStats.length}`,
           iconURL: guild.iconURL() || undefined
         });
+
+      if (type === 'messages') {
+        embed.setTitle(`💬 Топ по сообщениям`)
+          .setDescription(`Самые активные в чате (топ-${limit})`);
+      } else if (type === 'voice') {
+        embed.setTitle(`🎤 Топ по времени в войсе`)
+          .setDescription(`Больше всего времени в голосовых каналах (топ-${limit})`);
+      }
 
       // Добавляем поля со статистикой
       if (topMembers.length === 0) {
@@ -82,38 +98,33 @@ module.exports = {
 
         topMembers.forEach((stats, index) => {
           const position = index + 1;
-          const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `${position}.`;
+          const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position}.**`;
 
-          // Форматируем время в голосовых каналах
-          const voiceHours = Math.floor(stats.voiceTime / 3600000);
-          const voiceMinutes = Math.floor((stats.voiceTime % 3600000) / 60000);
-          const voiceTimeStr = voiceHours > 0 ? `${voiceHours}ч ${voiceMinutes}м` : `${voiceMinutes}м`;
-
-          // Форматируем последнюю активность
-          let lastActiveStr = 'Никогда';
-          if (stats.lastActive) {
-            const lastActiveDate = new Date(stats.lastActive);
-            const now = new Date();
-            const diffMs = now - lastActiveDate;
-            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-
-            if (diffDays === 0) {
-              lastActiveStr = 'Сегодня';
-            } else if (diffDays === 1) {
-              lastActiveStr = 'Вчера';
-            } else if (diffDays < 7) {
-              lastActiveStr = `${diffDays} дн. назад`;
+          if (type === 'messages') {
+            // Статистика по сообщениям
+            if (stats.messages > 0) {
+              description += `${medal} <@${stats.user.id}> — **${stats.messages}** сообщений\n`;
             } else {
-              lastActiveStr = lastActiveDate.toLocaleDateString('ru-RU');
+              description += `${medal} <@${stats.user.id}> — нет сообщений\n`;
+            }
+          } else if (type === 'voice') {
+            // Статистика по времени в войсе
+            const voiceHours = Math.floor(stats.voiceTime / 3600000);
+            const voiceMinutes = Math.floor((stats.voiceTime % 3600000) / 60000);
+            
+            if (stats.voiceTime > 0) {
+              if (voiceHours > 0) {
+                description += `${medal} <@${stats.user.id}> — **${voiceHours}ч ${voiceMinutes}м**\n`;
+              } else {
+                description += `${medal} <@${stats.user.id}> — **${voiceMinutes}м**\n`;
+              }
+            } else {
+              description += `${medal} <@${stats.user.id}> — не был в войсе\n`;
             }
           }
-
-          description += `${medal} <@${stats.user.id}>\n`;
-          description += `💬 **${stats.messages}** сообщений • 🎤 **${voiceTimeStr}** в войсе\n`;
-          description += `🕒 Последняя активность: ${lastActiveStr}\n\n`;
         });
 
-        embed.setDescription(description);
+        embed.setDescription(embed.data.description + '\n' + description);
       }
 
       // Добавляем общую статистику сервера
@@ -121,13 +132,21 @@ module.exports = {
       const totalVoiceTime = memberStats.reduce((sum, stats) => sum + stats.voiceTime, 0);
       const totalVoiceHours = Math.floor(totalVoiceTime / 3600000);
       const totalVoiceMinutes = Math.floor((totalVoiceTime % 3600000) / 60000);
-      const totalVoiceStr = totalVoiceHours > 0 ? `${totalVoiceHours}ч ${totalVoiceMinutes}м` : `${totalVoiceMinutes}м`;
 
-      embed.addFields({
-        name: '📈 Общая статистика',
-        value: `💬 Всего сообщений: **${totalMessages}**\n🎤 Общее время в войсе: **${totalVoiceStr}**`,
-        inline: false
-      });
+      if (type === 'messages') {
+        embed.addFields({
+          name: '📊 Общая статистика',
+          value: `Всего сообщений на сервере: **${totalMessages}**`,
+          inline: false
+        });
+      } else if (type === 'voice') {
+        const totalVoiceStr = totalVoiceHours > 0 ? `**${totalVoiceHours}ч ${totalVoiceMinutes}м**` : `**${totalVoiceMinutes}м**`;
+        embed.addFields({
+          name: '📊 Общая статистика',
+          value: `Общее время в войсе: ${totalVoiceStr}`,
+          inline: false
+        });
+      }
 
       await interaction.editReply({ embeds: [embed] });
 
