@@ -1535,6 +1535,8 @@
         const embedData = {
           embedImageBlock: embedImageBlock,
           embedBlocks: embedBlocks,
+          roleButtons: roleButtons,
+          selectedBlockForButtons: selectedBlockForButtons,
           // Сохраняем основные поля embed
           title: document.getElementById('embedTitle')?.value || '',
           description: document.getElementById('embedDescription')?.value || '',
@@ -1608,7 +1610,23 @@
           // Загружаем блоки embed
           if (draft.embedBlocks) {
             embedBlocks = draft.embedBlocks;
-            loadEmbedBlocks();
+            renderEmbedBlocks();
+            updateRoleButtonsBlockSelect();
+          }
+          
+          // Загружаем кнопки ролей, если они есть
+          if (draft.roleButtons) {
+            roleButtons = draft.roleButtons;
+            renderRoleButtons();
+          }
+          
+          // Загружаем выбранный блок для кнопок
+          if (draft.selectedBlockForButtons !== undefined) {
+            selectedBlockForButtons = draft.selectedBlockForButtons;
+            const select = document.getElementById('roleButtonsBlockSelect');
+            if (select) {
+              select.value = selectedBlockForButtons;
+            }
           }
           
           // Загружаем основные поля
@@ -1641,6 +1659,12 @@
         await fetch(`/api/user-draft/embed/${selectedGuildId}`, {
           method: 'DELETE'
         });
+        
+        // Очищаем все данные
+        embedBlocks = [];
+        embedImageBlock = { title: '', image: '' };
+        roleButtons = [];
+        selectedBlockForButtons = -1;
         
         // Очищаем форму
         resetEmbed();
@@ -1749,11 +1773,17 @@
       selectedGuildId = guildId;
       selectedChannelId = null;
       
-      // Загружаем пользовательский черновик
+      // Сбрасываем все данные перед загрузкой нового сервера
+      embedBlocks = [];
+      embedImageBlock = { title: '', image: '' };
+      roleButtons = [];
+      selectedBlockForButtons = -1;
+      
+      // Загружаем ТОЛЬКО пользовательский черновик (полная изоляция)
       await loadDraft();
       
-      // Загружаем блоки embed
-      loadEmbedBlocks();
+      // НЕ загружаем общие блоки embed - используем только персональные черновики
+      // loadEmbedBlocks(); // Полностью удалено для изоляции пользователей
       
       // Загружаем эмодзи сервера
       loadServerEmojis();
@@ -1854,13 +1884,27 @@
         if (footerIconEl) footerIconEl.value = '';
         if (timestampEl) timestampEl.checked = false;
         
-        // Сбрасываем блоки правил
-        if (typeof rulesBlocks !== 'undefined') {
-          rulesBlocks = [];
-          rulesBlockCounter = 1;
-          rulesRuleCounter = 1;
-          renderRulesBlocks();
-        }
+        // Сбрасываем блоки embed и кнопки ролей
+        embedBlocks = [];
+        embedImageBlock = { title: '', image: '' };
+        roleButtons = [];
+        selectedBlockForButtons = -1;
+        
+        // Очищаем поля блока с картинкой
+        const imageBlockTitleEl = document.getElementById('embedImageBlockTitle');
+        const imageBlockImageEl = document.getElementById('embedImageBlockImage');
+        const imageBlockImageUrlEl = document.getElementById('embedImageBlockImageUrl');
+        const imageBlockFileNameEl = document.getElementById('embedImageBlockImageFileName');
+        
+        if (imageBlockTitleEl) imageBlockTitleEl.value = '';
+        if (imageBlockImageEl) imageBlockImageEl.value = '';
+        if (imageBlockImageUrlEl) imageBlockImageUrlEl.value = '';
+        if (imageBlockFileNameEl) imageBlockFileNameEl.textContent = '';
+        
+        // Перерисовываем интерфейс
+        renderEmbedBlocks();
+        renderRoleButtons();
+        updateRoleButtonsBlockSelect();
         
         // Обновляем предпросмотр
         if (typeof updatePreview === 'function') {
@@ -1886,6 +1930,7 @@
       const select = document.getElementById('roleButtonsBlockSelect');
       if (select) {
         selectedBlockForButtons = parseInt(select.value);
+        scheduleDraftSave(); // Автосохранение
       }
     }
     
@@ -1959,6 +2004,7 @@
         style: 'primary' // По умолчанию синий
       });
       renderRoleButtons();
+      scheduleDraftSave(); // Автосохранение
       // Загружаем эмодзи, если еще не загружены
       if (serverEmojis.length === 0) {
         loadServerEmojis();
@@ -1970,12 +2016,14 @@
     function removeRoleButton(buttonId) {
       roleButtons = roleButtons.filter(b => b.id !== buttonId);
       renderRoleButtons();
+      scheduleDraftSave(); // Автосохранение
     }
     
     function updateRoleButton(buttonId, field, value) {
       const button = roleButtons.find(b => b.id === buttonId);
       if (button) {
         button[field] = value;
+        scheduleDraftSave(); // Автосохранение
       }
     }
     
@@ -2141,7 +2189,8 @@
       if (container.style.display === 'none') {
         container.style.display = 'block';
         btn.textContent = 'Скрыть блоки';
-        loadEmbedBlocks();
+        // НЕ загружаем общие блоки - используем только личные данные пользователя
+        renderEmbedBlocks();
       } else {
         container.style.display = 'none';
         btn.textContent = 'Добавить блоки';
@@ -2164,12 +2213,14 @@
       });
       renderEmbedBlocks();
       updateRoleButtonsBlockSelect();
+      scheduleDraftSave(); // Автосохранение
     }
     
     function removeEmbedBlock(blockId) {
       embedBlocks = embedBlocks.filter(b => b.id !== blockId);
       renderEmbedBlocks();
       updateRoleButtonsBlockSelect();
+      scheduleDraftSave(); // Автосохранение
     }
     
     function renderEmbedBlocks() {
@@ -2377,6 +2428,7 @@
       else if (field === 'timestamp') block.timestamp = value;
       
       updateEmbedPreview();
+      scheduleDraftSave(); // Автосохранение
     }
     
     function loadEmbedBlocks() {
@@ -2496,21 +2548,8 @@
       if (embedBlocks.length > 0) {
         console.log('📦 Отправка через блоки embed');
         
-        // Сохраняем блоки в базу данных
-        if (selectedGuildId) {
-          try {
-            await fetch(`/api/guild/${selectedGuildId}/embed-data`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ 
-                embed_data: embedBlocks,
-                embed_image_block: embedImageBlock
-              })
-            });
-          } catch (err) {
-            console.error('Ошибка сохранения блоков:', err);
-          }
-        }
+        // НЕ сохраняем блоки в общие настройки сервера - только в личные черновики
+        // Это обеспечивает полную изоляцию пользователей
         
         // Преобразуем блоки в embeds для Discord
         const embeds = [];
