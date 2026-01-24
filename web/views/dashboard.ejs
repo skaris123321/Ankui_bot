@@ -1306,7 +1306,7 @@
           <span id="draftStatus" style="color: var(--text-secondary); font-size: 0.875rem; margin-right: 1rem;"></span>
           <button type="button" class="btn btn-secondary" onclick="resetEmbed()">Сбросить</button>
           <button type="button" class="btn btn-secondary" onclick="clearDraft()" title="Очистить личный черновик">🗑️ Черновик</button>
-          <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="sendEmbed()">Отправить</button>
+          <button type="button" class="btn btn-primary" id="sendEmbedBtn" onclick="console.log('🔘 Кнопка нажата!'); sendEmbedDashboard()">Отправить</button>
         </div>
       </div>
       
@@ -2465,13 +2465,23 @@
       return div.innerHTML;
     }
     
-    // Отправка embed - переопределяем функцию из embed-editor.js
-    async function sendEmbed() {
+    // Отправка embed - локальная функция для dashboard
+    async function sendEmbedDashboard() {
+      console.log('🚀 Функция sendEmbedDashboard() вызвана!');
+      
       // Используем канал из тулбара
       const channelSelectToolbar = document.getElementById('channelSelectToolbar');
       const channelId = channelSelectToolbar ? channelSelectToolbar.value : selectedChannelId;
       
+      console.log('📋 Данные для отправки:', {
+        channelId: channelId,
+        selectedChannelId: selectedChannelId,
+        embedBlocks: embedBlocks.length,
+        embedImageBlock: embedImageBlock
+      });
+      
       if (!channelId) {
+        console.log('❌ Канал не выбран');
         showMessage('error', '❌ Выберите канал для отправки!');
         return;
       }
@@ -3193,6 +3203,25 @@
       if (embedTimestamp) embedTimestamp.addEventListener('change', scheduleDraftSave);
       
       console.log('✅ Обработчики автосохранения добавлены');
+      
+      // Проверяем, что функция sendEmbedDashboard доступна
+      if (typeof sendEmbedDashboard === 'function') {
+        console.log('✅ Функция sendEmbedDashboard определена');
+      } else {
+        console.error('❌ Функция sendEmbedDashboard НЕ определена!');
+      }
+      
+      // Проверяем кнопку отправки
+      const sendBtn = document.getElementById('sendEmbedBtn');
+      if (sendBtn) {
+        console.log('✅ Кнопка отправки найдена');
+        // Добавляем дополнительный обработчик через addEventListener
+        sendBtn.addEventListener('click', function() {
+          console.log('🔘 Кнопка нажата через addEventListener!');
+        });
+      } else {
+        console.error('❌ Кнопка отправки НЕ найдена!');
+      }
     });
   </script>
 </body>
