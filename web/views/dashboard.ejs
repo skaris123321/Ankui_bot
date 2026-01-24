@@ -1547,6 +1547,11 @@
           footer: document.getElementById('embedFooter')?.value || ''
         };
         
+        console.log('💾 Отправка данных для сохранения черновика:', {
+          guildId: selectedGuildId,
+          embedDataSize: JSON.stringify(embedData).length
+        });
+        
         const response = await fetch('/api/user-draft/embed', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1556,7 +1561,18 @@
           })
         });
         
-        if (response.ok) {
+        console.log('📥 Ответ сервера на сохранение:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Ошибка HTTP при сохранении:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const result = await response.json();
+        console.log('📋 Результат сохранения:', result);
+        
+        if (result.success) {
           console.log('✅ Черновик автоматически сохранен');
           if (statusEl) {
             statusEl.textContent = '✅ Сохранено';
@@ -1564,6 +1580,8 @@
               if (statusEl) statusEl.textContent = '';
             }, 2000);
           }
+        } else {
+          throw new Error(result.message || 'Неизвестная ошибка сохранения');
         }
       } catch (error) {
         console.error('❌ Ошибка сохранения черновика:', error);
@@ -1573,6 +1591,10 @@
             if (statusEl) statusEl.textContent = '';
           }, 3000);
         }
+        // Показываем пользователю ошибку только если это критично
+        if (error.message.includes('500')) {
+          showMessage('warning', '⚠️ Проблема с сохранением черновика. Данные могут не сохраниться.');
+        }
       }
     }
     
@@ -1580,8 +1602,20 @@
       if (!selectedGuildId) return;
       
       try {
+        console.log('📖 Загрузка черновика для сервера:', selectedGuildId);
+        
         const response = await fetch(`/api/user-draft/embed/${selectedGuildId}`);
+        
+        console.log('📥 Ответ сервера на загрузку:', response.status, response.statusText);
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error('❌ Ошибка HTTP при загрузке:', response.status, errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
         const result = await response.json();
+        console.log('📋 Результат загрузки:', result);
         
         if (result.success && result.draft) {
           const draft = result.draft;
@@ -1642,9 +1676,15 @@
           
           console.log('✅ Черновик загружен');
           showMessage('info', '📝 Загружен ваш личный черновик');
+        } else {
+          console.log('📖 Черновик не найден или пуст');
         }
       } catch (error) {
         console.error('❌ Ошибка загрузки черновика:', error);
+        // Не показываем ошибку пользователю, если черновик просто не найден
+        if (!error.message.includes('404')) {
+          showMessage('warning', '⚠️ Проблема с загрузкой черновика');
+        }
       }
     }
     

@@ -540,10 +540,27 @@ app.post('/api/upload-image-base64', (req, res) => {
 // API для сохранения пользовательского черновика embed
 app.post('/api/user-draft/embed', (req, res) => {
   try {
-    const userId = req.session.userId || req.sessionID; // Используем ID пользователя или ID сессии
+    // Более надежное получение ID пользователя
+    let userId = req.session.userId || req.session.user?.id || req.sessionID;
+    
+    // Если sessionID не определен, создаем временный ID
+    if (!userId) {
+      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`⚠️ Создан временный ID пользователя: ${userId}`);
+    }
+    
     const { guildId, embedData } = req.body;
     
+    console.log(`📝 Попытка сохранения черновика:`, {
+      userId: userId,
+      guildId: guildId,
+      hasEmbedData: !!embedData,
+      sessionExists: !!req.session,
+      sessionId: req.sessionID
+    });
+    
     if (!guildId || !embedData) {
+      console.log(`❌ Недостаточно данных для сохранения черновика`);
       return res.status(400).json({ 
         success: false, 
         message: 'Не указан ID сервера или данные embed' 
@@ -575,9 +592,15 @@ app.post('/api/user-draft/embed', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Ошибка сохранения черновика:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Request data:', {
+      sessionId: req.sessionID,
+      session: req.session,
+      body: req.body
+    });
     res.status(500).json({ 
       success: false, 
-      message: 'Ошибка при сохранении черновика' 
+      message: 'Ошибка при сохранении черновика: ' + error.message 
     });
   }
 });
@@ -585,14 +608,30 @@ app.post('/api/user-draft/embed', (req, res) => {
 // API для загрузки пользовательского черновика embed
 app.get('/api/user-draft/embed/:guildId', (req, res) => {
   try {
-    const userId = req.session.userId || req.sessionID;
+    // Более надежное получение ID пользователя
+    let userId = req.session.userId || req.session.user?.id || req.sessionID;
+    
+    // Если sessionID не определен, создаем временный ID
+    if (!userId) {
+      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`⚠️ Создан временный ID пользователя для загрузки: ${userId}`);
+    }
+    
     const guildId = req.params.guildId;
+    
+    console.log(`📖 Попытка загрузки черновика:`, {
+      userId: userId,
+      guildId: guildId,
+      sessionExists: !!req.session,
+      sessionId: req.sessionID
+    });
     
     // Создаем ключ для черновика
     const draftKey = `draft_${guildId}_${userId}`;
     
     // Загружаем черновик из базы данных
     if (!db.data.userDrafts || !db.data.userDrafts[draftKey]) {
+      console.log(`📖 Черновик не найден для ключа: ${draftKey}`);
       return res.json({ 
         success: true, 
         draft: null,
@@ -611,9 +650,15 @@ app.get('/api/user-draft/embed/:guildId', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Ошибка загрузки черновика:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Request data:', {
+      sessionId: req.sessionID,
+      session: req.session,
+      params: req.params
+    });
     res.status(500).json({ 
       success: false, 
-      message: 'Ошибка при загрузке черновика' 
+      message: 'Ошибка при загрузке черновика: ' + error.message 
     });
   }
 });
@@ -621,8 +666,23 @@ app.get('/api/user-draft/embed/:guildId', (req, res) => {
 // API для очистки пользовательского черновика
 app.delete('/api/user-draft/embed/:guildId', (req, res) => {
   try {
-    const userId = req.session.userId || req.sessionID;
+    // Более надежное получение ID пользователя
+    let userId = req.session.userId || req.session.user?.id || req.sessionID;
+    
+    // Если sessionID не определен, создаем временный ID
+    if (!userId) {
+      userId = `temp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      console.log(`⚠️ Создан временный ID пользователя для удаления: ${userId}`);
+    }
+    
     const guildId = req.params.guildId;
+    
+    console.log(`🗑️ Попытка удаления черновика:`, {
+      userId: userId,
+      guildId: guildId,
+      sessionExists: !!req.session,
+      sessionId: req.sessionID
+    });
     
     // Создаем ключ для черновика
     const draftKey = `draft_${guildId}_${userId}`;
@@ -633,6 +693,8 @@ app.delete('/api/user-draft/embed/:guildId', (req, res) => {
       db.save();
       
       console.log(`🗑️ Удален черновик для пользователя ${userId} на сервере ${guildId}`);
+    } else {
+      console.log(`🗑️ Черновик не найден для удаления: ${draftKey}`);
     }
     
     res.json({ 
@@ -641,9 +703,15 @@ app.delete('/api/user-draft/embed/:guildId', (req, res) => {
     });
   } catch (error) {
     console.error('❌ Ошибка очистки черновика:', error);
+    console.error('❌ Stack trace:', error.stack);
+    console.error('❌ Request data:', {
+      sessionId: req.sessionID,
+      session: req.session,
+      params: req.params
+    });
     res.status(500).json({ 
       success: false, 
-      message: 'Ошибка при очистке черновика' 
+      message: 'Ошибка при очистке черновика: ' + error.message 
     });
   }
 });
