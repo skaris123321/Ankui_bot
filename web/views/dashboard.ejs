@@ -1341,11 +1341,14 @@
             <div>
               <label>🖼️ Картинка</label>
               <div class="image-upload-group">
+                <input type="text" id="embedImageBlockImageUrl" class="input-field" placeholder="https://example.com/image.png или загрузите файл" oninput="updateEmbedImageBlockFromUrl()" style="margin-bottom: 0.5rem;">
+                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                  <label for="embedImageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                  <input type="file" id="embedImageBlockImageFile" accept="image/*" style="display: none;">
+                  <span id="embedImageBlockImageFileName" class="file-name"></span>
+                </div>
                 <input type="hidden" id="embedImageBlockImage" value="">
-                <label for="embedImageBlockImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
-                <input type="file" id="embedImageBlockImageFile" accept="image/*" style="display: none;">
-                <span id="embedImageBlockImageFileName" class="file-name"></span>
-                <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+                <small style="color: var(--text-secondary); font-size: 12px;">Введите URL изображения или загрузите файл. Максимальный размер файла: 5 МБ.</small>
               </div>
             </div>
           </div>
@@ -1442,22 +1445,28 @@
           <div class="editor-section">
             <label>Изображение</label>
             <div class="image-upload-group">
+              <input type="text" id="embedImageUrl" class="input-field" placeholder="https://example.com/image.png или загрузите файл" oninput="updateEmbedImageFromUrl()" style="margin-bottom: 0.5rem;">
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label for="embedImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                <input type="file" id="embedImageFile" accept="image/*" style="display: none;">
+                <span id="imageFileName" class="file-name"></span>
+              </div>
               <input type="hidden" id="embedImage" value="">
-              <label for="embedImageFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
-              <input type="file" id="embedImageFile" accept="image/*" style="display: none;">
-              <span id="imageFileName" class="file-name"></span>
-              <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">Введите URL изображения или загрузите файл. Максимальный размер файла: 5 МБ.</small>
             </div>
           </div>
           
           <div class="editor-section">
             <label>Миниатюра</label>
             <div class="image-upload-group">
+              <input type="text" id="embedThumbnailUrl" class="input-field" placeholder="https://example.com/thumbnail.png или загрузите файл" oninput="updateEmbedThumbnailFromUrl()" style="margin-bottom: 0.5rem;">
+              <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <label for="embedThumbnailFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
+                <input type="file" id="embedThumbnailFile" accept="image/*" style="display: none;">
+                <span id="thumbnailFileName" class="file-name"></span>
+              </div>
               <input type="hidden" id="embedThumbnail" value="">
-              <label for="embedThumbnailFile" class="btn btn-secondary btn-upload">Выбрать файл</label>
-              <input type="file" id="embedThumbnailFile" accept="image/*" style="display: none;">
-              <span id="thumbnailFileName" class="file-name"></span>
-              <small style="color: var(--text-secondary); font-size: 12px;">Максимальный размер файла: 10 МБ. Поддерживаются форматы: JPEG, PNG, GIF, WEBP.</small>
+              <small style="color: var(--text-secondary); font-size: 12px;">Введите URL изображения или загрузите файл. Максимальный размер файла: 5 МБ.</small>
             </div>
           </div>
           
@@ -1872,6 +1881,65 @@
       updateEmbedPreview();
     }
     
+    // Функции для обработки URL полей
+    function updateEmbedImageBlockFromUrl() {
+      const urlEl = document.getElementById('embedImageBlockImageUrl');
+      const hiddenEl = document.getElementById('embedImageBlockImage');
+      const fileNameEl = document.getElementById('embedImageBlockImageFileName');
+      
+      if (urlEl && hiddenEl) {
+        hiddenEl.value = urlEl.value;
+        if (fileNameEl) {
+          if (urlEl.value) {
+            fileNameEl.textContent = '🌐 URL изображения';
+          } else {
+            fileNameEl.textContent = '';
+          }
+        }
+        updateEmbedImageBlock();
+      }
+    }
+    
+    function updateEmbedImageFromUrl() {
+      const urlEl = document.getElementById('embedImageUrl');
+      const hiddenEl = document.getElementById('embedImage');
+      const fileNameEl = document.getElementById('imageFileName');
+      
+      if (urlEl && hiddenEl) {
+        hiddenEl.value = urlEl.value;
+        if (fileNameEl) {
+          if (urlEl.value) {
+            fileNameEl.textContent = '🌐 URL изображения';
+          } else {
+            fileNameEl.textContent = '';
+          }
+        }
+        if (typeof updatePreview === 'function') {
+          updatePreview();
+        }
+      }
+    }
+    
+    function updateEmbedThumbnailFromUrl() {
+      const urlEl = document.getElementById('embedThumbnailUrl');
+      const hiddenEl = document.getElementById('embedThumbnail');
+      const fileNameEl = document.getElementById('thumbnailFileName');
+      
+      if (urlEl && hiddenEl) {
+        hiddenEl.value = urlEl.value;
+        if (fileNameEl) {
+          if (urlEl.value) {
+            fileNameEl.textContent = '🌐 URL миниатюры';
+          } else {
+            fileNameEl.textContent = '';
+          }
+        }
+        if (typeof updatePreview === 'function') {
+          updatePreview();
+        }
+      }
+    }
+    
     function toggleEmbedBlocks() {
       const container = document.getElementById('embedBlocksContainer');
       const btn = document.getElementById('toggleEmbedBlocksBtn');
@@ -2131,12 +2199,19 @@
             
             const titleEl = document.getElementById('embedImageBlockTitle');
             const imageEl = document.getElementById('embedImageBlockImage');
+            const imageUrlEl = document.getElementById('embedImageBlockImageUrl');
             const fileNameEl = document.getElementById('embedImageBlockImageFileName');
             
             if (titleEl) titleEl.value = embedImageBlock.title;
             if (imageEl) imageEl.value = embedImageBlock.image;
-            if (fileNameEl && embedImageBlock.image) {
-              fileNameEl.textContent = '✅ Изображение загружено';
+            if (imageUrlEl && embedImageBlock.image) {
+              // Если это URL (не наш API), показываем в URL поле
+              if (embedImageBlock.image.startsWith('http') && !embedImageBlock.image.includes('/api/image/')) {
+                imageUrlEl.value = embedImageBlock.image;
+                if (fileNameEl) fileNameEl.textContent = '🌐 URL изображения';
+              } else if (embedImageBlock.image) {
+                if (fileNameEl) fileNameEl.textContent = '✅ Изображение загружено';
+              }
             }
           }
           
@@ -2379,6 +2454,12 @@
           console.error('❌ Не найдено поле embedImage!');
         }
         
+        // Очищаем URL поле при загрузке файла
+        const urlInput = document.getElementById('embedImageUrl');
+        if (urlInput) {
+          urlInput.value = '';
+        }
+        
         document.getElementById('imageFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
         
         // Обновляем предпросмотр
@@ -2419,6 +2500,12 @@
           console.log('✅ Скрытое поле embedThumbnail обновлено:', thumbnailInput.value);
         } else {
           console.error('❌ Не найдено поле embedThumbnail!');
+        }
+        
+        // Очищаем URL поле при загрузке файла
+        const urlInput = document.getElementById('embedThumbnailUrl');
+        if (urlInput) {
+          urlInput.value = '';
         }
         
         document.getElementById('thumbnailFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
@@ -2462,6 +2549,12 @@
           console.log('✅ Скрытое поле embedImageBlockImage обновлено:', imageInput.value);
         } else {
           console.error('❌ Не найдено поле embedImageBlockImage!');
+        }
+        
+        // Очищаем URL поле при загрузке файла
+        const urlInput = document.getElementById('embedImageBlockImageUrl');
+        if (urlInput) {
+          urlInput.value = '';
         }
         
         document.getElementById('embedImageBlockImageFileName').textContent = `✅ ${file.name} загружено (${(file.size / 1024).toFixed(1)} КБ)`;
