@@ -8,7 +8,8 @@ class BotDatabase {
       guilds: {},
       warnings: [],
       modLogs: [],
-      userLevels: {}
+      userLevels: {},
+      userStats: {}
     };
     this.initialize();
   }
@@ -30,7 +31,8 @@ class BotDatabase {
           guilds: {},
           warnings: [],
           modLogs: [],
-          userLevels: {}
+          userLevels: {},
+          userStats: {}
         };
         this.save();
       }
@@ -39,7 +41,8 @@ class BotDatabase {
         guilds: {},
         warnings: [],
         modLogs: [],
-        userLevels: {}
+        userLevels: {},
+        userStats: {}
       };
       this.save();
       console.log('✅ База данных инициализирована');
@@ -184,6 +187,41 @@ class BotDatabase {
       .filter(user => user.guild_id === guildId)
       .sort((a, b) => b.xp - a.xp)
       .slice(0, limit);
+  }
+
+  // Методы для статистики пользователей
+  getUserStats(guildId, userId) {
+    const key = `${guildId}_${userId}`;
+    return this.data.userStats ? this.data.userStats[key] : null;
+  }
+
+  setUserStats(guildId, userId, stats) {
+    const key = `${guildId}_${userId}`;
+    if (!this.data.userStats) {
+      this.data.userStats = {};
+    }
+
+    this.data.userStats[key] = {
+      guild_id: guildId,
+      user_id: userId,
+      messages: stats.messages || 0,
+      voiceTime: stats.voiceTime || 0,
+      lastActive: stats.lastActive || Date.now()
+    };
+
+    this.save();
+  }
+
+  getAllUserStats(guildId) {
+    if (!this.data.userStats) return [];
+
+    return Object.values(this.data.userStats)
+      .filter(stats => stats.guild_id === guildId)
+      .sort((a, b) => {
+        const scoreA = a.messages + Math.floor(a.voiceTime / 60000);
+        const scoreB = b.messages + Math.floor(b.voiceTime / 60000);
+        return scoreB - scoreA;
+      });
   }
 
   close() {

@@ -237,5 +237,36 @@ client.login(process.env.DISCORD_TOKEN).catch(error => {
   process.exit(1);
 });
 
+// Обработка выключения бота для сохранения активных голосовых сессий
+process.on('SIGINT', () => {
+  console.log('\n🛑 Получен сигнал SIGINT, завершение работы...');
+
+  if (client.activityTracker) {
+    client.activityTracker.saveActiveVoiceSessions();
+  }
+
+  if (client.db) {
+    client.db.close();
+  }
+
+  console.log('✅ Бот корректно завершил работу');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('\n🛑 Получен сигнал SIGTERM, завершение работы...');
+
+  if (client.activityTracker) {
+    client.activityTracker.saveActiveVoiceSessions();
+  }
+
+  if (client.db) {
+    client.db.close();
+  }
+
+  console.log('✅ Бот корректно завершил работу');
+  process.exit(0);
+});
+
 module.exports = client;
 
