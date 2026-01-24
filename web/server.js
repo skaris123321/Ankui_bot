@@ -53,6 +53,18 @@ const upload = multer({
   }
 });
 
+// Middleware для логирования всех запросов
+app.use((req, res, next) => {
+  // Логируем только запросы к изображениям и статическим файлам
+  if (req.path.match(/\.(png|jpg|jpeg|gif|webp|svg|ico)$/i)) {
+    console.log(`🔍 Запрос к изображению: ${req.method} ${req.path}`);
+    console.log(`🔍 User-Agent: ${req.get('User-Agent')?.substring(0, 100)}`);
+    console.log(`🔍 Referer: ${req.get('Referer')}`);
+    console.log(`🔍 Host: ${req.get('Host')}`);
+  }
+  next();
+});
+
 // Middleware
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
@@ -522,6 +534,86 @@ app.post('/api/upload-image-base64', (req, res) => {
       success: false, 
       message: 'Ошибка при загрузке изображения' 
     });
+  }
+});
+
+// Прокси для Discord CDN изображений
+app.get('/discord-avatar/:id', async (req, res) => {
+  try {
+    const avatarId = req.params.id;
+    const discordUrl = `https://cdn.discordapp.com/embed/avatars/${avatarId}.png`;
+    
+    console.log(`🔄 Проксирование Discord аватара: ${discordUrl}`);
+    
+    // Используем встроенный https модуль
+    const https = require('https');
+    const url = require('url');
+    
+    const parsedUrl = url.parse(discordUrl);
+    
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: 443,
+      path: parsedUrl.path,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (compatible; Bot/1.0)'
+      }
+    };
+    
+    const request = https.request(options, (response) => {
+      if (response.statusCode !== 200) {
+        console.error(`Discord CDN ответил с кодом: ${response.statusCode}`);
+        
+        // Возвращаем заглушку
+        const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+        
+        res.set({
+          'Content-Type': 'image/png',
+          'Content-Length': transparentPixel.length,
+          'Cache-Control': 'public, max-age=3600'
+        });
+        
+        return res.send(transparentPixel);
+      }
+      
+      res.set({
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=86400' // Кэшируем на день
+      });
+      
+      response.pipe(res);
+    });
+    
+    request.on('error', (error) => {
+      console.error('❌ Ошибка проксирования Discord аватара:', error);
+      
+      // Возвращаем заглушку в случае ошибки
+      const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+      
+      res.set({
+        'Content-Type': 'image/png',
+        'Content-Length': transparentPixel.length,
+        'Cache-Control': 'public, max-age=3600'
+      });
+      
+      res.send(transparentPixel);
+    });
+    
+    request.end();
+  } catch (error) {
+    console.error('❌ Ошибка проксирования Discord аватара:', error);
+    
+    // Возвращаем заглушку в случае ошибки
+    const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': transparentPixel.length,
+      'Cache-Control': 'public, max-age=3600'
+    });
+    
+    res.send(transparentPixel);
   }
 });
 
