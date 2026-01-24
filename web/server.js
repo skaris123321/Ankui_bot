@@ -41,7 +41,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10 MB
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB для безопасности
   fileFilter: function (req, file, cb) {
     // Разрешаем только изображения
     const allowedMimes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/jpg'];
@@ -382,10 +382,29 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
       });
     }
     
+    // Проверяем размер файла (максимум 5 МБ для безопасности)
+    if (req.file.size > 5 * 1024 * 1024) {
+      // Удаляем временный файл
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Размер файла не должен превышать 5 МБ' 
+      });
+    }
+    
     // Читаем файл и конвертируем в base64
     const fileBuffer = fs.readFileSync(req.file.path);
     const base64Data = fileBuffer.toString('base64');
     const mimeType = req.file.mimetype;
+    
+    // Дополнительная проверка размера base64 (должен быть меньше 7 МБ в base64)
+    if (base64Data.length > 7 * 1024 * 1024) {
+      fs.unlinkSync(req.file.path);
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Изображение слишком большое для сохранения в базе данных' 
+      });
+    }
     
     // Создаем уникальный ID для изображения
     const imageId = `img_${Date.now()}_${Math.round(Math.random() * 1E9)}`;
@@ -396,7 +415,8 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
       data: base64Data,
       mimeType: mimeType,
       originalName: req.file.originalname,
-      uploadDate: Date.now()
+      uploadDate: Date.now(),
+      size: req.file.size
     };
     
     // Сохраняем изображение в базу данных
@@ -409,6 +429,8 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
     // Удаляем временный файл
     fs.unlinkSync(req.file.path);
     
+    console.log(`✅ Изображение сохранено: ${imageId} (${req.file.size} байт)`);
+    
     // Возвращаем URL для доступа к изображению через API
     const fileUrl = `/api/image/${imageId}`;
     
@@ -419,7 +441,13 @@ app.post('/api/upload-image', upload.single('image'), (req, res) => {
       message: 'Изображение успешно загружено и сохранено в базе данных.' 
     });
   } catch (error) {
-    console.error('Ошибка загрузки изображения:', error);
+    console.error('❌ Ошибка загрузки изображения:', error);
+    
+    // Удаляем временный файл в случае ошибки
+    if (req.file && req.file.path && fs.existsSync(req.file.path)) {
+      fs.unlinkSync(req.file.path);
+    }
+    
     res.status(500).json({ 
       success: false, 
       message: error.message || 'Ошибка при загрузке изображения' 
@@ -497,19 +525,62 @@ app.post('/api/upload-image-base64', (req, res) => {
   }
 });
 
+// Обработка старых URL изображений - перенаправляем на заглушку
+app.get('/uploads/*', (req, res) => {
+  console.log(`⚠️ Попытка доступа к старому URL изображения: ${req.path}`);
+  
+  // Возвращаем прозрачный 1x1 пикселя PNG
+  const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  
+  res.set({
+    'Content-Type': 'image/png',
+    'Content-Length': transparentPixel.length,
+    'Cache-Control': 'public, max-age=3600'
+  });
+  
+  res.send(transparentPixel);
+});
+
 // API для получения изображений из базы данных
 app.get('/api/image/:imageId', (req, res) => {
   try {
     const imageId = req.params.imageId;
     
+    // Перезагружаем данные из файла для актуальности
+    db.load();
+    
     if (!db.data.images || !db.data.images[imageId]) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Изображение не найдено' 
+      console.log(`⚠️ Изображение не найдено: ${imageId}`);
+      
+      // Возвращаем прозрачный 1x1 пикселя PNG вместо ошибки
+      const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+      
+      res.set({
+        'Content-Type': 'image/png',
+        'Content-Length': transparentPixel.length,
+        'Cache-Control': 'public, max-age=3600'
       });
+      
+      return res.send(transparentPixel);
     }
     
     const imageData = db.data.images[imageId];
+    
+    // Проверяем, что данные изображения корректны
+    if (!imageData.data || !imageData.mimeType) {
+      console.error(`❌ Некорректные данные изображения: ${imageId}`);
+      
+      const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+      
+      res.set({
+        'Content-Type': 'image/png',
+        'Content-Length': transparentPixel.length,
+        'Cache-Control': 'public, max-age=3600'
+      });
+      
+      return res.send(transparentPixel);
+    }
+    
     const buffer = Buffer.from(imageData.data, 'base64');
     
     res.set({
@@ -520,11 +591,18 @@ app.get('/api/image/:imageId', (req, res) => {
     
     res.send(buffer);
   } catch (error) {
-    console.error('Ошибка получения изображения:', error);
-    res.status(500).json({ 
-      success: false, 
-      message: 'Ошибка при получении изображения' 
+    console.error('❌ Ошибка получения изображения:', error);
+    
+    // В случае любой ошибки возвращаем прозрачный пиксель
+    const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+    
+    res.set({
+      'Content-Type': 'image/png',
+      'Content-Length': transparentPixel.length,
+      'Cache-Control': 'public, max-age=3600'
     });
+    
+    res.send(transparentPixel);
   }
 });
 
