@@ -528,8 +528,57 @@ app.post('/api/upload-image-base64', (req, res) => {
 // Обработка старых URL изображений - перенаправляем на заглушку
 app.get('/uploads/*', (req, res) => {
   console.log(`⚠️ Попытка доступа к старому URL изображения: ${req.path}`);
+  console.log(`⚠️ User-Agent: ${req.get('User-Agent')}`);
+  console.log(`⚠️ Referer: ${req.get('Referer')}`);
   
   // Возвращаем прозрачный 1x1 пикселя PNG
+  const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  
+  res.set({
+    'Content-Type': 'image/png',
+    'Content-Length': transparentPixel.length,
+    'Cache-Control': 'public, max-age=3600'
+  });
+  
+  res.send(transparentPixel);
+});
+
+// Обработка любых PNG файлов в корне (например, 0.png)
+app.get('/*.png', (req, res) => {
+  console.log(`⚠️ Попытка доступа к PNG файлу в корне: ${req.path}`);
+  console.log(`⚠️ User-Agent: ${req.get('User-Agent')}`);
+  console.log(`⚠️ Referer: ${req.get('Referer')}`);
+  
+  // Возвращаем прозрачный 1x1 пикселя PNG
+  const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  
+  res.set({
+    'Content-Type': 'image/png',
+    'Content-Length': transparentPixel.length,
+    'Cache-Control': 'public, max-age=3600'
+  });
+  
+  res.send(transparentPixel);
+});
+
+// Обработка любых JPG/JPEG файлов в корне
+app.get('/*.jpg', (req, res) => {
+  console.log(`⚠️ Попытка доступа к JPG файлу в корне: ${req.path}`);
+  
+  const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
+  
+  res.set({
+    'Content-Type': 'image/png',
+    'Content-Length': transparentPixel.length,
+    'Cache-Control': 'public, max-age=3600'
+  });
+  
+  res.send(transparentPixel);
+});
+
+app.get('/*.jpeg', (req, res) => {
+  console.log(`⚠️ Попытка доступа к JPEG файлу в корне: ${req.path}`);
+  
   const transparentPixel = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==', 'base64');
   
   res.set({

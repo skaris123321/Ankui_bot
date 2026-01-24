@@ -1,3 +1,3 @@
 git add -A
-git commit -m "Fix image uploads: store images in database instead of filesystem for Render compatibility"
+git commit -m "Improve image handling: add fallback for old URLs, better error handling, size limits"
 git push origin main
