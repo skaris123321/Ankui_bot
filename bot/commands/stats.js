@@ -40,6 +40,7 @@ module.exports = {
       const limit = interaction.options.getInteger('лимит') || 20;
 
       console.log(`📊 Команда /stats вызвана: тип=${selectedType}, лимит=${limit}, сервер=${guildId}`);
+      console.log(`📊 Проверяем статистику для сервера: ${guildId}`);
 
       // Проверяем, что база данных доступна
       if (!client.db) {
@@ -49,6 +50,14 @@ module.exports = {
       }
 
       const db = client.db;
+
+      // Отладка: проверяем, есть ли данные в базе для этого сервера
+      const allUserStats = Object.keys(db.data.userStats || {});
+      const serverStats = allUserStats.filter(key => key.startsWith(guildId + '_'));
+      console.log(`📊 Найдено записей статистики для сервера ${guildId}: ${serverStats.length}`);
+      if (serverStats.length > 0) {
+        console.log(`📊 Примеры ключей: ${serverStats.slice(0, 3).join(', ')}`);
+      }
 
       // Получаем участников сервера
       let allMembers = [];
@@ -109,6 +118,12 @@ module.exports = {
 
       console.log(`📊 Обработано пользователей: ${memberStats.length}`);
 
+      // Отладочная информация
+      console.log('📊 Примеры статистики пользователей:');
+      memberStats.slice(0, 5).forEach(stats => {
+        console.log(`  - ${stats.user.username}: ${stats.messages} сообщений, ${Math.floor(stats.voiceTime/60000)} минут в войсе`);
+      });
+
       // Фильтруем пользователей с активностью в зависимости от типа статистики
       let activeMembers = [];
       if (selectedType === 'messages') {
@@ -134,7 +149,11 @@ module.exports = {
       let description = '';
 
       if (selectedType === 'messages') {
-        title = '<:emodzipurpleverify:1467380679191826446> Топ пользователей по сообщениям';
+        // Пытаемся найти кастомный эмодзи на сервере
+        const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
+        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '💬';
+        
+        title = `${emojiStr} Топ пользователей по сообщениям`;
         description = `Самые активные в чате (топ-${Math.min(limit, topMembers.length)})`;
       } else if (selectedType === 'voice') {
         title = '🎤 Топ пользователей по времени в войсе';
