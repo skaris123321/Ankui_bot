@@ -22,12 +22,9 @@ module.exports = {
     ),
 
   async execute(interaction, client) {
-    let hasReplied = false;
-    
     try {
       // Быстро отвечаем, чтобы избежать timeout
       await interaction.deferReply();
-      hasReplied = true;
 
       const guild = interaction.guild;
       if (!guild) {
@@ -39,8 +36,7 @@ module.exports = {
       const selectedType = interaction.options.getString('тип');
       const limit = interaction.options.getInteger('лимит') || 20;
 
-      console.log(`📊 Команда /stats вызвана: тип=${selectedType}, лимит=${limit}, сервер=${guildId}`);
-      console.log(`📊 Проверяем статистику для сервера: ${guildId}`);
+      console.log(`📊 Команда /stats: тип=${selectedType}, лимит=${limit}, сервер=${guildId}`);
 
       // Проверяем, что база данных доступна
       if (!client.db) {
@@ -51,193 +47,151 @@ module.exports = {
 
       const db = client.db;
 
-      // Отладка: проверяем, есть ли данные в базе для этого сервера
+      // Быстрая проверка статистики
       const allUserStats = Object.keys(db.data.userStats || {});
       const serverStats = allUserStats.filter(key => key.startsWith(guildId + '_'));
-      console.log(`📊 Найдено записей статистики для сервера ${guildId}: ${serverStats.length}`);
-      if (serverStats.length > 0) {
-        console.log(`📊 Примеры ключей: ${serverStats.slice(0, 3).join(', ')}`);
+      console.log(`📊 Статистика для ${guildId}: ${serverStats.length} записей`);
+
+      // Если нет статистики для текущего сервера, проверяем другие серверы
+      if (serverStats.length === 0) {
+        const allServers = [...new Set(allUserStats.map(key => key.split('_')[0]))];
+        console.log(`📊 Найдены данные для серверов: ${allServers.join(', ')}`);
+        
+        if (allServers.length > 0) {
+          await interaction.editReply({ 
+            content: `❌ Нет статистики для этого сервера.\n\nВ базе есть данные для серверов: ${allServers.join(', ')}\nТекущий сервер: ${guildId}\n\nВозможно, ID сервера изменился или ActivityTracker не работает.` 
+          });
+          return;
+        }
       }
 
-      // Получаем участников сервера
+      // Получаем участников сервера (ограничиваем количество для скорости)
       let allMembers = [];
       try {
-        // Пытаемся получить участников из кэша
-        allMembers = Array.from(guild.members.cache.values());
-        console.log(`👥 Участников в кэше: ${allMembers.length}`);
-        
-        // Если в кэше мало участников, пытаемся загрузить их
-        if (allMembers.length < 10) {
-          console.log('🔄 Загружаем участников с сервера...');
-          try {
-            await guild.members.fetch({ limit: 100 });
-            allMembers = Array.from(guild.members.cache.values());
-            console.log(`👥 Участников после загрузки: ${allMembers.length}`);
-          } catch (fetchError) {
-            console.warn('⚠️ Не удалось загрузить участников:', fetchError.message);
-            // Продолжаем с тем, что есть в кэше
-          }
-        }
+        allMembers = Array.from(guild.members.cache.values()).slice(0, 100); // Ограничиваем для скорости
+        console.log(`👥 Обрабатываем ${allMembers.length} участников`);
       } catch (error) {
         console.error('❌ Ошибка получения участников:', error);
-        allMembers = [];
-      }
-
-      if (allMembers.length === 0) {
-        await interaction.editReply({ 
-          content: '❌ Не удалось получить список участников сервера. Попробуйте позже.' 
-        });
+        await interaction.editReply({ content: '❌ Не удалось получить список участников сервера.' });
         return;
       }
 
-      // Создаем массив статистики для всех участников
+      // Создаем массив статистики
       const memberStats = [];
-
       for (const member of allMembers) {
-        if (member.user.bot) continue; // Пропускаем ботов
+        if (member.user.bot) continue;
 
-        try {
-          const userStats = db.getUserStats(guildId, member.id) || {
-            messages: 0,
-            voiceTime: 0,
-            lastActive: null
-          };
+        const userStats = db.getUserStats(guildId, member.id) || {
+          messages: 0,
+          voiceTime: 0,
+          lastActive: null
+        };
 
-          memberStats.push({
-            user: member.user,
-            member: member,
-            messages: userStats.messages || 0,
-            voiceTime: userStats.voiceTime || 0,
-            lastActive: userStats.lastActive
-          });
-        } catch (memberError) {
-          console.warn(`⚠️ Ошибка обработки участника ${member.id}:`, memberError.message);
-          continue;
-        }
+        memberStats.push({
+          user: member.user,
+          member: member,
+          messages: userStats.messages || 0,
+          voiceTime: userStats.voiceTime || 0,
+          lastActive: userStats.lastActive
+        });
       }
 
-      console.log(`📊 Обработано пользователей: ${memberStats.length}`);
-
-      // Отладочная информация
-      console.log('📊 Примеры статистики пользователей:');
-      memberStats.slice(0, 5).forEach(stats => {
-        console.log(`  - ${stats.user.username}: ${stats.messages} сообщений, ${Math.floor(stats.voiceTime/60000)} минут в войсе`);
-      });
-
-      // Фильтруем пользователей с активностью в зависимости от типа статистики
+      // Фильтруем активных пользователей
       let activeMembers = [];
       if (selectedType === 'messages') {
         activeMembers = memberStats.filter(s => s.messages > 0);
-        console.log(`💬 Пользователей с сообщениями: ${activeMembers.length}`);
       } else if (selectedType === 'voice') {
         activeMembers = memberStats.filter(s => s.voiceTime > 0);
-        console.log(`🎤 Пользователей с голосовой активностью: ${activeMembers.length}`);
       }
 
-      // Сортируем отфильтрованных пользователей
-      if (selectedType === 'messages') {
-        activeMembers.sort((a, b) => b.messages - a.messages);
-      } else if (selectedType === 'voice') {
-        activeMembers.sort((a, b) => b.voiceTime - a.voiceTime);
-      }
+      console.log(`📊 Активных пользователей: ${activeMembers.length}`);
 
-      // Берем топ пользователей
-      const topMembers = activeMembers.slice(0, limit);
-
-      // Создаем embed с результатами
-      let title = '📊 Статистика активности';
-      let description = '';
-
-      if (selectedType === 'messages') {
-        // Пытаемся найти кастомный эмодзи на сервере
-        console.log(`🔍 Ищем эмодзи 'emodzipurpleverify' на сервере...`);
-        console.log(`🔍 Доступные эмодзи на сервере: ${guild.emojis.cache.map(e => e.name).join(', ')}`);
-        
-        const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
-        console.log(`🔍 Найден эмодзи:`, customEmoji ? `${customEmoji.name} (${customEmoji.id})` : 'не найден');
-        
-        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
-        
-        title = `${emojiStr} Топ пользователей по сообщениям`;
-        description = `Самые активные в чате (топ-${Math.min(limit, topMembers.length)})`;
-      } else if (selectedType === 'voice') {
-        // Пытаемся найти кастомный эмодзи на сервере для голосовых
-        const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
-        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
-        
-        title = `${emojiStr} Топ пользователей по времени в войсе`;
-        description = `Больше всего времени в голосовых каналах (топ-${Math.min(limit, topMembers.length)})`;
-      }
-
-      const resultEmbed = new EmbedBuilder()
-        .setTitle(title)
-        .setColor(0x5865F2)
-        .setTimestamp()
-        .setFooter({
-          text: `Всего участников: ${memberStats.length}`
-        });
-
-      // Добавляем статистику
-      if (topMembers.length === 0) {
+      if (activeMembers.length === 0) {
         let noDataMessage = '';
         if (selectedType === 'messages') {
           noDataMessage = '📭 **Нет данных по сообщениям**\n\nСтатистика сообщений пока не собрана или никто не писал сообщения.';
         } else if (selectedType === 'voice') {
           noDataMessage = '📭 **Нет данных по голосовой активности**\n\nСтатистика голосовых каналов пока не собрана или никто не был в войсе.';
         }
-        resultEmbed.setDescription(noDataMessage);
-      } else {
-        let statsText = description + '\n\n';
 
-        topMembers.forEach((stats, index) => {
-          const position = index + 1;
-          // Используем mention для отображения пользователя как кликабельной ссылки
-          const userMention = `<@${stats.user.id}>`;
+        const embed = new EmbedBuilder()
+          .setTitle('📊 Статистика активности')
+          .setDescription(noDataMessage)
+          .setColor(0x5865F2)
+          .setTimestamp()
+          .setFooter({ text: `Всего участников: ${memberStats.length}` });
 
-          if (selectedType === 'messages') {
-            statsText += `**${position})** ${userMention} — **${stats.messages}** сообщений\n`;
-          } else if (selectedType === 'voice') {
-            // Конвертируем миллисекунды в дни, часы, минуты, секунды
-            const totalSeconds = Math.floor(stats.voiceTime / 1000);
-            const days = Math.floor(totalSeconds / 86400);
-            const hours = Math.floor((totalSeconds % 86400) / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-            
-            let timeStr = '';
-            if (days > 0) {
-              timeStr = `${days} дней, ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            } else {
-              timeStr = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-            }
-            
-            statsText += `**${position})** ${userMention} — **${timeStr}**\n`;
-          }
-        });
-
-        resultEmbed.setDescription(statsText);
+        await interaction.editReply({ embeds: [embed] });
+        return;
       }
+
+      // Сортируем и берем топ
+      if (selectedType === 'messages') {
+        activeMembers.sort((a, b) => b.messages - a.messages);
+      } else if (selectedType === 'voice') {
+        activeMembers.sort((a, b) => b.voiceTime - a.voiceTime);
+      }
+
+      const topMembers = activeMembers.slice(0, limit);
+
+      // Создаем embed
+      let title = '📊 Статистика активности';
+      if (selectedType === 'messages') {
+        const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
+        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
+        title = `${emojiStr} Топ пользователей по сообщениям`;
+      } else if (selectedType === 'voice') {
+        const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
+        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
+        title = `${emojiStr} Топ пользователей по времени в войсе`;
+      }
+
+      let statsText = `Топ-${Math.min(limit, topMembers.length)}\n\n`;
+
+      topMembers.forEach((stats, index) => {
+        const position = index + 1;
+        const userMention = `<@${stats.user.id}>`;
+
+        if (selectedType === 'messages') {
+          statsText += `**${position})** ${userMention} — **${stats.messages}** сообщений\n`;
+        } else if (selectedType === 'voice') {
+          const totalSeconds = Math.floor(stats.voiceTime / 1000);
+          const days = Math.floor(totalSeconds / 86400);
+          const hours = Math.floor((totalSeconds % 86400) / 3600);
+          const minutes = Math.floor((totalSeconds % 3600) / 60);
+          const seconds = totalSeconds % 60;
+          
+          let timeStr = '';
+          if (days > 0) {
+            timeStr = `${days} дней, ${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          } else {
+            timeStr = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+          }
+          
+          statsText += `**${position})** ${userMention} — **${timeStr}**\n`;
+        }
+      });
+
+      const resultEmbed = new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(statsText)
+        .setColor(0x5865F2)
+        .setTimestamp()
+        .setFooter({ text: `Всего участников: ${memberStats.length}` });
 
       await interaction.editReply({ embeds: [resultEmbed] });
 
     } catch (error) {
-      console.error('❌ Ошибка выполнения команды /stats:', error);
-      console.error('❌ Stack trace:', error.stack);
-
-      let errorMessage = 'Произошла ошибка при получении статистики.';
-      
-      if (error.message.includes('Unknown interaction')) {
-        errorMessage = '❌ Команда выполнялась слишком долго. Попробуйте еще раз.';
-      }
+      console.error('❌ Ошибка команды /stats:', error);
 
       try {
-        if (hasReplied) {
-          await interaction.editReply({ content: errorMessage, components: [] });
-        } else {
-          await interaction.reply({ content: errorMessage, ephemeral: true });
-        }
+        const errorMessage = error.message.includes('Unknown interaction') 
+          ? '❌ Команда выполнялась слишком долго. Попробуйте еще раз.' 
+          : '❌ Произошла ошибка при получении статистики.';
+          
+        await interaction.editReply({ content: errorMessage });
       } catch (replyError) {
-        console.error('❌ Ошибка отправки сообщения об ошибке:', replyError);
+        console.error('❌ Ошибка отправки ошибки:', replyError);
       }
     }
   },
