@@ -23,6 +23,16 @@ module.exports = {
 
   async execute(interaction, client) {
     try {
+      // Проверяем, что команда выполняется в правильном канале
+      const allowedChannelId = '1444744987677032538'; // spam-chat
+      if (interaction.channelId !== allowedChannelId) {
+        await interaction.reply({ 
+          content: 'Команда /stats доступна только в канале <#1444744987677032538>', 
+          ephemeral: true 
+        });
+        return;
+      }
+
       // Быстро отвечаем, чтобы избежать timeout
       await interaction.deferReply();
 
