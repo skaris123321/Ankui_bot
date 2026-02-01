@@ -134,7 +134,7 @@ module.exports = {
       let description = '';
 
       if (selectedType === 'messages') {
-        title = '💬 Топ пользователей по сообщениям';
+        title = '<:emodzipurpleverify:1467380679191826446> Топ пользователей по сообщениям';
         description = `Самые активные в чате (топ-${Math.min(limit, topMembers.length)})`;
       } else if (selectedType === 'voice') {
         title = '🎤 Топ пользователей по времени в войсе';
@@ -163,39 +163,11 @@ module.exports = {
 
         topMembers.forEach((stats, index) => {
           const position = index + 1;
-          
-          // Пытаемся найти кастомные эмодзи сервера для медалей
-          let medal;
-          if (position === 1) {
-            const goldEmoji = guild.emojis.cache.find(emoji => 
-              emoji.name.toLowerCase().includes('gold') || 
-              emoji.name.toLowerCase().includes('first') ||
-              emoji.name.toLowerCase().includes('1st')
-            );
-            medal = goldEmoji ? `<:${goldEmoji.name}:${goldEmoji.id}>` : '🥇';
-          } else if (position === 2) {
-            const silverEmoji = guild.emojis.cache.find(emoji => 
-              emoji.name.toLowerCase().includes('silver') || 
-              emoji.name.toLowerCase().includes('second') ||
-              emoji.name.toLowerCase().includes('2nd')
-            );
-            medal = silverEmoji ? `<:${silverEmoji.name}:${silverEmoji.id}>` : '🥈';
-          } else if (position === 3) {
-            const bronzeEmoji = guild.emojis.cache.find(emoji => 
-              emoji.name.toLowerCase().includes('bronze') || 
-              emoji.name.toLowerCase().includes('third') ||
-              emoji.name.toLowerCase().includes('3rd')
-            );
-            medal = bronzeEmoji ? `<:${bronzeEmoji.name}:${bronzeEmoji.id}>` : '🥉';
-          } else {
-            medal = `**${position})**`;
-          }
-          
           // Используем mention для отображения пользователя как кликабельной ссылки
           const userMention = `<@${stats.user.id}>`;
 
           if (selectedType === 'messages') {
-            statsText += `${medal} ${userMention} — **${stats.messages}** сообщений\n`;
+            statsText += `**${position})** ${userMention} — **${stats.messages}** сообщений\n`;
           } else if (selectedType === 'voice') {
             // Конвертируем миллисекунды в дни, часы, минуты, секунды
             const totalSeconds = Math.floor(stats.voiceTime / 1000);
@@ -211,7 +183,7 @@ module.exports = {
               timeStr = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             }
             
-            statsText += `${medal} ${userMention} — **${timeStr}** 🎤\n`;
+            statsText += `**${position})** ${userMention} — **${timeStr}** 🎤\n`;
           }
         });
 
