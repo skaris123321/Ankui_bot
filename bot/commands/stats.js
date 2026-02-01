@@ -150,13 +150,22 @@ module.exports = {
 
       if (selectedType === 'messages') {
         // Пытаемся найти кастомный эмодзи на сервере
+        console.log(`🔍 Ищем эмодзи 'emodzipurpleverify' на сервере...`);
+        console.log(`🔍 Доступные эмодзи на сервере: ${guild.emojis.cache.map(e => e.name).join(', ')}`);
+        
         const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
-        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '💬';
+        console.log(`🔍 Найден эмодзи:`, customEmoji ? `${customEmoji.name} (${customEmoji.id})` : 'не найден');
+        
+        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
         
         title = `${emojiStr} Топ пользователей по сообщениям`;
         description = `Самые активные в чате (топ-${Math.min(limit, topMembers.length)})`;
       } else if (selectedType === 'voice') {
-        title = '🎤 Топ пользователей по времени в войсе';
+        // Пытаемся найти кастомный эмодзи на сервере для голосовых
+        const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
+        const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
+        
+        title = `${emojiStr} Топ пользователей по времени в войсе`;
         description = `Больше всего времени в голосовых каналах (топ-${Math.min(limit, topMembers.length)})`;
       }
 
@@ -202,7 +211,7 @@ module.exports = {
               timeStr = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             }
             
-            statsText += `**${position})** ${userMention} — **${timeStr}** 🎤\n`;
+            statsText += `**${position})** ${userMention} — **${timeStr}**\n`;
           }
         });
 
