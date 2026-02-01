@@ -146,8 +146,7 @@ module.exports = {
         .setColor(0x5865F2)
         .setTimestamp()
         .setFooter({
-          text: `Всего участников: ${memberStats.length} • Активных: ${activeMembers.length}`,
-          iconURL: guild.iconURL() || undefined
+          text: `Всего участников: ${memberStats.length}`
         });
 
       // Добавляем статистику
@@ -164,7 +163,34 @@ module.exports = {
 
         topMembers.forEach((stats, index) => {
           const position = index + 1;
-          const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position})**`;
+          
+          // Пытаемся найти кастомные эмодзи сервера для медалей
+          let medal;
+          if (position === 1) {
+            const goldEmoji = guild.emojis.cache.find(emoji => 
+              emoji.name.toLowerCase().includes('gold') || 
+              emoji.name.toLowerCase().includes('first') ||
+              emoji.name.toLowerCase().includes('1st')
+            );
+            medal = goldEmoji ? `<:${goldEmoji.name}:${goldEmoji.id}>` : '🥇';
+          } else if (position === 2) {
+            const silverEmoji = guild.emojis.cache.find(emoji => 
+              emoji.name.toLowerCase().includes('silver') || 
+              emoji.name.toLowerCase().includes('second') ||
+              emoji.name.toLowerCase().includes('2nd')
+            );
+            medal = silverEmoji ? `<:${silverEmoji.name}:${silverEmoji.id}>` : '🥈';
+          } else if (position === 3) {
+            const bronzeEmoji = guild.emojis.cache.find(emoji => 
+              emoji.name.toLowerCase().includes('bronze') || 
+              emoji.name.toLowerCase().includes('third') ||
+              emoji.name.toLowerCase().includes('3rd')
+            );
+            medal = bronzeEmoji ? `<:${bronzeEmoji.name}:${bronzeEmoji.id}>` : '🥉';
+          } else {
+            medal = `**${position})**`;
+          }
+          
           // Используем mention для отображения пользователя как кликабельной ссылки
           const userMention = `<@${stats.user.id}>`;
 
