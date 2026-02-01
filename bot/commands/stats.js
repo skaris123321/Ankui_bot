@@ -38,15 +38,55 @@ module.exports = {
         return;
       }
 
-      // Получаем всех участников сервера
+      // Проверяем права бота
+      const botMember = guild.members.me;
+      if (!botMember) {
+        console.error('❌ Не удалось получить информацию о боте на сервере');
+        await interaction.editReply({ content: '❌ Ошибка: не удалось получить информацию о боте.' });
+        return;
+      }
+
+      // Проверяем необходимые права
+      const requiredPermissions = ['ViewChannel', 'ReadMessageHistory'];
+      const missingPermissions = requiredPermissions.filter(perm => !botMember.permissions.has(perm));
+      
+      if (missingPermissions.length > 0) {
+        console.error('❌ У бота отсутствуют права:', missingPermissions);
+        await interaction.editReply({ 
+          content: `❌ У бота недостаточно прав. Отсутствуют: ${missingPermissions.join(', ')}` 
+        });
+        return;
+      }
+
       const guild = interaction.guild;
-      await guild.members.fetch(); // Загружаем всех участников
-
-      // Получаем статистику из базы данных
       const db = client.db;
-      const allMembers = Array.from(guild.members.cache.values());
 
-      console.log(`👥 Найдено участников на сервере: ${allMembers.length}`);
+      // Получаем участников сервера более безопасным способом
+      let allMembers = [];
+      try {
+        // Сначала пробуем получить из кэша
+        allMembers = Array.from(guild.members.cache.values());
+        console.log(`👥 Участников в кэше: ${allMembers.length}`);
+
+        // Если в кэше мало участников, пробуем загрузить больше
+        if (allMembers.length < 10) {
+          console.log('🔄 Загружаем участников с сервера...');
+          try {
+            await guild.members.fetch({ limit: 100 }); // Загружаем до 100 участников
+            allMembers = Array.from(guild.members.cache.values());
+            console.log(`👥 Участников после загрузки: ${allMembers.length}`);
+          } catch (fetchError) {
+            console.warn('⚠️ Не удалось загрузить всех участников:', fetchError.message);
+            // Продолжаем с теми, что есть в кэше
+          }
+        }
+      } catch (error) {
+        console.error('❌ Ошибка получения участников:', error);
+        // Используем базовую информацию
+        allMembers = Array.from(guild.members.cache.values());
+      }
+
+      console.log(`👥 Всего участников для анализа: ${allMembers.length}`);
 
       // Создаем массив статистики для всех участников
       const memberStats = [];
@@ -54,20 +94,26 @@ module.exports = {
       for (const member of allMembers) {
         if (member.user.bot) continue; // Пропускаем ботов
 
-        // Получаем статистику пользователя
-        const userStats = db.getUserStats(guildId, member.id) || {
-          messages: 0,
-          voiceTime: 0,
-          lastActive: null
-        };
+        try {
+          // Получаем статистику пользователя
+          const userStats = db.getUserStats(guildId, member.id) || {
+            messages: 0,
+            voiceTime: 0,
+            lastActive: null
+          };
 
-        memberStats.push({
-          user: member.user,
-          member: member,
-          messages: userStats.messages || 0,
-          voiceTime: userStats.voiceTime || 0,
-          lastActive: userStats.lastActive
-        });
+          memberStats.push({
+            user: member.user,
+            member: member,
+            messages: userStats.messages || 0,
+            voiceTime: userStats.voiceTime || 0,
+            lastActive: userStats.lastActive
+          });
+        } catch (memberError) {
+          console.warn(`⚠️ Ошибка обработки участника ${member.id}:`, memberError.message);
+          // Пропускаем этого участника и продолжаем
+          continue;
+        }
       }
 
       console.log(`📊 Обработано пользователей: ${memberStats.length}`);
@@ -116,27 +162,32 @@ module.exports = {
           const position = index + 1;
           const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position}.**`;
 
-          if (type === 'messages') {
-            // Статистика по сообщениям
-            if (stats.messages > 0) {
-              statsText += `${medal} <@${stats.user.id}> — **${stats.messages}** сообщений\n`;
-            } else {
-              statsText += `${medal} <@${stats.user.id}> — нет сообщений\n`;
-            }
-          } else if (type === 'voice') {
-            // Статистика по времени в войсе
-            const voiceHours = Math.floor(stats.voiceTime / 3600000);
-            const voiceMinutes = Math.floor((stats.voiceTime % 3600000) / 60000);
-            
-            if (stats.voiceTime > 0) {
-              if (voiceHours > 0) {
-                statsText += `${medal} <@${stats.user.id}> — **${voiceHours}ч ${voiceMinutes}м**\n`;
+          try {
+            if (type === 'messages') {
+              // Статистика по сообщениям
+              if (stats.messages > 0) {
+                statsText += `${medal} ${stats.user.username} — **${stats.messages}** сообщений\n`;
               } else {
-                statsText += `${medal} <@${stats.user.id}> — **${voiceMinutes}м**\n`;
+                statsText += `${medal} ${stats.user.username} — нет сообщений\n`;
               }
-            } else {
-              statsText += `${medal} <@${stats.user.id}> — не был в войсе\n`;
+            } else if (type === 'voice') {
+              // Статистика по времени в войсе
+              const voiceHours = Math.floor(stats.voiceTime / 3600000);
+              const voiceMinutes = Math.floor((stats.voiceTime % 3600000) / 60000);
+              
+              if (stats.voiceTime > 0) {
+                if (voiceHours > 0) {
+                  statsText += `${medal} ${stats.user.username} — **${voiceHours}ч ${voiceMinutes}м**\n`;
+                } else {
+                  statsText += `${medal} ${stats.user.username} — **${voiceMinutes}м**\n`;
+                }
+              } else {
+                statsText += `${medal} ${stats.user.username} — не был в войсе\n`;
+              }
             }
+          } catch (userError) {
+            console.warn(`⚠️ Ошибка обработки пользователя в статистике:`, userError.message);
+            // Пропускаем этого пользователя
           }
         });
 
@@ -144,24 +195,29 @@ module.exports = {
       }
 
       // Добавляем общую статистику сервера
-      const totalMessages = memberStats.reduce((sum, stats) => sum + stats.messages, 0);
-      const totalVoiceTime = memberStats.reduce((sum, stats) => sum + stats.voiceTime, 0);
-      const totalVoiceHours = Math.floor(totalVoiceTime / 3600000);
-      const totalVoiceMinutes = Math.floor((totalVoiceTime % 3600000) / 60000);
+      try {
+        const totalMessages = memberStats.reduce((sum, stats) => sum + stats.messages, 0);
+        const totalVoiceTime = memberStats.reduce((sum, stats) => sum + stats.voiceTime, 0);
+        const totalVoiceHours = Math.floor(totalVoiceTime / 3600000);
+        const totalVoiceMinutes = Math.floor((totalVoiceTime % 3600000) / 60000);
 
-      if (type === 'messages') {
-        embed.addFields({
-          name: '📊 Общая статистика',
-          value: `Всего сообщений на сервере: **${totalMessages}**`,
-          inline: false
-        });
-      } else if (type === 'voice') {
-        const totalVoiceStr = totalVoiceHours > 0 ? `**${totalVoiceHours}ч ${totalVoiceMinutes}м**` : `**${totalVoiceMinutes}м**`;
-        embed.addFields({
-          name: '📊 Общая статистика',
-          value: `Общее время в войсе: ${totalVoiceStr}`,
-          inline: false
-        });
+        if (type === 'messages') {
+          embed.addFields({
+            name: '📊 Общая статистика',
+            value: `Всего сообщений на сервере: **${totalMessages}**`,
+            inline: false
+          });
+        } else if (type === 'voice') {
+          const totalVoiceStr = totalVoiceHours > 0 ? `**${totalVoiceHours}ч ${totalVoiceMinutes}м**` : `**${totalVoiceMinutes}м**`;
+          embed.addFields({
+            name: '📊 Общая статистика',
+            value: `Общее время в войсе: ${totalVoiceStr}`,
+            inline: false
+          });
+        }
+      } catch (statsError) {
+        console.warn('⚠️ Ошибка подсчета общей статистики:', statsError.message);
+        // Продолжаем без общей статистики
       }
 
       console.log(`✅ Отправка embed со статистикой`);
@@ -171,7 +227,16 @@ module.exports = {
       console.error('❌ Ошибка выполнения команды /stats:', error);
       console.error('❌ Stack trace:', error.stack);
 
-      const errorMessage = 'Произошла ошибка при получении статистики: ' + error.message;
+      let errorMessage = 'Произошла ошибка при получении статистики.';
+      
+      // Более понятные сообщения об ошибках
+      if (error.message.includes('Missing Permissions')) {
+        errorMessage = '❌ У бота недостаточно прав для получения информации об участниках сервера.';
+      } else if (error.message.includes('Unknown Guild')) {
+        errorMessage = '❌ Сервер не найден.';
+      } else if (error.message.includes('Received one or more errors')) {
+        errorMessage = '❌ Не удалось получить полную информацию об участниках. Попробуйте позже.';
+      }
 
       try {
         if (interaction.deferred) {
