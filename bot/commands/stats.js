@@ -22,12 +22,17 @@ module.exports = {
     ),
 
   async execute(interaction, client) {
+    let hasReplied = false;
+    
     try {
+      // Быстро отвечаем, чтобы избежать timeout
       await interaction.deferReply();
+      hasReplied = true;
 
       const type = interaction.options.getString('type');
       const limit = interaction.options.getInteger('limit') || 10;
-      const guildId = interaction.guild.id;
+      const guild = interaction.guild;
+      const guildId = guild.id;
 
       console.log(`📊 Команда /stats вызвана: тип=${type}, лимит=${limit}, сервер=${guildId}`);
 
@@ -46,19 +51,6 @@ module.exports = {
         return;
       }
 
-      // Проверяем необходимые права
-      const requiredPermissions = ['ViewChannel', 'ReadMessageHistory'];
-      const missingPermissions = requiredPermissions.filter(perm => !botMember.permissions.has(perm));
-      
-      if (missingPermissions.length > 0) {
-        console.error('❌ У бота отсутствуют права:', missingPermissions);
-        await interaction.editReply({ 
-          content: `❌ У бота недостаточно прав. Отсутствуют: ${missingPermissions.join(', ')}` 
-        });
-        return;
-      }
-
-      const guild = interaction.guild;
       const db = client.db;
 
       // Получаем участников сервера более безопасным способом
@@ -68,11 +60,17 @@ module.exports = {
         allMembers = Array.from(guild.members.cache.values());
         console.log(`👥 Участников в кэше: ${allMembers.length}`);
 
-        // Если в кэше мало участников, пробуем загрузить больше
+        // Если в кэше мало участников, пробуем загрузить больше (но с ограничением времени)
         if (allMembers.length < 10) {
           console.log('🔄 Загружаем участников с сервера...');
           try {
-            await guild.members.fetch({ limit: 100 }); // Загружаем до 100 участников
+            // Устанавливаем таймаут для загрузки участников
+            const fetchPromise = guild.members.fetch({ limit: 100 });
+            const timeoutPromise = new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Timeout')), 5000)
+            );
+            
+            await Promise.race([fetchPromise, timeoutPromise]);
             allMembers = Array.from(guild.members.cache.values());
             console.log(`👥 Участников после загрузки: ${allMembers.length}`);
           } catch (fetchError) {
@@ -234,12 +232,14 @@ module.exports = {
         errorMessage = '❌ У бота недостаточно прав для получения информации об участниках сервера.';
       } else if (error.message.includes('Unknown Guild')) {
         errorMessage = '❌ Сервер не найден.';
+      } else if (error.message.includes('Unknown interaction')) {
+        errorMessage = '❌ Команда выполнялась слишком долго. Попробуйте еще раз.';
       } else if (error.message.includes('Received one or more errors')) {
         errorMessage = '❌ Не удалось получить полную информацию об участниках. Попробуйте позже.';
       }
 
       try {
-        if (interaction.deferred) {
+        if (hasReplied) {
           await interaction.editReply({ content: errorMessage });
         } else {
           await interaction.reply({ content: errorMessage, ephemeral: true });
