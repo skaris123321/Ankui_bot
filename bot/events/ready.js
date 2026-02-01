@@ -4,10 +4,34 @@ const ActivityTracker = require('../services/activityTracker');
 module.exports = {
   name: Events.ClientReady,
   once: true,
-  execute(client) {
+  async execute(client) {
     console.log(`\n✅ Бот ${client.user.tag} успешно запущен!`);
     console.log(`📊 Серверов: ${client.guilds.cache.size}`);
     console.log(`👥 Пользователей: ${client.users.cache.size}`);
+
+    // Автоматическая регистрация команд при запуске
+    try {
+      console.log('🔄 Автоматическая регистрация команд...');
+      
+      const commands = [];
+      client.commands.forEach(command => {
+        commands.push(command.data.toJSON());
+      });
+      
+      // Регистрируем команды для каждого сервера, где есть бот
+      for (const guild of client.guilds.cache.values()) {
+        try {
+          await guild.commands.set(commands);
+          console.log(`✅ Команды зарегистрированы для сервера: ${guild.name}`);
+        } catch (error) {
+          console.error(`❌ Ошибка регистрации команд для ${guild.name}:`, error.message);
+        }
+      }
+      
+      console.log(`✅ Автоматическая регистрация завершена для ${client.guilds.cache.size} серверов`);
+    } catch (error) {
+      console.error('❌ Ошибка автоматической регистрации команд:', error);
+    }
 
     // Инициализируем ActivityTracker после готовности клиента
     if (!client.activityTracker) {
