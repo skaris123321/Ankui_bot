@@ -165,10 +165,11 @@ module.exports = {
         topMembers.forEach((stats, index) => {
           const position = index + 1;
           const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position})**`;
-          const username = stats.user.username || stats.member.displayName || 'Неизвестный пользователь';
+          // Используем mention для отображения пользователя как кликабельной ссылки
+          const userMention = `<@${stats.user.id}>`;
 
           if (selectedType === 'messages') {
-            statsText += `${medal} @${username} — **${stats.messages}** сообщений\n`;
+            statsText += `${medal} ${userMention} — **${stats.messages}** сообщений\n`;
           } else if (selectedType === 'voice') {
             // Конвертируем миллисекунды в дни, часы, минуты, секунды
             const totalSeconds = Math.floor(stats.voiceTime / 1000);
@@ -184,46 +185,11 @@ module.exports = {
               timeStr = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             }
             
-            statsText += `${medal} @${username} — **${timeStr}** 🎤\n`;
+            statsText += `${medal} ${userMention} — **${timeStr}** 🎤\n`;
           }
         });
 
         resultEmbed.setDescription(statsText);
-      }
-
-      // Добавляем общую статистику
-      if (selectedType === 'messages') {
-        const totalMessages = memberStats.reduce((sum, stats) => sum + stats.messages, 0);
-        const activeUsersCount = memberStats.filter(s => s.messages > 0).length;
-        
-        resultEmbed.addFields({
-          name: '📊 Общая статистика',
-          value: `Всего сообщений на сервере: **${totalMessages}**\nАктивных пользователей: **${activeUsersCount}**`,
-          inline: false
-        });
-      } else if (selectedType === 'voice') {
-        const totalVoiceTime = memberStats.reduce((sum, stats) => sum + stats.voiceTime, 0);
-        const activeUsersCount = memberStats.filter(s => s.voiceTime > 0).length;
-        
-        const totalSeconds = Math.floor(totalVoiceTime / 1000);
-        const totalDays = Math.floor(totalSeconds / 86400);
-        const totalHours = Math.floor((totalSeconds % 86400) / 3600);
-        const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
-        
-        let totalTimeStr = '';
-        if (totalDays > 0) {
-          totalTimeStr = `**${totalDays}** дней, **${totalHours}** часов, **${totalMinutes}** минут`;
-        } else if (totalHours > 0) {
-          totalTimeStr = `**${totalHours}** часов, **${totalMinutes}** минут`;
-        } else {
-          totalTimeStr = `**${totalMinutes}** минут`;
-        }
-        
-        resultEmbed.addFields({
-          name: '📊 Общая статистика',
-          value: `Общее время в войсе: ${totalTimeStr}\nАктивных пользователей: **${activeUsersCount}**`,
-          inline: false
-        });
       }
 
       await interaction.editReply({ embeds: [resultEmbed] });
