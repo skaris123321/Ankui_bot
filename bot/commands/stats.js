@@ -109,19 +109,21 @@ module.exports = {
 
       console.log(`📊 Обработано пользователей: ${memberStats.length}`);
 
-      // Сортируем в зависимости от типа статистики
-      if (selectedType === 'messages') {
-        memberStats.sort((a, b) => b.messages - a.messages);
-      } else if (selectedType === 'voice') {
-        memberStats.sort((a, b) => b.voiceTime - a.voiceTime);
-      }
-
       // Фильтруем пользователей с активностью в зависимости от типа статистики
       let activeMembers = [];
       if (selectedType === 'messages') {
         activeMembers = memberStats.filter(s => s.messages > 0);
+        console.log(`💬 Пользователей с сообщениями: ${activeMembers.length}`);
       } else if (selectedType === 'voice') {
         activeMembers = memberStats.filter(s => s.voiceTime > 0);
+        console.log(`🎤 Пользователей с голосовой активностью: ${activeMembers.length}`);
+      }
+
+      // Сортируем отфильтрованных пользователей
+      if (selectedType === 'messages') {
+        activeMembers.sort((a, b) => b.messages - a.messages);
+      } else if (selectedType === 'voice') {
+        activeMembers.sort((a, b) => b.voiceTime - a.voiceTime);
       }
 
       // Берем топ пользователей
@@ -144,7 +146,7 @@ module.exports = {
         .setColor(0x5865F2)
         .setTimestamp()
         .setFooter({
-          text: `Всего участников: ${memberStats.length}`,
+          text: `Всего участников: ${memberStats.length} • Активных: ${activeMembers.length}`,
           iconURL: guild.iconURL() || undefined
         });
 
@@ -162,10 +164,11 @@ module.exports = {
 
         topMembers.forEach((stats, index) => {
           const position = index + 1;
+          const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position})**`;
           const username = stats.user.username || stats.member.displayName || 'Неизвестный пользователь';
 
           if (selectedType === 'messages') {
-            statsText += `**${position})** @${username} - **${stats.messages}** сообщений\n`;
+            statsText += `${medal} @${username} — **${stats.messages}** сообщений\n`;
           } else if (selectedType === 'voice') {
             // Конвертируем миллисекунды в дни, часы, минуты, секунды
             const totalSeconds = Math.floor(stats.voiceTime / 1000);
@@ -181,7 +184,7 @@ module.exports = {
               timeStr = `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
             }
             
-            statsText += `**${position})** @${username} - **${timeStr}** 🎤\n`;
+            statsText += `${medal} @${username} — **${timeStr}** 🎤\n`;
           }
         });
 
