@@ -9,8 +9,8 @@ module.exports = {
         .setDescription('Тип статистики')
         .setRequired(true)
         .addChoices(
-          { name: '💬 По сообщениям', value: 'messages' },
-          { name: '🎤 По времени в войсе', value: 'voice' }
+          { name: 'По сообщениям', value: 'messages' },
+          { name: 'По времени в войсе', value: 'voice' }
         )
     )
     .addIntegerOption(option =>
@@ -28,7 +28,7 @@ module.exports = {
 
       const guild = interaction.guild;
       if (!guild) {
-        await interaction.editReply({ content: '❌ Ошибка: команда должна выполняться на сервере.' });
+        await interaction.editReply({ content: 'Ошибка: команда должна выполняться на сервере.' });
         return;
       }
 
@@ -36,12 +36,12 @@ module.exports = {
       const selectedType = interaction.options.getString('тип');
       const limit = interaction.options.getInteger('лимит') || 20;
 
-      console.log(`📊 Команда /stats: тип=${selectedType}, лимит=${limit}, сервер=${guildId}`);
+      console.log(`Команда /stats: тип=${selectedType}, лимит=${limit}, сервер=${guildId}`);
 
       // Проверяем, что база данных доступна
       if (!client.db) {
-        console.error('❌ База данных не инициализирована');
-        await interaction.editReply({ content: '❌ Ошибка: база данных не доступна.' });
+        console.error('База данных не инициализирована');
+        await interaction.editReply({ content: 'Ошибка: база данных не доступна.' });
         return;
       }
 
@@ -50,16 +50,16 @@ module.exports = {
       // Быстрая проверка статистики
       const allUserStats = Object.keys(db.data.userStats || {});
       const serverStats = allUserStats.filter(key => key.startsWith(guildId + '_'));
-      console.log(`📊 Статистика для ${guildId}: ${serverStats.length} записей`);
+      console.log(`Статистика для ${guildId}: ${serverStats.length} записей`);
 
       // Если нет статистики для текущего сервера, проверяем другие серверы
       if (serverStats.length === 0) {
         const allServers = [...new Set(allUserStats.map(key => key.split('_')[0]))];
-        console.log(`📊 Найдены данные для серверов: ${allServers.join(', ')}`);
+        console.log(`Найдены данные для серверов: ${allServers.join(', ')}`);
         
         if (allServers.length > 0) {
           await interaction.editReply({ 
-            content: `❌ Нет статистики для этого сервера.\n\nВ базе есть данные для серверов: ${allServers.join(', ')}\nТекущий сервер: ${guildId}\n\nВозможно, ID сервера изменился или ActivityTracker не работает.` 
+            content: `Нет статистики для этого сервера.\n\nВ базе есть данные для серверов: ${allServers.join(', ')}\nТекущий сервер: ${guildId}\n\nВозможно, ID сервера изменился или ActivityTracker не работает.` 
           });
           return;
         }
@@ -69,10 +69,10 @@ module.exports = {
       let allMembers = [];
       try {
         allMembers = Array.from(guild.members.cache.values()).slice(0, 100); // Ограничиваем для скорости
-        console.log(`👥 Обрабатываем ${allMembers.length} участников`);
+        console.log(`Обрабатываем ${allMembers.length} участников`);
       } catch (error) {
-        console.error('❌ Ошибка получения участников:', error);
-        await interaction.editReply({ content: '❌ Не удалось получить список участников сервера.' });
+        console.error('Ошибка получения участников:', error);
+        await interaction.editReply({ content: 'Не удалось получить список участников сервера.' });
         return;
       }
 
@@ -104,18 +104,18 @@ module.exports = {
         activeMembers = memberStats.filter(s => s.voiceTime > 0);
       }
 
-      console.log(`📊 Активных пользователей: ${activeMembers.length}`);
+      console.log(`Активных пользователей: ${activeMembers.length}`);
 
       if (activeMembers.length === 0) {
         let noDataMessage = '';
         if (selectedType === 'messages') {
-          noDataMessage = '📭 **Нет данных по сообщениям**\n\nСтатистика сообщений пока не собрана или никто не писал сообщения.';
+          noDataMessage = 'Нет данных по сообщениям\n\nСтатистика сообщений пока не собрана или никто не писал сообщения.';
         } else if (selectedType === 'voice') {
-          noDataMessage = '📭 **Нет данных по голосовой активности**\n\nСтатистика голосовых каналов пока не собрана или никто не был в войсе.';
+          noDataMessage = 'Нет данных по голосовой активности\n\nСтатистика голосовых каналов пока не собрана или никто не был в войсе.';
         }
 
         const embed = new EmbedBuilder()
-          .setTitle('📊 Статистика активности')
+          .setTitle('Статистика активности')
           .setDescription(noDataMessage)
           .setColor(0x5865F2)
           .setTimestamp()
@@ -135,7 +135,7 @@ module.exports = {
       const topMembers = activeMembers.slice(0, limit);
 
       // Создаем embed
-      let title = '📊 Статистика активности';
+      let title = 'Статистика активности';
       if (selectedType === 'messages') {
         const customEmoji = guild.emojis.cache.find(emoji => emoji.name === 'emodzipurpleverify');
         const emojiStr = customEmoji ? `<:${customEmoji.name}:${customEmoji.id}>` : '';
@@ -182,16 +182,16 @@ module.exports = {
       await interaction.editReply({ embeds: [resultEmbed] });
 
     } catch (error) {
-      console.error('❌ Ошибка команды /stats:', error);
+      console.error('Ошибка команды /stats:', error);
 
       try {
         const errorMessage = error.message.includes('Unknown interaction') 
-          ? '❌ Команда выполнялась слишком долго. Попробуйте еще раз.' 
-          : '❌ Произошла ошибка при получении статистики.';
+          ? 'Команда выполнялась слишком долго. Попробуйте еще раз.' 
+          : 'Произошла ошибка при получении статистики.';
           
         await interaction.editReply({ content: errorMessage });
       } catch (replyError) {
-        console.error('❌ Ошибка отправки ошибки:', replyError);
+        console.error('Ошибка отправки ошибки:', replyError);
       }
     }
   },
