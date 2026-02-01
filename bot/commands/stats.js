@@ -36,6 +36,13 @@ module.exports = {
 
       console.log(`📊 Команда /stats вызвана: тип=${type}, лимит=${limit}, сервер=${guildId}`);
 
+      // Проверяем, что тип указан
+      if (!type) {
+        console.error('❌ Тип статистики не указан');
+        await interaction.editReply({ content: '❌ Ошибка: не указан тип статистики.' });
+        return;
+      }
+
       // Проверяем, что база данных доступна
       if (!client.db) {
         console.error('❌ База данных не инициализирована');
@@ -137,8 +144,8 @@ module.exports = {
           iconURL: guild.iconURL() || undefined
         });
 
-      let title = '';
-      let description = '';
+      let title = 'Статистика активности';
+      let description = 'Статистика пользователей';
 
       if (type === 'messages') {
         title = `💬 Топ по сообщениям`;
@@ -146,6 +153,11 @@ module.exports = {
       } else if (type === 'voice') {
         title = `🎤 Топ по времени в войсе`;
         description = `Больше всего времени в голосовых каналах (топ-${limit})`;
+      }
+
+      // Проверяем, что title не пустой
+      if (!title || title.trim() === '') {
+        title = 'Статистика активности';
       }
 
       embed.setTitle(title);
@@ -161,12 +173,15 @@ module.exports = {
           const medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : `**${position}.**`;
 
           try {
+            // Проверяем, что у пользователя есть имя
+            const username = stats.user.username || stats.user.displayName || 'Неизвестный пользователь';
+            
             if (type === 'messages') {
               // Статистика по сообщениям
               if (stats.messages > 0) {
-                statsText += `${medal} ${stats.user.username} — **${stats.messages}** сообщений\n`;
+                statsText += `${medal} ${username} — **${stats.messages}** сообщений\n`;
               } else {
-                statsText += `${medal} ${stats.user.username} — нет сообщений\n`;
+                statsText += `${medal} ${username} — нет сообщений\n`;
               }
             } else if (type === 'voice') {
               // Статистика по времени в войсе
@@ -175,12 +190,12 @@ module.exports = {
               
               if (stats.voiceTime > 0) {
                 if (voiceHours > 0) {
-                  statsText += `${medal} ${stats.user.username} — **${voiceHours}ч ${voiceMinutes}м**\n`;
+                  statsText += `${medal} ${username} — **${voiceHours}ч ${voiceMinutes}м**\n`;
                 } else {
-                  statsText += `${medal} ${stats.user.username} — **${voiceMinutes}м**\n`;
+                  statsText += `${medal} ${username} — **${voiceMinutes}м**\n`;
                 }
               } else {
-                statsText += `${medal} ${stats.user.username} — не был в войсе\n`;
+                statsText += `${medal} ${username} — не был в войсе\n`;
               }
             }
           } catch (userError) {
@@ -188,6 +203,11 @@ module.exports = {
             // Пропускаем этого пользователя
           }
         });
+
+        // Проверяем, что описание не пустое
+        if (statsText.trim() === '') {
+          statsText = 'Нет данных для отображения';
+        }
 
         embed.setDescription(statsText);
       }
