@@ -26,9 +26,9 @@ class BotDatabase {
       try {
         const rawData = fs.readFileSync(this.dbPath, 'utf8');
         this.data = JSON.parse(rawData);
-        console.log('✅ База данных загружена из файла');
+        console.log('База данных загружена из файла');
       } catch (error) {
-        console.error('⚠️  Ошибка загрузки базы данных, создаем новую:', error);
+        console.error('Ошибка загрузки базы данных, создаем новую:', error);
         this.data = {
           guilds: {},
           warnings: [],
@@ -51,7 +51,7 @@ class BotDatabase {
         userDrafts: {}
       };
       this.save();
-      console.log('✅ База данных инициализирована');
+      console.log('База данных инициализирована');
     }
   }
 
@@ -59,24 +59,19 @@ class BotDatabase {
     try {
       const dataString = JSON.stringify(this.data, null, 2);
       fs.writeFileSync(this.dbPath, dataString, 'utf8');
-      console.log('💾 База данных сохранена');
+      console.log('База данных сохранена');
     } catch (error) {
-      console.error('❌ Ошибка сохранения базы данных:', error);
+      console.error('Ошибка сохранения базы данных:', error);
       throw error;
     }
   }
 
   // Методы для настроек сервера
   getGuildSettings(guildId) {
-    // Перезагружаем данные перед чтением, чтобы всегда иметь актуальные данные
-    this.load();
     return this.data.guilds[guildId] || null;
   }
 
   setGuildSettings(guildId, settings) {
-    // Перезагружаем данные из файла перед записью
-    this.load();
-    
     if (!this.data.guilds[guildId]) {
       this.data.guilds[guildId] = {
         guild_id: guildId,
@@ -95,7 +90,7 @@ class BotDatabase {
     // Сохраняем в файл
     this.save();
     
-    console.log(`💾 Настройки для сервера ${guildId} сохранены:`, JSON.stringify(this.data.guilds[guildId], null, 2));
+    console.log(`Настройки для сервера ${guildId} сохранены:`, JSON.stringify(this.data.guilds[guildId], null, 2));
   }
 
   // Методы для предупреждений

@@ -6,7 +6,7 @@ class ActivityTracker {
     this.db = database;
     this.voiceStates = new Map(); // Отслеживание времени входа в голосовые каналы
 
-    console.log('🎯 ActivityTracker инициализирован');
+    console.log('ActivityTracker инициализирован');
     this.setupEventListeners();
   }
 
@@ -21,7 +21,7 @@ class ActivityTracker {
       this.handleVoiceStateUpdate(oldState, newState);
     });
 
-    console.log('✅ ActivityTracker: События настроены');
+    console.log('ActivityTracker: События настроены');
   }
 
   handleMessage(message) {
@@ -46,9 +46,9 @@ class ActivityTracker {
       // Сохраняем обновленную статистику
       this.db.setUserStats(guildId, userId, userStats);
 
-      console.log(`📝 Сообщение от ${message.author.username}: ${userStats.messages} сообщений`);
+      console.log(`Сообщение от ${message.author.username}: ${userStats.messages} сообщений`);
     } catch (error) {
-      console.error('❌ Ошибка обработки сообщения:', error);
+      console.error('Ошибка обработки сообщения:', error);
     }
   }
 
@@ -69,7 +69,7 @@ class ActivityTracker {
       // Пользователь присоединился к голосовому каналу
       if (!oldState.channelId && newState.channelId) {
         this.voiceStates.set(userKey, now);
-        console.log(`🎤 ${member.user.username} присоединился к голосовому каналу`);
+        console.log(`${member.user.username} присоединился к голосовому каналу`);
       }
       // Пользователь покинул голосовой канал
       else if (oldState.channelId && !newState.channelId) {
@@ -94,40 +94,40 @@ class ActivityTracker {
 
           const sessionMinutes = Math.floor(sessionDuration / 60000);
           const totalMinutes = Math.floor(userStats.voiceTime / 60000);
-          console.log(`🎤 ${member.user.username} покинул голосовой канал. Сессия: ${sessionMinutes}м, всего: ${totalMinutes}м`);
+          console.log(`${member.user.username} покинул голосовой канал. Сессия: ${sessionMinutes}м, всего: ${totalMinutes}м`);
         }
       }
       // Пользователь переключился между каналами (не учитываем как выход/вход)
       else if (oldState.channelId && newState.channelId && oldState.channelId !== newState.channelId) {
         // Просто обновляем время входа для нового канала
         this.voiceStates.set(userKey, now);
-        console.log(`🎤 ${member.user.username} переключился между голосовыми каналами`);
+        console.log(`${member.user.username} переключился между голосовыми каналами`);
       }
     } catch (error) {
-      console.error('❌ Ошибка обработки голосового состояния:', error);
+      console.error('Ошибка обработки голосового состояния:', error);
     }
   }
 
   // Метод для получения текущих пользователей в голосовых каналах при запуске бота
   initializeVoiceStates() {
-    console.log('🎯 Инициализация голосовых состояний...');
+    console.log('Инициализация голосовых состояний...');
 
     this.client.guilds.cache.forEach(guild => {
       guild.voiceStates.cache.forEach(voiceState => {
         if (voiceState.channelId && voiceState.member && !voiceState.member.user.bot) {
           const userKey = `${guild.id}_${voiceState.member.id}`;
           this.voiceStates.set(userKey, Date.now());
-          console.log(`🎤 Найден пользователь в голосовом канале: ${voiceState.member.user.username}`);
+          console.log(`Найден пользователь в голосовом канале: ${voiceState.member.user.username}`);
         }
       });
     });
 
-    console.log(`✅ Инициализировано ${this.voiceStates.size} голосовых состояний`);
+    console.log(`Инициализировано ${this.voiceStates.size} голосовых состояний`);
   }
 
   // Метод для сохранения всех активных голосовых сессий (при выключении бота)
   saveActiveVoiceSessions() {
-    console.log('💾 Сохранение активных голосовых сессий...');
+    console.log('Сохранение активных голосовых сессий...');
 
     const now = Date.now();
     let savedSessions = 0;
@@ -153,14 +153,14 @@ class ActivityTracker {
         savedSessions++;
 
         const sessionMinutes = Math.floor(sessionDuration / 60000);
-        console.log(`💾 Сохранена сессия пользователя ${userId}: ${sessionMinutes}м`);
+        console.log(`Сохранена сессия пользователя ${userId}: ${sessionMinutes}м`);
       } catch (error) {
-        console.error(`❌ Ошибка сохранения сессии для ${userId}:`, error);
+        console.error(`Ошибка сохранения сессии для ${userId}:`, error);
       }
     });
 
     this.voiceStates.clear();
-    console.log(`✅ Сохранено ${savedSessions} активных голосовых сессий`);
+    console.log(`Сохранено ${savedSessions} активных голосовых сессий`);
   }
 }
 
